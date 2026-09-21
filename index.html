@@ -394,15 +394,19 @@
     }
 
     // Загрузка данных
+    let lastUpdated = null;
+
     async function loadData() {
       try {
-        const response = await fetch('data.json');
+        const response = await fetch('data.json?t=' + Date.now());
         if (!response.ok) throw new Error('Сетевая ошибка при загрузке данных');
         const data = await response.json();
         state.users = data.users || {};
         state.messages = data.messages || [];
         state.admins = data.admins || [];
         state.audit = data.audit || [];
+        lastUpdated = data.last_updated || null;
+        updateLastUpdatedBadge();
         render();
       } catch (err) {
         document.getElementById('app').innerHTML = `
@@ -413,6 +417,48 @@
             </div>
           </div>`;
       }
+    }
+
+    function updateLastUpdatedBadge() {
+      let badge = document.getElementById('last-updated-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'last-updated-badge';
+        badge.style.cssText = `
+          position: fixed;
+          bottom: 16px;
+          right: 16px;
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-size: 12px;
+          color: var(--text-secondary);
+          z-index: 500;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        `;
+        document.body.appendChild(badge);
+      }
+      const timeStr = lastUpdated ? formatDate(lastUpdated) : '—';
+      badge.innerHTML = `
+        <span>Обновлено: ${timeStr}</span>
+        <button id="refresh-btn" style="
+          background: var(--accent-color);
+          color: #fff;
+          border: none;
+          padding: 4px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        ">Обновить</button>
+      `;
+      document.getElementById('refresh-btn').onclick = () => {
+        document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+        loadData();
+      };
     }
 
     // Переключение вкладок
