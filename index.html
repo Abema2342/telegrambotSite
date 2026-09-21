@@ -429,7 +429,20 @@
       return `<span class="badge ${conf.class}">${conf.emoji} ${escapeHtml(conf.label)}</span>`;
     }
 
-    // Форматирование даты: ДД.ММ.ГГГГ ЧЧ:ММ
+    // Распознавание медиа из строки формата: [тип] файл.ext
+    function parseMediaFromText(text) {
+      if (!text || typeof text !== 'string') return null;
+      const match = text.match(/^\[(photo|sticker|video|voice|audio|animation|document|video_note)\]\s*(.+)$/i);
+      if (match) {
+        return {
+          media_type: match[1].toLowerCase(),
+          file_name: match[2].trim()
+        };
+      }
+      return null;
+    }
+
+    // Форматирование даты
     function formatDate(dateStr) {
       if (!dateStr) return '—';
       const d = new Date(dateStr);
@@ -438,7 +451,7 @@
       return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // Загрузка данных
+    // Загрузка и объединение данных
     async function loadData() {
       try {
         const response = await fetch('data.json');
@@ -446,9 +459,30 @@
         const data = await response.json();
         state.users = data.users || {};
         state.messages = data.messages || [];
-        state.media = data.media || [];
         state.admins = data.admins || [];
         state.audit = data.audit || [];
+
+        // Если в JSON передан готовый массив media — берем его,
+        // иначе автоматически извлекаем медиафайлы из messages формата "[type] filename"
+        if (Array.isArray(data.media) && data.media.length > 0) {
+          state.media = data.media;
+        } else {
+          state.media = [];
+          state.messages.forEach((msg, idx) => {
+            const parsed = parseMediaFromText(msg.text);
+            if (parsed) {
+              state.media.push({
+                id: msg.id !== undefined ? msg.id : (idx + 1),
+                user_id: msg.user_id,
+                first_name: msg.first_name,
+                file_name: parsed.file_name,
+                media_type: parsed.media_type,
+                time: msg.time
+              });
+            }
+          });
+        }
+
         render();
       } catch (err) {
         document.getElementById('app').innerHTML = `
@@ -461,7 +495,7 @@
       }
     }
 
-    // Переключение вкладок
+    // Навигация
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -472,7 +506,7 @@
       });
     });
 
-    // Маршрутизатор рендера
+    // Маршрутизатор
     function render() {
       if (state.selectedUserId) {
         renderUserProfile(state.selectedUserId);
@@ -498,7 +532,7 @@
       }
     }
 
-    // РАЗДЕЛ 1: Список пользователей
+    // РАЗДЕЛ 1: Пользователи
     function renderUsers() {
       const userIds = Object.keys(state.users);
       const totalCount = userIds.length;
@@ -579,12 +613,19 @@
         .reverse();
 
       const messagesRows = userMessages.length > 0 
-        ? userMessages.map(m => `
-            <tr>
-              <td style="width: 170px;">${formatDate(m.time)}</td>
-              <td>${escapeHtml(m.text || '')}</td>
-            </tr>
-          `).join('')
+        ? userMessages.map(m => {
+            const parsed = parseMediaFromText(m.text);
+            const contentHtml = parsed 
+              ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+              : escapeHtml(m.text || '');
+
+            return `
+              <tr>
+                <td style="width: 170px;">${formatDate(m.time)}</td>
+                <td>${contentHtml}</td>
+              </tr>
+            `;
+          }).join('')
         : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
 
       // Последние 20 медиафайлов данного пользователя
@@ -700,14 +741,23 @@
 
       let rows = list.map((m, index) => {
         const text = m.text || '';
-        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        const parsed = parseMediaFromText(text);
+
+        let cellContent;
+        if (parsed) {
+          cellContent = `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`;
+        } else {
+          const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+          cellContent = escapeHtml(preview);
+        }
+
         const msgId = m.id !== undefined ? `#${m.id}` : '—';
         return `
           <tr class="clickable" onclick="openMessageModal(${index})">
             <td class="col-id">${msgId}</td>
             <td>${escapeHtml(m.first_name || '—')}</td>
             <td><code>${m.user_id}</code></td>
-            <td class="truncate">${escapeHtml(preview)}</td>
+            <td class="truncate">${cellContent}</td>
             <td>${formatDate(m.time)}</td>
           </tr>
         `;
@@ -737,7 +787,7 @@
       `;
     }
 
-    // РАЗДЕЛ 3: Медиа (НОВЫЙ)
+    // РАЗДЕЛ 3: Медиа
     function renderMedia() {
       const mediaList = state.media || [];
       const totalCount = mediaList.length;
@@ -751,7 +801,6 @@
         return;
       }
 
-      // Показываем последние медиа сверху
       const list = mediaList.slice().reverse();
 
       let rows = list.map((m, index) => {
@@ -851,7 +900,11 @@
       const auditList = state.audit || [];
 
       if (auditList.length === 0) {
-        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Записей аудита нет</div></div>';
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">Журнал аудита</span><span class="sub-text">Всего: 0</span></div>
+            <div class="empty-state">Записей аудита нет</div>
+          </div>`;
         return;
       }
 
@@ -880,12 +933,16 @@
 
       document.getElementById('app').innerHTML = `
         <div class="card">
+          <div class="card-header">
+            <span class="card-title">Журнал аудита</span>
+            <span class="sub-text">Всего: ${auditList.length}</span>
+          </div>
           ${rows}
         </div>
       `;
     }
 
-    // Модальное окно (универсальное)
+    // Модальное окно
     const modal = document.getElementById('common-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalCloseBtn = document.getElementById('modal-close-btn');
@@ -898,8 +955,16 @@
       const msg = list[index];
       if (!msg) return;
 
+      const parsed = parseMediaFromText(msg.text);
+
       modalTitle.textContent = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
-      modalContent.textContent = msg.text || '';
+      
+      if (parsed) {
+        modalContent.innerHTML = `<strong>Тип медиа:</strong> ${getMediaBadgeHtml(parsed.media_type)}\n\n<strong>Имя файла:</strong>\n<code>${escapeHtml(parsed.file_name)}</code>`;
+      } else {
+        modalContent.textContent = msg.text || '';
+      }
+
       modalMeta.textContent = `${msg.first_name || '—'} (ID: ${msg.user_id}) • ${formatDate(msg.time)}`;
       
       modalUserLink.onclick = () => {
@@ -936,7 +1001,6 @@
       if (e.target === modal) closeModal();
     });
 
-    // Вспомогательная функция для экранирования HTML
     function escapeHtml(str) {
       if (typeof str !== 'string') return str;
       return str
@@ -947,7 +1011,6 @@
         .replace(/'/g, "&#039;");
     }
 
-    // Запуск
     loadData();
   </script>
 </body>
