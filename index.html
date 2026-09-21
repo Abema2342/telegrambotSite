@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0d0d0d;
+      --card-bg: #1a1a1a;
+      --card-hover: #222222;
+      --border-color: #2a2a2a;
+      --accent-color: #5865F2;
+      --accent-hover: #4752c4;
+      --text-main: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --status-active: #43b581;
+      --status-banned: #f04747;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Навигация */
+    header {
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      background-color: var(--card-hover);
+    }
+
+    .nav-btn.active {
+      background-color: var(--accent-color);
+      color: #ffffff;
+    }
+
+    /* Основной контейнер */
+    main {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Табличные списки */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background-color: rgba(0, 0, 0, 0.2);
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr {
+      transition: background-color 0.15s ease;
+    }
+
+    tbody tr.clickable {
+      cursor: pointer;
+    }
+
+    tbody tr.clickable:hover {
+      background-color: var(--card-hover);
+    }
+
+    .sub-text {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .truncate {
+      max-width: 450px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Профиль пользователя */
+    .back-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .back-btn:hover {
+      background-color: var(--card-hover);
+    }
+
+    .profile-hero {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--border-color);
+    }
+
+    .profile-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .detail-item .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .detail-item .value {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-active {
+      background: rgba(67, 181, 129, 0.15);
+      color: var(--status-active);
+    }
+
+    .badge-banned {
+      background: rgba(240, 71, 71, 0.15);
+      color: var(--status-banned);
+    }
+
+    /* Модальное окно */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-window {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 550px;
+      margin: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 16px;
+      max-height: 60vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-link {
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-link:hover {
+      background: var(--accent-hover);
+    }
+
+    .audit-row {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .audit-row:hover {
+      background-color: var(--card-hover);
+    }
+
+    .empty-state {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Навигация -->
+  <header>
+    <div class="nav-container">
+      <button class="nav-btn active" data-tab="users">Пользователи</button>
+      <button class="nav-btn" data-tab="messages">Сообщения</button>
+      <button class="nav-btn" data-tab="admins">Админы</button>
+      <button class="nav-btn" data-tab="audit">Журнал аудита</button>
+    </div>
+  </header>
+
+  <!-- Контент -->
+  <main id="app">
+    <div class="empty-state">Загрузка данных...</div>
+  </main>
+
+  <!-- Модальное окно для полного текста сообщения -->
+  <div class="modal-overlay" id="message-modal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <span class="card-title">Сообщение</span>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-content"></div>
+      <div class="modal-footer">
+        <span class="sub-text" id="modal-meta"></span>
+        <button class="btn-link" id="modal-user-link">В профиль</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Состояние приложения
+    let state = {
+      users: {},
+      messages: [],
+      admins: [],
+      audit: [],
+      currentTab: 'users',
+      selectedUserId: null
+    };
+
+    // Форматирование даты: ДД.ММ.ГГГГ ЧЧ:ММ
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Загрузка данных
+    async function loadData() {
+      try {
+        const response = await fetch('data.json');
+        if (!response.ok) throw new Error('Сетевая ошибка при загрузке данных');
+        const data = await response.json();
+        state.users = data.users || {};
+        state.messages = data.messages || [];
+        state.admins = data.admins || [];
+        state.audit = data.audit || [];
+        render();
+      } catch (err) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="empty-state" style="color: var(--status-banned);">
+              Ошибка загрузки data.json: ${err.message}.<br>
+              Убедитесь, что файл существует и доступен.
+            </div>
+          </div>`;
+      }
+    }
+
+    // Переключение вкладок
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentTab = btn.getAttribute('data-tab');
+        state.selectedUserId = null; // сбрасываем открытый профиль при смене раздела
+        render();
+      });
+    });
+
+    // Маршрутизатор рендера
+    function render() {
+      const app = document.getElementById('app');
+
+      if (state.selectedUserId) {
+        renderUserProfile(state.selectedUserId);
+        return;
+      }
+
+      switch (state.currentTab) {
+        case 'users':
+          renderUsers();
+          break;
+        case 'messages':
+          renderMessages();
+          break;
+        case 'admins':
+          renderAdmins();
+          break;
+        case 'audit':
+          renderAudit();
+          break;
+      }
+    }
+
+    // РАЗДЕЛ 1: Список пользователей
+    function renderUsers() {
+      const userIds = Object.keys(state.users);
+      if (userIds.length === 0) {
+        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Пользователи не найдены</div></div>';
+        return;
+      }
+
+      let rows = userIds.map(id => {
+        const u = state.users[id];
+        return `
+          <tr class="clickable" onclick="openProfile('${id}')">
+            <td>${escapeHtml(u.first_name || '—')}</td>
+            <td><code>${id}</code></td>
+            <td>${formatDate(u.last_message)}</td>
+            <td>${u.requests ?? 0}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ник</th>
+                  <th>ID</th>
+                  <th>Последнее сообщение</th>
+                  <th>Запросов</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
+    function openProfile(userId) {
+      state.selectedUserId = String(userId);
+      render();
+    }
+
+    function renderUserProfile(userId) {
+      const user = state.users[userId];
+
+      if (!user) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <button class="back-btn" onclick="closeProfile()">← Назад</button>
+            </div>
+            <div class="empty-state">Пользователь с ID ${escapeHtml(userId)} не найден в базе.</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Аватарка или цветная заглушка с первой буквой
+      const avatarHtml = user.avatar_url 
+        ? `<img src="${escapeHtml(user.avatar_url)}" alt="Avatar" class="profile-avatar">`
+        : `<div class="profile-avatar">${escapeHtml((user.first_name || '?')[0].toUpperCase())}</div>`;
+
+      // Последние 50 сообщений данного пользователя
+      const userMessages = state.messages
+        .filter(m => String(m.user_id) === String(userId))
+        .slice(-50)
+        .reverse();
+
+      const messagesRows = userMessages.length > 0 
+        ? userMessages.map(m => `
+            <tr>
+              <td style="width: 170px;">${formatDate(m.time)}</td>
+              <td>${escapeHtml(m.text || '')}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeProfile()">← Назад</button>
+            <span class="sub-text">Профиль пользователя</span>
+          </div>
+          
+          <div class="profile-hero">
+            ${avatarHtml}
+            <div>
+              <div style="font-size: 20px; font-weight: 700;">${escapeHtml(user.first_name || 'Без имени')}</div>
+              <div class="sub-text">@${escapeHtml(user.username || '—')}</div>
+            </div>
+          </div>
+
+          <div class="profile-details-grid">
+            <div class="detail-item">
+              <div class="label">ID</div>
+              <div class="value"><code>${userId}</code></div>
+            </div>
+            <div class="detail-item">
+              <div class="label">Статус</div>
+              <div class="value">
+                ${user.banned 
+                  ? '<span class="badge badge-banned">Забанен</span>' 
+                  : '<span class="badge badge-active">Активен</span>'}
+              </div>
+            </div>
+            <div class="detail-item">
+              <div class="label">Запросов</div>
+              <div class="value">${user.requests ?? 0}</div>
+            </div>
+            <div class="detail-item">
+              <div class="label">Первый вход</div>
+              <div class="value">${formatDate(user.first_seen)}</div>
+            </div>
+            <div class="detail-item">
+              <div class="label">Посл. сообщение</div>
+              <div class="value">${formatDate(user.last_message)}</div>
+            </div>
+          </div>
+
+          <div class="card-header">
+            <span class="card-title">Последние сообщения (до 50)</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Текст</th>
+                </tr>
+              </thead>
+              <tbody>${messagesRows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function closeProfile() {
+      state.selectedUserId = null;
+      render();
+    }
+
+    // РАЗДЕЛ 2: Сообщения
+    function renderMessages() {
+      // Последние 200 сообщений
+      const list = state.messages.slice(-200).reverse();
+
+      if (list.length === 0) {
+        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Сообщений нет</div></div>';
+        return;
+      }
+
+      let rows = list.map((m, index) => {
+        const text = m.text || '';
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        return `
+          <tr class="clickable" onclick="openMessageModal(${index})">
+            <td>${escapeHtml(m.first_name || '—')}</td>
+            <td><code>${m.user_id}</code></td>
+            <td class="truncate">${escapeHtml(preview)}</td>
+            <td>${formatDate(m.time)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ник</th>
+                  <th>ID</th>
+                  <th>Текст</th>
+                  <th>Время</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // РАЗДЕЛ 3: Админы
+    function renderAdmins() {
+      if (state.admins.length === 0) {
+        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Список админов пуст</div></div>';
+        return;
+      }
+
+      let rows = state.admins.map(admin => {
+        const user = state.users[String(admin.id)];
+        const name = user ? user.first_name : '—';
+        const isClickable = !!user;
+
+        return `
+          <tr class="${isClickable ? 'clickable' : ''}" ${isClickable ? `onclick="openProfile('${admin.id}')"` : ''}>
+            <td>${escapeHtml(name)}</td>
+            <td><code>${admin.id}</code></td>
+            <td>${formatDate(admin.appointed_at)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ник</th>
+                  <th>ID</th>
+                  <th>Назначен</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // РАЗДЕЛ 4: Журнал аудита
+    function renderAudit() {
+      if (state.audit.length === 0) {
+        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Записей аудита нет</div></div>';
+        return;
+      }
+
+      const actionText = {
+        'ban': 'забанил',
+        'unban': 'разбанил',
+        'add_admin': 'назначил админом',
+        'del_admin': 'снял с поста админа'
+      };
+
+      const rows = state.audit.slice().reverse().map(item => {
+        const actionStr = actionText[item.action] || item.action;
+        const timeStr = formatDate(item.time);
+        return `
+          <div class="audit-row">
+            <span style="color: var(--text-secondary);">[${timeStr}]</span> 
+            <strong>${escapeHtml(item.admin_name || 'Admin')}</strong> 
+            <span>${actionStr}</span> 
+            <strong>${escapeHtml(item.target_name || 'User')}</strong> 
+            <span class="sub-text">(ID: ${item.target_id})</span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          ${rows}
+        </div>
+      `;
+    }
+
+    // Модальное окно сообщения
+    const modal = document.getElementById('message-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalContent = document.getElementById('modal-content');
+    const modalMeta = document.getElementById('modal-meta');
+    const modalUserLink = document.getElementById('modal-user-link');
+
+    function openMessageModal(index) {
+      const list = state.messages.slice(-200).reverse();
+      const msg = list[index];
+      if (!msg) return;
+
+      modalContent.textContent = msg.text || '';
+      modalMeta.textContent = `${msg.first_name || '—'} (ID: ${msg.user_id}) • ${formatDate(msg.time)}`;
+      
+      modalUserLink.onclick = () => {
+        closeMessageModal();
+        openProfile(msg.user_id);
+      };
+
+      modal.classList.add('active');
+    }
+
+    function closeMessageModal() {
+      modal.classList.remove('active');
+    }
+
+    modalCloseBtn.addEventListener('click', closeMessageModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeMessageModal();
+    });
+
+    // Вспомогательная функция для экранирования HTML
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Инициализация
+    loadData();
+  </script>
+</body>
+</html>
