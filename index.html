@@ -122,6 +122,7 @@
       padding: 12px 16px;
       border-bottom: 1px solid var(--border-color);
       font-size: 13px;
+      white-space: nowrap;
     }
 
     td {
@@ -145,6 +146,12 @@
       background-color: var(--card-hover);
     }
 
+    .col-id {
+      width: 70px;
+      font-family: monospace;
+      color: var(--text-secondary);
+    }
+
     .sub-text {
       color: var(--text-secondary);
       font-size: 12px;
@@ -152,6 +159,13 @@
 
     .truncate {
       max-width: 450px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .truncate-media {
+      max-width: 320px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -225,6 +239,7 @@
       border-radius: 4px;
       font-size: 12px;
       font-weight: 500;
+      white-space: nowrap;
     }
 
     .badge-active {
@@ -236,6 +251,17 @@
       background: rgba(240, 71, 71, 0.15);
       color: var(--status-banned);
     }
+
+    /* Бейджи типов медиа */
+    .badge-media-photo { background: rgba(88, 101, 242, 0.2); color: #5865F2; }
+    .badge-media-sticker { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
+    .badge-media-video { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+    .badge-media-voice { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+    .badge-media-audio { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+    .badge-media-animation { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
+    .badge-media-document { background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
+    .badge-media-video_note { background: rgba(253, 121, 168, 0.2); color: #fd79a8; }
+    .badge-media-default { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
 
     /* Модальное окно */
     .modal-overlay {
@@ -348,6 +374,7 @@
     <div class="nav-container">
       <button class="nav-btn active" data-tab="users">Пользователи</button>
       <button class="nav-btn" data-tab="messages">Сообщения</button>
+      <button class="nav-btn" data-tab="media">Медиа</button>
       <button class="nav-btn" data-tab="admins">Админы</button>
       <button class="nav-btn" data-tab="audit">Журнал аудита</button>
     </div>
@@ -358,11 +385,11 @@
     <div class="empty-state">Загрузка данных...</div>
   </main>
 
-  <!-- Модальное окно для полного текста сообщения -->
-  <div class="modal-overlay" id="message-modal">
+  <!-- Модальное окно -->
+  <div class="modal-overlay" id="common-modal">
     <div class="modal-window">
       <div class="modal-header">
-        <span class="card-title">Сообщение</span>
+        <span class="card-title" id="modal-title">Детали</span>
         <button class="modal-close" id="modal-close-btn">&times;</button>
       </div>
       <div class="modal-body" id="modal-content"></div>
@@ -378,11 +405,29 @@
     let state = {
       users: {},
       messages: [],
+      media: [],
       admins: [],
       audit: [],
       currentTab: 'users',
       selectedUserId: null
     };
+
+    // Конфигурация медиа-бейджей
+    const mediaTypeConfig = {
+      photo: { label: 'фото', emoji: '🖼', class: 'badge-media-photo' },
+      sticker: { label: 'стикер', emoji: '🎨', class: 'badge-media-sticker' },
+      video: { label: 'видео', emoji: '🎬', class: 'badge-media-video' },
+      voice: { label: 'голос', emoji: '🎤', class: 'badge-media-voice' },
+      audio: { label: 'аудио', emoji: '🎵', class: 'badge-media-audio' },
+      animation: { label: 'гифка', emoji: '🎞', class: 'badge-media-animation' },
+      document: { label: 'файл', emoji: '📄', class: 'badge-media-document' },
+      video_note: { label: 'кружок', emoji: '⭕', class: 'badge-media-video_note' }
+    };
+
+    function getMediaBadgeHtml(type) {
+      const conf = mediaTypeConfig[type] || { label: type || 'медиа', emoji: '📎', class: 'badge-media-default' };
+      return `<span class="badge ${conf.class}">${conf.emoji} ${escapeHtml(conf.label)}</span>`;
+    }
 
     // Форматирование даты: ДД.ММ.ГГГГ ЧЧ:ММ
     function formatDate(dateStr) {
@@ -394,19 +439,16 @@
     }
 
     // Загрузка данных
-    let lastUpdated = null;
-
     async function loadData() {
       try {
-        const response = await fetch('data.json?t=' + Date.now());
+        const response = await fetch('data.json');
         if (!response.ok) throw new Error('Сетевая ошибка при загрузке данных');
         const data = await response.json();
         state.users = data.users || {};
         state.messages = data.messages || [];
+        state.media = data.media || [];
         state.admins = data.admins || [];
         state.audit = data.audit || [];
-        lastUpdated = data.last_updated || null;
-        updateLastUpdatedBadge();
         render();
       } catch (err) {
         document.getElementById('app').innerHTML = `
@@ -419,63 +461,19 @@
       }
     }
 
-    function updateLastUpdatedBadge() {
-      let badge = document.getElementById('last-updated-badge');
-      if (!badge) {
-        badge = document.createElement('div');
-        badge.id = 'last-updated-badge';
-        badge.style.cssText = `
-          position: fixed;
-          bottom: 16px;
-          right: 16px;
-          background: var(--card-bg);
-          border: 1px solid var(--border-color);
-          padding: 8px 14px;
-          border-radius: 6px;
-          font-size: 12px;
-          color: var(--text-secondary);
-          z-index: 500;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        `;
-        document.body.appendChild(badge);
-      }
-      const timeStr = lastUpdated ? formatDate(lastUpdated) : '—';
-      badge.innerHTML = `
-        <span>Обновлено: ${timeStr}</span>
-        <button id="refresh-btn" style="
-          background: var(--accent-color);
-          color: #fff;
-          border: none;
-          padding: 4px 10px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-        ">Обновить</button>
-      `;
-      document.getElementById('refresh-btn').onclick = () => {
-        document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка данных...</div>';
-        loadData();
-      };
-    }
-
     // Переключение вкладок
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentTab = btn.getAttribute('data-tab');
-        state.selectedUserId = null; // сбрасываем открытый профиль при смене раздела
+        state.selectedUserId = null;
         render();
       });
     });
 
     // Маршрутизатор рендера
     function render() {
-      const app = document.getElementById('app');
-
       if (state.selectedUserId) {
         renderUserProfile(state.selectedUserId);
         return;
@@ -487,6 +485,9 @@
           break;
         case 'messages':
           renderMessages();
+          break;
+        case 'media':
+          renderMedia();
           break;
         case 'admins':
           renderAdmins();
@@ -500,8 +501,14 @@
     // РАЗДЕЛ 1: Список пользователей
     function renderUsers() {
       const userIds = Object.keys(state.users);
-      if (userIds.length === 0) {
-        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Пользователи не найдены</div></div>';
+      const totalCount = userIds.length;
+
+      if (totalCount === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">Пользователи</span><span class="sub-text">Всего: 0</span></div>
+            <div class="empty-state">Пользователи не найдены</div>
+          </div>`;
         return;
       }
 
@@ -519,6 +526,10 @@
 
       document.getElementById('app').innerHTML = `
         <div class="card">
+          <div class="card-header">
+            <span class="card-title">Пользователи</span>
+            <span class="sub-text">Всего: ${totalCount}</span>
+          </div>
           <div class="table-container">
             <table>
               <thead>
@@ -557,13 +568,12 @@
         return;
       }
 
-      // Аватарка или цветная заглушка с первой буквой
       const avatarHtml = user.avatar_url 
         ? `<img src="${escapeHtml(user.avatar_url)}" alt="Avatar" class="profile-avatar">`
         : `<div class="profile-avatar">${escapeHtml((user.first_name || '?')[0].toUpperCase())}</div>`;
 
       // Последние 50 сообщений данного пользователя
-      const userMessages = state.messages
+      const userMessages = (state.messages || [])
         .filter(m => String(m.user_id) === String(userId))
         .slice(-50)
         .reverse();
@@ -576,6 +586,22 @@
             </tr>
           `).join('')
         : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
+
+      // Последние 20 медиафайлов данного пользователя
+      const userMedia = (state.media || [])
+        .filter(m => String(m.user_id) === String(userId))
+        .slice(-20)
+        .reverse();
+
+      const mediaRows = userMedia.length > 0
+        ? userMedia.map(m => `
+            <tr>
+              <td style="width: 130px;">${getMediaBadgeHtml(m.media_type)}</td>
+              <td class="truncate-media" title="${escapeHtml(m.file_name || '')}"><code>${escapeHtml(m.file_name || '—')}</code></td>
+              <td style="width: 170px;">${formatDate(m.time)}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="3" class="empty-state">Нет медиафайлов</td></tr>`;
 
       document.getElementById('app').innerHTML = `
         <div class="card">
@@ -620,6 +646,22 @@
           </div>
 
           <div class="card-header">
+            <span class="card-title">Медиафайлы (до 20)</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th>Файл</th>
+                  <th>Время</th>
+                </tr>
+              </thead>
+              <tbody>${mediaRows}</tbody>
+            </table>
+          </div>
+
+          <div class="card-header" style="border-top: 1px solid var(--border-color);">
             <span class="card-title">Последние сообщения (до 50)</span>
           </div>
           <div class="table-container">
@@ -644,19 +686,25 @@
 
     // РАЗДЕЛ 2: Сообщения
     function renderMessages() {
-      // Последние 200 сообщений
-      const list = state.messages.slice(-200).reverse();
+      const totalCount = (state.messages || []).length;
+      const list = (state.messages || []).slice(-200).reverse();
 
-      if (list.length === 0) {
-        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Сообщений нет</div></div>';
+      if (totalCount === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">Сообщения</span><span class="sub-text">Всего: 0</span></div>
+            <div class="empty-state">Сообщений нет</div>
+          </div>`;
         return;
       }
 
       let rows = list.map((m, index) => {
         const text = m.text || '';
         const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        const msgId = m.id !== undefined ? `#${m.id}` : '—';
         return `
           <tr class="clickable" onclick="openMessageModal(${index})">
+            <td class="col-id">${msgId}</td>
             <td>${escapeHtml(m.first_name || '—')}</td>
             <td><code>${m.user_id}</code></td>
             <td class="truncate">${escapeHtml(preview)}</td>
@@ -667,12 +715,17 @@
 
       document.getElementById('app').innerHTML = `
         <div class="card">
+          <div class="card-header">
+            <span class="card-title">Сообщения</span>
+            <span class="sub-text">Всего: ${totalCount}</span>
+          </div>
           <div class="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Ник</th>
                   <th>ID</th>
+                  <th>Ник</th>
+                  <th>User ID</th>
                   <th>Текст</th>
                   <th>Время</th>
                 </tr>
@@ -684,14 +737,80 @@
       `;
     }
 
-    // РАЗДЕЛ 3: Админы
-    function renderAdmins() {
-      if (state.admins.length === 0) {
-        document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Список админов пуст</div></div>';
+    // РАЗДЕЛ 3: Медиа (НОВЫЙ)
+    function renderMedia() {
+      const mediaList = state.media || [];
+      const totalCount = mediaList.length;
+
+      if (totalCount === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">Медиа</span><span class="sub-text">Всего: 0</span></div>
+            <div class="empty-state">Нет данных</div>
+          </div>`;
         return;
       }
 
-      let rows = state.admins.map(admin => {
+      // Показываем последние медиа сверху
+      const list = mediaList.slice().reverse();
+
+      let rows = list.map((m, index) => {
+        const fullFileName = m.file_name || '';
+        const previewFile = fullFileName.length > 40 ? fullFileName.substring(0, 40) + '...' : fullFileName;
+        const mediaId = m.id !== undefined ? `#${m.id}` : '—';
+
+        return `
+          <tr class="clickable" onclick="openMediaModal(${index})">
+            <td class="col-id">${mediaId}</td>
+            <td>${getMediaBadgeHtml(m.media_type)}</td>
+            <td>${escapeHtml(m.first_name || '—')}</td>
+            <td><code>${m.user_id}</code></td>
+            <td class="truncate-media" title="${escapeHtml(fullFileName)}"><code>${escapeHtml(previewFile || '—')}</code></td>
+            <td>${formatDate(m.time)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Медиа</span>
+            <span class="sub-text">Всего: ${totalCount}</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Тип</th>
+                  <th>Отправитель</th>
+                  <th>User ID</th>
+                  <th>Файл</th>
+                  <th>Время</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // РАЗДЕЛ 4: Админы
+    function renderAdmins() {
+      const adminList = state.admins || [];
+      const totalCount = adminList.length;
+
+      if (totalCount === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><span class="card-title">Админы</span><span class="sub-text">Всего: 0</span></div>
+            <div class="empty-state">Список админов пуст</div>
+          </div>`;
+        return;
+      }
+
+      let rows = adminList.map(admin => {
         const user = state.users[String(admin.id)];
         const name = user ? user.first_name : '—';
         const isClickable = !!user;
@@ -707,6 +826,10 @@
 
       document.getElementById('app').innerHTML = `
         <div class="card">
+          <div class="card-header">
+            <span class="card-title">Админы</span>
+            <span class="sub-text">Всего: ${totalCount}</span>
+          </div>
           <div class="table-container">
             <table>
               <thead>
@@ -723,9 +846,11 @@
       `;
     }
 
-    // РАЗДЕЛ 4: Журнал аудита
+    // РАЗДЕЛ 5: Журнал аудита
     function renderAudit() {
-      if (state.audit.length === 0) {
+      const auditList = state.audit || [];
+
+      if (auditList.length === 0) {
         document.getElementById('app').innerHTML = '<div class="card"><div class="empty-state">Записей аудита нет</div></div>';
         return;
       }
@@ -734,10 +859,12 @@
         'ban': 'забанил',
         'unban': 'разбанил',
         'add_admin': 'назначил админом',
-        'del_admin': 'снял с поста админа'
+        'del_admin': 'снял с поста админа',
+        'del_media': 'удалил медиа',
+        'del_user_media': 'удалил все медиа'
       };
 
-      const rows = state.audit.slice().reverse().map(item => {
+      const rows = auditList.slice().reverse().map(item => {
         const actionStr = actionText[item.action] || item.action;
         const timeStr = formatDate(item.time);
         return `
@@ -745,7 +872,7 @@
             <span style="color: var(--text-secondary);">[${timeStr}]</span> 
             <strong>${escapeHtml(item.admin_name || 'Admin')}</strong> 
             <span>${actionStr}</span> 
-            <strong>${escapeHtml(item.target_name || 'User')}</strong> 
+            <strong>${escapeHtml(item.target_name || 'Объект')}</strong> 
             <span class="sub-text">(ID: ${item.target_id})</span>
           </div>
         `;
@@ -758,36 +885,55 @@
       `;
     }
 
-    // Модальное окно сообщения
-    const modal = document.getElementById('message-modal');
+    // Модальное окно (универсальное)
+    const modal = document.getElementById('common-modal');
+    const modalTitle = document.getElementById('modal-title');
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalContent = document.getElementById('modal-content');
     const modalMeta = document.getElementById('modal-meta');
     const modalUserLink = document.getElementById('modal-user-link');
 
     function openMessageModal(index) {
-      const list = state.messages.slice(-200).reverse();
+      const list = (state.messages || []).slice(-200).reverse();
       const msg = list[index];
       if (!msg) return;
 
+      modalTitle.textContent = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
       modalContent.textContent = msg.text || '';
       modalMeta.textContent = `${msg.first_name || '—'} (ID: ${msg.user_id}) • ${formatDate(msg.time)}`;
       
       modalUserLink.onclick = () => {
-        closeMessageModal();
+        closeModal();
         openProfile(msg.user_id);
       };
 
       modal.classList.add('active');
     }
 
-    function closeMessageModal() {
+    function openMediaModal(index) {
+      const list = (state.media || []).slice().reverse();
+      const item = list[index];
+      if (!item) return;
+
+      modalTitle.textContent = item.id !== undefined ? `Медиафайл #${item.id}` : 'Медиафайл';
+      modalContent.innerHTML = `<strong>Полное имя файла:</strong>\n<code>${escapeHtml(item.file_name || '—')}</code>\n\n<strong>Тип:</strong> ${getMediaBadgeHtml(item.media_type)}`;
+      modalMeta.textContent = `${item.first_name || '—'} (ID: ${item.user_id}) • ${formatDate(item.time)}`;
+
+      modalUserLink.onclick = () => {
+        closeModal();
+        openProfile(item.user_id);
+      };
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
       modal.classList.remove('active');
     }
 
-    modalCloseBtn.addEventListener('click', closeMessageModal);
+    modalCloseBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeMessageModal();
+      if (e.target === modal) closeModal();
     });
 
     // Вспомогательная функция для экранирования HTML
@@ -801,7 +947,7 @@
         .replace(/'/g, "&#039;");
     }
 
-    // Инициализация
+    // Запуск
     loadData();
   </script>
 </body>
