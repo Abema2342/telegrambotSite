@@ -1,10 +1,12 @@
 {
+  "last_updated": "2026-09-21T20:42:13",
   "users": {
     "6706322460": {
       "username": "",
       "first_name": "номер скрыт",
       "banned": false,
-      "requests": 12
+      "requests": 12,
+      "last_message": "2026-09-21T20:37:05"
     },
     "5621097782": {
       "username": "Xyalani_kinn",
@@ -243,6 +245,27 @@
       "first_name": "𝔀𝓲𝓽𝓱 𝓵𝓸𝓿𝓮, 𝓪𝓷𝓷𝓪 𝓿𝔂𝓪𝓬𝓱𝓮𝓼𝓵𝓪𝓿𝓸𝓿𝓷𝓪ᶻ 𝘇 𐰁",
       "text": "😜",
       "time": "2026-09-21T18:38:49"
+    },
+    {
+      "user_id": 6706322460,
+      "username": "",
+      "first_name": "номер скрыт",
+      "text": "пкецппке",
+      "time": "2026-09-21T20:35:24"
+    },
+    {
+      "user_id": 6706322460,
+      "username": "",
+      "first_name": "номер скрыт",
+      "text": "не",
+      "time": "2026-09-21T20:35:26"
+    },
+    {
+      "user_id": 6706322460,
+      "username": "",
+      "first_name": "номер скрыт",
+      "text": "я люблю тебя",
+      "time": "2026-09-21T20:37:05"
     }
   ],
   "admins": [
