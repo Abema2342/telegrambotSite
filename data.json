@@ -1,12 +1,12 @@
 {
-  "last_updated": "2026-09-21T22:10:07+03:00",
+  "last_updated": "2026-09-21T22:15:08+03:00",
   "users": {
     "6706322460": {
       "username": "",
       "first_name": "номер скрыт",
       "banned": false,
       "requests": 13,
-      "last_message": "2026-09-21T22:08:51+03:00"
+      "last_message": "2026-09-21T22:13:30+03:00"
     },
     "5621097782": {
       "username": "Xyalani_kinn",
@@ -380,6 +380,14 @@
       "first_name": "номер скрыт",
       "text": "[photo] 6706322460_photo_1790017731.jpg",
       "time": "2026-09-21T22:08:51+03:00"
+    },
+    {
+      "id": 9,
+      "user_id": 6706322460,
+      "username": "",
+      "first_name": "номер скрыт",
+      "text": "[sticker] 6706322460_sticker_1790018010.webp",
+      "time": "2026-09-21T22:13:30+03:00"
     }
   ],
   "admins": [
