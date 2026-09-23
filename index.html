@@ -680,9 +680,9 @@
 
   <script>
     /* =========================================================
-       КОНФИГУРАЦИЯ И GITHUB API
+       КОНФИГУРАЦИЯ
        ========================================================= */
-    const GITHUB_TOKEN = "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";
+    const GITHUB_WORKER = "https://github-proxy.kmaxim242.workers.dev";
     const GITHUB_REPO = "Abema2342/telegrambotSite";
     const ADMIN_PASSWORD = "77790100";
 
@@ -748,23 +748,14 @@
     }
 
     /* =========================================================
-       СИНХРОНИЗАЦИЯ С GITHUB
+       СИНХРОНИЗАЦИЯ ЧЕРЕЗ CLOUDFLARE WORKER
        ========================================================= */
     async function saveDataToGitHub() {
-      if (!GITHUB_TOKEN || GITHUB_TOKEN.includes("СЮДА_ВСТАВИТЬ")) {
-        console.warn("GITHUB_TOKEN не настроен. Локальные изменения сохранены только в памяти страницы.");
-        return;
-      }
-
       try {
-        // 1. Получаем актуальный SHA data.json
-        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`, {
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-        
+
         let sha = state.dataSha;
         if (getRes.ok) {
           const jsonMeta = await getRes.json();
@@ -772,7 +763,6 @@
           state.dataSha = sha;
         }
 
-        // 2. Формируем тело JSON
         const exportData = {
           last_updated: new Date().toISOString(),
           users: state.users,
@@ -784,11 +774,9 @@
 
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
 
-        // 3. PUT запрос на обновление файла
-        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`, {
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
           method: 'PUT',
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
             'Accept': 'application/vnd.github.v3+json',
             'Content-Type': 'application/json'
           },
@@ -801,32 +789,23 @@
 
         if (!putRes.ok) {
           const errData = await putRes.json();
-          throw new Error(errData.message || 'Ошибка сохранения на GitHub');
+          throw new Error(errData.message || 'Ошибка сохранения через Worker');
         }
 
         const putSuccess = await putRes.json();
         state.dataSha = putSuccess.content.sha;
-        console.log("data.json успешно обновлен на GitHub");
+        console.log("data.json успешно обновлен через Worker");
       } catch (err) {
-        alert(`Ошибка синхронизации с GitHub: ${err.message}`);
+        alert(`Ошибка синхронизации: ${err.message}`);
       }
     }
 
     async function deleteMediaFromGitHub(fileName, messageId) {
       if (!confirm(`Удалить файл ${fileName} с GitHub репозитория?`)) return;
 
-      if (!GITHUB_TOKEN || GITHUB_TOKEN.includes("СЮДА_ВСТАВИТЬ")) {
-        alert("Ошибка: GITHUB_TOKEN не настроен.");
-        return;
-      }
-
       try {
-        // 1. Получаем SHA файла медиа
-        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
 
         if (!getRes.ok) {
@@ -835,11 +814,9 @@
 
         const fileMeta = await getRes.json();
 
-        // 2. DELETE запрос
-        const delRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+        const delRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
             'Accept': 'application/vnd.github.v3+json',
             'Content-Type': 'application/json'
           },
@@ -851,14 +828,12 @@
 
         if (!delRes.ok) {
           const errData = await delRes.json();
-          throw new Error(errData.message || 'Ошибка удаления медиа с GitHub');
+          throw new Error(errData.message || 'Ошибка удаления медиа');
         }
 
-        // 3. Удаляем сообщение из локального состояния
         state.messages = state.messages.filter(m => m.id !== messageId);
         buildMediaCache();
 
-        // Добавляем запись в аудит
         state.audit.push({
           admin_id: 0,
           admin_name: "WebAdmin",
@@ -868,7 +843,6 @@
           time: new Date().toISOString()
         });
 
-        // 4. Синхронизируем data.json
         await saveDataToGitHub();
         render();
         alert(`Файл ${fileName} успешно удален!`);
@@ -1186,7 +1160,7 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ 3: МЕДИА (ОБНОВЛЁННЫЙ)
+       РАЗДЕЛ 3: МЕДИА
        ========================================================= */
     function renderMedia() {
       const list = (state.media || []).slice().reverse();
@@ -1231,7 +1205,7 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ 4: ЗАМЕТКИ (НОВЫЙ)
+       РАЗДЕЛ 4: ЗАМЕТКИ
        ========================================================= */
     function renderNotes() {
       const sortedNotes = [...(state.notes || [])].sort((a, b) => {
