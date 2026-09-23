@@ -751,18 +751,23 @@
        СИНХРОНИЗАЦИЯ ЧЕРЕЗ CLOUDFLARE WORKER
        ========================================================= */
     async function saveDataToGitHub() {
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
+        // 1. Получаем АКТУАЛЬНЫЙ SHA (каждый раз заново)
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-
-        let sha = state.dataSha;
-        if (getRes.ok) {
-          const jsonMeta = await getRes.json();
-          sha = jsonMeta.sha;
-          state.dataSha = sha;
+  
+        if (!getRes.ok) {
+          throw new Error(`Не удалось получить SHA: HTTP ${getRes.status}`);
         }
-
+  
+        const jsonMeta = await getRes.json();
+        const sha = jsonMeta.sha;
+  
+        // 2. Формируем тело
         const exportData = {
           last_updated: new Date().toISOString(),
           users: state.users,
@@ -771,9 +776,10 @@
           admins: state.admins,
           audit: state.audit
         };
-
+  
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
-
+  
+        // 3. PUT
         const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
           method: 'PUT',
           headers: {
@@ -786,20 +792,33 @@
             sha: sha
           })
         });
-
+  
+        // 409 — кто-то изменил файл между GET и PUT, пробуем снова
+        if (putRes.status === 409) {
+          console.warn(`Попытка ${attempt}: конфликт SHA, пробуем заново...`);
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+  
         if (!putRes.ok) {
           const errData = await putRes.json();
-          throw new Error(errData.message || 'Ошибка сохранения через Worker');
+          throw new Error(errData.message || `HTTP ${putRes.status}`);
         }
-
+  
         const putSuccess = await putRes.json();
         state.dataSha = putSuccess.content.sha;
-        console.log("data.json успешно обновлен через Worker");
+        console.log(`data.json обновлён (попытка ${attempt})`);
+        return;
+  
       } catch (err) {
-        alert(`Ошибка синхронизации: ${err.message}`);
+        if (attempt === MAX_RETRIES) {
+          alert(`Ошибка синхронизации после ${MAX_RETRIES} попыток: ${err.message}`);
+          return;
+        }
+        await new Promise(r => setTimeout(r, 500));
       }
     }
-
+  }
     async function deleteMediaFromGitHub(fileName, messageId) {
       if (!confirm(`Удалить файл ${fileName} с GitHub репозитория?`)) return;
 
