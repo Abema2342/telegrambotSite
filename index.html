@@ -19,6 +19,8 @@
       --text-secondary: #a0a0a0;
       --status-active: #43b581;
       --status-banned: #f04747;
+      --btn-danger: #ed4245;
+      --btn-danger-hover: #c03537;
     }
 
     * {
@@ -36,6 +38,60 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    /* ЭКРАН АВТОРИЗАЦИИ */
+    #login-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .login-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .login-box h2 {
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #111;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 14px;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .login-error {
+      color: var(--status-banned);
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* ОСНОВНАЯ ПАНЕЛЬ */
+    #dashboard-screen {
+      display: none;
+    }
+
     /* Навигация */
     header {
       background-color: var(--card-bg);
@@ -49,16 +105,23 @@
       max-width: 1200px;
       margin: 0 auto;
       display: flex;
-      gap: 8px;
-      padding: 12px 16px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
       overflow-x: auto;
+      padding: 4px 0;
     }
 
     .nav-btn {
       background: transparent;
       border: 1px solid transparent;
       color: var(--text-secondary);
-      padding: 8px 16px;
+      padding: 8px 14px;
       font-size: 14px;
       font-weight: 500;
       border-radius: 4px;
@@ -77,6 +140,24 @@
       color: #ffffff;
     }
 
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+
+    .btn-logout:hover {
+      background: var(--card-hover);
+      color: var(--status-banned);
+      border-color: var(--status-banned);
+    }
+
     /* Основной контейнер */
     main {
       max-width: 1200px;
@@ -92,11 +173,19 @@
     }
 
     .card-header {
-      padding: 16px;
+      padding: 14px 16px;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .card-title {
@@ -171,6 +260,69 @@
       text-overflow: ellipsis;
     }
 
+    /* Кнопки общего назначения */
+    .btn-primary {
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-refresh {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-refresh:hover {
+      background: var(--card-hover);
+    }
+
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .btn-action:hover {
+      background: var(--card-hover);
+    }
+
+    .btn-action-danger {
+      color: var(--status-banned);
+      border-color: rgba(240, 71, 71, 0.4);
+    }
+
+    .btn-action-danger:hover {
+      background: rgba(240, 71, 71, 0.15);
+      border-color: var(--status-banned);
+    }
+
     /* Профиль пользователя */
     .back-btn {
       background: transparent;
@@ -242,26 +394,149 @@
       white-space: nowrap;
     }
 
-    .badge-active {
-      background: rgba(67, 181, 129, 0.15);
-      color: var(--status-active);
-    }
+    .badge-active { background: rgba(67, 181, 129, 0.15); color: var(--status-active); }
+    .badge-banned { background: rgba(240, 71, 71, 0.15); color: var(--status-banned); }
 
-    .badge-banned {
-      background: rgba(240, 71, 71, 0.15);
-      color: var(--status-banned);
-    }
-
-    /* Бейджи типов медиа */
     .badge-media-photo { background: rgba(88, 101, 242, 0.2); color: #5865F2; }
     .badge-media-sticker { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
-    .badge-media-video { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-    .badge-media-voice { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-    .badge-media-audio { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
     .badge-media-animation { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
-    .badge-media-document { background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
-    .badge-media-video_note { background: rgba(253, 121, 168, 0.2); color: #fd79a8; }
     .badge-media-default { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+
+    /* СЕТКА ЗАМЕТОК */
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .note-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 16px;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background-color 0.15s, border-color 0.15s;
+      min-height: 140px;
+    }
+
+    .note-card:hover {
+      background-color: var(--card-hover);
+      border-color: #383838;
+    }
+
+    .note-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .note-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 24px;
+    }
+
+    .note-pin-badge {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .note-card-preview {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 16px;
+      word-break: break-word;
+    }
+
+    .note-card-date {
+      font-size: 11px;
+      color: #666;
+    }
+
+    /* РЕДАКТОР ЗАМЕТКИ */
+    .note-editor {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .note-input-title {
+      background: #111;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 18px;
+      font-weight: 700;
+      padding: 12px 16px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .note-input-title:focus {
+      border-color: var(--accent-color);
+    }
+
+    .note-input-text {
+      background: #111;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 14px;
+      padding: 14px 16px;
+      outline: none;
+      font-family: inherit;
+      min-height: 260px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .note-input-text:focus {
+      border-color: var(--accent-color);
+    }
+
+    .note-editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 8px;
+    }
+
+    .btn-danger {
+      background: var(--btn-danger);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-danger:hover {
+      background: var(--btn-danger-hover);
+    }
 
     /* Модальное окно */
     .modal-overlay {
@@ -290,7 +565,7 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       width: 100%;
-      max-width: 550px;
+      max-width: 480px;
       margin: 16px;
       display: flex;
       flex-direction: column;
@@ -330,23 +605,10 @@
       padding: 12px 16px;
       border-top: 1px solid var(--border-color);
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
+      gap: 10px;
       align-items: center;
       background-color: rgba(0, 0, 0, 0.15);
-    }
-
-    .btn-link {
-      background: var(--accent-color);
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    .btn-link:hover {
-      background: var(--accent-hover);
     }
 
     .audit-row {
@@ -361,7 +623,7 @@
     }
 
     .empty-state {
-      padding: 32px;
+      padding: 48px 16px;
       text-align: center;
       color: var(--text-secondary);
     }
@@ -369,59 +631,80 @@
 </head>
 <body>
 
-  <!-- Навигация -->
-  <header>
-    <div class="nav-container">
-      <button class="nav-btn active" data-tab="users">Пользователи</button>
-      <button class="nav-btn" data-tab="messages">Сообщения</button>
-      <button class="nav-btn" data-tab="media">Медиа</button>
-      <button class="nav-btn" data-tab="admins">Админы</button>
-      <button class="nav-btn" data-tab="audit">Журнал аудита</button>
+  <!-- ЭКРАН 1: ЛОГИН -->
+  <div id="login-screen">
+    <div class="login-box">
+      <h2>Админ-панель</h2>
+      <form id="login-form">
+        <input type="password" id="password-input" class="form-input" placeholder="Введите пароль" autocomplete="current-password" autofocus required />
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">Войти</button>
+      </form>
+      <div id="login-error" class="login-error">Неверный пароль</div>
     </div>
-  </header>
+  </div>
 
-  <!-- Контент -->
-  <main id="app">
-    <div class="empty-state">Загрузка данных...</div>
-  </main>
+  <!-- ЭКРАН 2: ОСНОВНАЯ ПАНЕЛЬ -->
+  <div id="dashboard-screen">
+    <!-- Навигация -->
+    <header id="main-header">
+      <div class="nav-container">
+        <div class="nav-tabs">
+          <button class="nav-btn active" data-tab="users">Пользователи</button>
+          <button class="nav-btn" data-tab="messages">Сообщения</button>
+          <button class="nav-btn" data-tab="media">Медиа</button>
+          <button class="nav-btn" data-tab="notes">Заметки</button>
+          <button class="nav-btn" data-tab="admins">Админы</button>
+          <button class="nav-btn" data-tab="audit">Журнал аудита</button>
+        </div>
+        <button id="logout-btn" class="btn-logout">Выйти</button>
+      </div>
+    </header>
 
-  <!-- Модальное окно -->
+    <!-- Основной контейнер -->
+    <main id="app">
+      <div class="empty-state">Загрузка данных...</div>
+    </main>
+  </div>
+
+  <!-- Универсальное модальное окно -->
   <div class="modal-overlay" id="common-modal">
     <div class="modal-window">
       <div class="modal-header">
-        <span class="card-title" id="modal-title">Детали</span>
+        <span class="card-title" id="modal-title">Подтверждение</span>
         <button class="modal-close" id="modal-close-btn">&times;</button>
       </div>
       <div class="modal-body" id="modal-content"></div>
-      <div class="modal-footer">
-        <span class="sub-text" id="modal-meta"></span>
-        <button class="btn-link" id="modal-user-link">В профиль</button>
-      </div>
+      <div class="modal-footer" id="modal-actions"></div>
     </div>
   </div>
 
   <script>
-    // Состояние приложения
+    /* =========================================================
+       КОНФИГУРАЦИЯ И GITHUB API
+       ========================================================= */
+    const GITHUB_TOKEN = "СЮДА_ВСТАВИТЬ_ТОКЕН";
+    const GITHUB_REPO = "Abema2342/telegrambotSite";
+    const ADMIN_PASSWORD = "77790100";
+
     let state = {
+      last_updated: null,
       users: {},
       messages: [],
       media: [],
+      notes: [],
       admins: [],
       audit: [],
       currentTab: 'users',
-      selectedUserId: null
+      selectedUserId: null,
+      editingNoteId: null, // null, ID или 'new'
+      dataSha: null // SHA data.json на GitHub
     };
 
-    // Конфигурация медиа-бейджей
+    // Конфигурация типов медиа
     const mediaTypeConfig = {
       photo: { label: 'фото', emoji: '🖼', class: 'badge-media-photo' },
       sticker: { label: 'стикер', emoji: '🎨', class: 'badge-media-sticker' },
-      video: { label: 'видео', emoji: '🎬', class: 'badge-media-video' },
-      voice: { label: 'голос', emoji: '🎤', class: 'badge-media-voice' },
-      audio: { label: 'аудио', emoji: '🎵', class: 'badge-media-audio' },
-      animation: { label: 'гифка', emoji: '🎞', class: 'badge-media-animation' },
-      document: { label: 'файл', emoji: '📄', class: 'badge-media-document' },
-      video_note: { label: 'кружок', emoji: '⭕', class: 'badge-media-video_note' }
+      animation: { label: 'гифка', emoji: '🎞', class: 'badge-media-animation' }
     };
 
     function getMediaBadgeHtml(type) {
@@ -429,10 +712,9 @@
       return `<span class="badge ${conf.class}">${conf.emoji} ${escapeHtml(conf.label)}</span>`;
     }
 
-    // Распознавание медиа из строки формата: [тип] файл.ext
     function parseMediaFromText(text) {
       if (!text || typeof text !== 'string') return null;
-      const match = text.match(/^\[(photo|sticker|video|voice|audio|animation|document|video_note)\]\s*(.+)$/i);
+      const match = text.match(/^\[(photo|sticker|animation)\]\s*(.+)$/i);
       if (match) {
         return {
           media_type: match[1].toLowerCase(),
@@ -442,110 +724,296 @@
       return null;
     }
 
-    // Форматирование даты
     function formatDate(dateStr) {
-      if (!dateStr) return '—';
+      if (!dateStr || dateStr === '—') return '—';
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       const pad = (n) => String(n).padStart(2, '0');
       return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // Загрузка и объединение данных
-    async function loadData() {
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    /* Кодирование UTF-8 строки в Base64 для GitHub API */
+    function utf8ToBase64(str) {
+      return window.btoa(unescape(encodeURIComponent(str)));
+    }
+
+    /* =========================================================
+       СИНХРОНИЗАЦИЯ С GITHUB
+       ========================================================= */
+    async function saveDataToGitHub() {
+      if (!GITHUB_TOKEN || GITHUB_TOKEN.includes("СЮДА_ВСТАВИТЬ")) {
+        console.warn("GITHUB_TOKEN не настроен. Локальные изменения сохранены только в памяти страницы.");
+        return;
+      }
+
       try {
-        const response = await fetch('data.json');
-        if (!response.ok) throw new Error('Сетевая ошибка при загрузке данных');
+        // 1. Получаем актуальный SHA data.json
+        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        let sha = state.dataSha;
+        if (getRes.ok) {
+          const jsonMeta = await getRes.json();
+          sha = jsonMeta.sha;
+          state.dataSha = sha;
+        }
+
+        // 2. Формируем тело JSON
+        const exportData = {
+          last_updated: new Date().toISOString(),
+          users: state.users,
+          messages: state.messages,
+          notes: state.notes,
+          admins: state.admins,
+          audit: state.audit
+        };
+
+        const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+        // 3. PUT запрос на обновление файла
+        const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Update data.json via dashboard [skip ci]`,
+            content: contentBase64,
+            sha: sha
+          })
+        });
+
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          throw new Error(errData.message || 'Ошибка сохранения на GitHub');
+        }
+
+        const putSuccess = await putRes.json();
+        state.dataSha = putSuccess.content.sha;
+        console.log("data.json успешно обновлен на GitHub");
+      } catch (err) {
+        alert(`Ошибка синхронизации с GitHub: ${err.message}`);
+      }
+    }
+
+    async function deleteMediaFromGitHub(fileName, messageId) {
+      if (!confirm(`Удалить файл ${fileName} с GitHub репозитория?`)) return;
+
+      if (!GITHUB_TOKEN || GITHUB_TOKEN.includes("СЮДА_ВСТАВИТЬ")) {
+        alert("Ошибка: GITHUB_TOKEN не настроен.");
+        return;
+      }
+
+      try {
+        // 1. Получаем SHA файла медиа
+        const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (!getRes.ok) {
+          throw new Error(`Файл media/${fileName} не найден на GitHub или нет доступа`);
+        }
+
+        const fileMeta = await getRes.json();
+
+        // 2. DELETE запрос
+        const delRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Delete media: ${fileName}`,
+            sha: fileMeta.sha
+          })
+        });
+
+        if (!delRes.ok) {
+          const errData = await delRes.json();
+          throw new Error(errData.message || 'Ошибка удаления медиа с GitHub');
+        }
+
+        // 3. Удаляем сообщение из локального состояния
+        state.messages = state.messages.filter(m => m.id !== messageId);
+        buildMediaCache();
+
+        // Добавляем запись в аудит
+        state.audit.push({
+          admin_id: 0,
+          admin_name: "WebAdmin",
+          action: "del_media",
+          target_id: messageId,
+          target_name: fileName,
+          time: new Date().toISOString()
+        });
+
+        // 4. Синхронизируем data.json
+        await saveDataToGitHub();
+        render();
+        alert(`Файл ${fileName} успешно удален!`);
+      } catch (err) {
+        alert(`Ошибка при удалении медиа: ${err.message}`);
+      }
+    }
+
+    /* Извлечение списка медиа из массива messages */
+    function buildMediaCache() {
+      state.media = [];
+      state.messages.forEach(msg => {
+        const parsed = parseMediaFromText(msg.text);
+        if (parsed) {
+          const defaultUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${parsed.file_name}`;
+          state.media.push({
+            id: msg.id,
+            user_id: msg.user_id,
+            first_name: msg.first_name,
+            file_name: parsed.file_name,
+            media_type: parsed.media_type,
+            time: msg.time,
+            url: msg.url || defaultUrl
+          });
+        }
+      });
+    }
+
+    /* =========================================================
+       ЗАГРУЗКА ДАННЫХ
+       ========================================================= */
+    async function loadData() {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+
+      try {
+        const response = await fetch(`data.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error('Файл data.json не найден');
         const data = await response.json();
+
+        state.last_updated = data.last_updated;
         state.users = data.users || {};
         state.messages = data.messages || [];
+        state.notes = data.notes || [];
         state.admins = data.admins || [];
         state.audit = data.audit || [];
 
-        // Если в JSON передан готовый массив media — берем его,
-        // иначе автоматически извлекаем медиафайлы из messages формата "[type] filename"
-        if (Array.isArray(data.media) && data.media.length > 0) {
-          state.media = data.media;
-        } else {
-          state.media = [];
-          state.messages.forEach((msg, idx) => {
-            const parsed = parseMediaFromText(msg.text);
-            if (parsed) {
-              state.media.push({
-                id: msg.id !== undefined ? msg.id : (idx + 1),
-                user_id: msg.user_id,
-                first_name: msg.first_name,
-                file_name: parsed.file_name,
-                media_type: parsed.media_type,
-                time: msg.time
-              });
-            }
-          });
-        }
-
+        buildMediaCache();
         render();
       } catch (err) {
-        document.getElementById('app').innerHTML = `
+        app.innerHTML = `
           <div class="card">
             <div class="empty-state" style="color: var(--status-banned);">
-              Ошибка загрузки data.json: ${err.message}.<br>
-              Убедитесь, что файл существует и доступен.
+              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных. Проверьте соединение.</p>
+              <button class="btn-refresh" onclick="loadData()">Повторить</button>
             </div>
           </div>`;
       }
     }
 
-    // Навигация
+    /* =========================================================
+       АВТОРИЗАЦИЯ
+       ========================================================= */
+    const loginScreen = document.getElementById('login-screen');
+    const dashboardScreen = document.getElementById('dashboard-screen');
+    const loginForm = document.getElementById('login-form');
+    const passwordInput = document.getElementById('password-input');
+    const loginError = document.getElementById('login-error');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    function checkAuth() {
+      if (localStorage.getItem('admin_auth') === 'true') {
+        loginScreen.style.display = 'none';
+        dashboardScreen.style.display = 'block';
+        loadData();
+      } else {
+        loginScreen.style.display = 'flex';
+        dashboardScreen.style.display = 'none';
+        passwordInput.value = '';
+        loginError.style.display = 'none';
+      }
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (passwordInput.value.trim() === ADMIN_PASSWORD) {
+        localStorage.setItem('admin_auth', 'true');
+        loginError.style.display = 'none';
+        checkAuth();
+      } else {
+        loginError.style.display = 'block';
+      }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('admin_auth');
+      checkAuth();
+    });
+
+    /* =========================================================
+       НАВИГАЦИЯ И РОУТИНГ
+       ========================================================= */
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentTab = btn.getAttribute('data-tab');
         state.selectedUserId = null;
+        state.editingNoteId = null;
         render();
       });
     });
 
-    // Маршрутизатор
     function render() {
+      const header = document.getElementById('main-header');
+
+      // Режим полного экрана редактора скрывает шапку вкладок
+      if (state.editingNoteId !== null) {
+        header.style.display = 'none';
+        renderNoteEditor(state.editingNoteId);
+        return;
+      } else {
+        header.style.display = 'block';
+      }
+
       if (state.selectedUserId) {
         renderUserProfile(state.selectedUserId);
         return;
       }
 
       switch (state.currentTab) {
-        case 'users':
-          renderUsers();
-          break;
-        case 'messages':
-          renderMessages();
-          break;
-        case 'media':
-          renderMedia();
-          break;
-        case 'admins':
-          renderAdmins();
-          break;
-        case 'audit':
-          renderAudit();
-          break;
+        case 'users': renderUsers(); break;
+        case 'messages': renderMessages(); break;
+        case 'media': renderMedia(); break;
+        case 'notes': renderNotes(); break;
+        case 'admins': renderAdmins(); break;
+        case 'audit': renderAudit(); break;
       }
     }
 
-    // РАЗДЕЛ 1: Пользователи
+    /* =========================================================
+       РАЗДЕЛ 1: ПОЛЬЗОВАТЕЛИ
+       ========================================================= */
     function renderUsers() {
       const userIds = Object.keys(state.users);
-      const totalCount = userIds.length;
-
-      if (totalCount === 0) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">Пользователи</span><span class="sub-text">Всего: 0</span></div>
-            <div class="empty-state">Пользователи не найдены</div>
-          </div>`;
-        return;
-      }
-
       let rows = userIds.map(id => {
         const u = state.users[id];
         return `
@@ -561,44 +1029,44 @@
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Пользователи</span>
-            <span class="sub-text">Всего: ${totalCount}</span>
+            <div>
+              <span class="card-title">Пользователи</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${userIds.length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+            </div>
           </div>
           <div class="table-container">
             <table>
               <thead>
-                <tr>
-                  <th>Ник</th>
-                  <th>ID</th>
-                  <th>Последнее сообщение</th>
-                  <th>Запросов</th>
-                </tr>
+                <tr><th>Ник</th><th>ID</th><th>Последнее сообщение</th><th>Запросов</th></tr>
               </thead>
-              <tbody>${rows}</tbody>
+              <tbody>${rows || '<tr><td colspan="4" class="empty-state">Нет пользователей</td></tr>'}</tbody>
             </table>
           </div>
         </div>
       `;
     }
 
-    // ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
     function openProfile(userId) {
       state.selectedUserId = String(userId);
       render();
     }
 
+    function closeProfile() {
+      state.selectedUserId = null;
+      render();
+    }
+
     function renderUserProfile(userId) {
       const user = state.users[userId];
-
       if (!user) {
         document.getElementById('app').innerHTML = `
           <div class="card">
-            <div class="card-header">
-              <button class="back-btn" onclick="closeProfile()">← Назад</button>
-            </div>
-            <div class="empty-state">Пользователь с ID ${escapeHtml(userId)} не найден в базе.</div>
-          </div>
-        `;
+            <div class="card-header"><button class="back-btn" onclick="closeProfile()">← Назад</button></div>
+            <div class="empty-state">Пользователь с ID ${escapeHtml(userId)} не найден.</div>
+          </div>`;
         return;
       }
 
@@ -606,7 +1074,6 @@
         ? `<img src="${escapeHtml(user.avatar_url)}" alt="Avatar" class="profile-avatar">`
         : `<div class="profile-avatar">${escapeHtml((user.first_name || '?')[0].toUpperCase())}</div>`;
 
-      // Последние 50 сообщений данного пользователя
       const userMessages = (state.messages || [])
         .filter(m => String(m.user_id) === String(userId))
         .slice(-50)
@@ -619,16 +1086,10 @@
               ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
               : escapeHtml(m.text || '');
 
-            return `
-              <tr>
-                <td style="width: 170px;">${formatDate(m.time)}</td>
-                <td>${contentHtml}</td>
-              </tr>
-            `;
+            return `<tr><td style="width: 170px;">${formatDate(m.time)}</td><td>${contentHtml}</td></tr>`;
           }).join('')
         : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
 
-      // Последние 20 медиафайлов данного пользователя
       const userMedia = (state.media || [])
         .filter(m => String(m.user_id) === String(userId))
         .slice(-20)
@@ -638,7 +1099,7 @@
         ? userMedia.map(m => `
             <tr>
               <td style="width: 130px;">${getMediaBadgeHtml(m.media_type)}</td>
-              <td class="truncate-media" title="${escapeHtml(m.file_name || '')}"><code>${escapeHtml(m.file_name || '—')}</code></td>
+              <td class="truncate-media"><code>${escapeHtml(m.file_name || '—')}</code></td>
               <td style="width: 170px;">${formatDate(m.time)}</td>
             </tr>
           `).join('')
@@ -660,101 +1121,41 @@
           </div>
 
           <div class="profile-details-grid">
-            <div class="detail-item">
-              <div class="label">ID</div>
-              <div class="value"><code>${userId}</code></div>
-            </div>
-            <div class="detail-item">
-              <div class="label">Статус</div>
-              <div class="value">
-                ${user.banned 
-                  ? '<span class="badge badge-banned">Забанен</span>' 
-                  : '<span class="badge badge-active">Активен</span>'}
-              </div>
-            </div>
-            <div class="detail-item">
-              <div class="label">Запросов</div>
-              <div class="value">${user.requests ?? 0}</div>
-            </div>
-            <div class="detail-item">
-              <div class="label">Первый вход</div>
-              <div class="value">${formatDate(user.first_seen)}</div>
-            </div>
-            <div class="detail-item">
-              <div class="label">Посл. сообщение</div>
-              <div class="value">${formatDate(user.last_message)}</div>
-            </div>
+            <div class="detail-item"><div class="label">ID</div><div class="value"><code>${userId}</code></div></div>
+            <div class="detail-item"><div class="label">Статус</div><div class="value">${user.banned ? '<span class="badge badge-banned">Забанен</span>' : '<span class="badge badge-active">Активен</span>'}</div></div>
+            <div class="detail-item"><div class="label">Запросов</div><div class="value">${user.requests ?? 0}</div></div>
+            <div class="detail-item"><div class="label">Первый вход</div><div class="value">${formatDate(user.first_seen)}</div></div>
+            <div class="detail-item"><div class="label">Посл. сообщение</div><div class="value">${formatDate(user.last_message)}</div></div>
           </div>
 
-          <div class="card-header">
-            <span class="card-title">Медиафайлы (до 20)</span>
-          </div>
+          <div class="card-header"><span class="card-title">Медиафайлы (до 20)</span></div>
           <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Тип</th>
-                  <th>Файл</th>
-                  <th>Время</th>
-                </tr>
-              </thead>
-              <tbody>${mediaRows}</tbody>
-            </table>
+            <table><thead><tr><th>Тип</th><th>Файл</th><th>Время</th></tr></thead><tbody>${mediaRows}</tbody></table>
           </div>
 
-          <div class="card-header" style="border-top: 1px solid var(--border-color);">
-            <span class="card-title">Последние сообщения (до 50)</span>
-          </div>
+          <div class="card-header" style="border-top: 1px solid var(--border-color);"><span class="card-title">Последние сообщения (до 50)</span></div>
           <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Время</th>
-                  <th>Текст</th>
-                </tr>
-              </thead>
-              <tbody>${messagesRows}</tbody>
-            </table>
+            <table><thead><tr><th>Время</th><th>Текст</th></tr></thead><tbody>${messagesRows}</tbody></table>
           </div>
         </div>
       `;
     }
 
-    function closeProfile() {
-      state.selectedUserId = null;
-      render();
-    }
-
-    // РАЗДЕЛ 2: Сообщения
+    /* =========================================================
+       РАЗДЕЛ 2: СООБЩЕНИЯ
+       ========================================================= */
     function renderMessages() {
-      const totalCount = (state.messages || []).length;
       const list = (state.messages || []).slice(-200).reverse();
-
-      if (totalCount === 0) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">Сообщения</span><span class="sub-text">Всего: 0</span></div>
-            <div class="empty-state">Сообщений нет</div>
-          </div>`;
-        return;
-      }
-
       let rows = list.map((m, index) => {
         const text = m.text || '';
         const parsed = parseMediaFromText(text);
+        let cellContent = parsed 
+          ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+          : escapeHtml(text.length > 100 ? text.substring(0, 100) + '...' : text);
 
-        let cellContent;
-        if (parsed) {
-          cellContent = `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`;
-        } else {
-          const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
-          cellContent = escapeHtml(preview);
-        }
-
-        const msgId = m.id !== undefined ? `#${m.id}` : '—';
         return `
           <tr class="clickable" onclick="openMessageModal(${index})">
-            <td class="col-id">${msgId}</td>
+            <td class="col-id">${m.id !== undefined ? `#${m.id}` : '—'}</td>
             <td>${escapeHtml(m.first_name || '—')}</td>
             <td><code>${m.user_id}</code></td>
             <td class="truncate">${cellContent}</td>
@@ -766,56 +1167,44 @@
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Сообщения</span>
-            <span class="sub-text">Всего: ${totalCount}</span>
+            <div>
+              <span class="card-title">Сообщения</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.messages || []).length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+            </div>
           </div>
           <div class="table-container">
             <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Ник</th>
-                  <th>User ID</th>
-                  <th>Текст</th>
-                  <th>Время</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
+              <thead><tr><th>ID</th><th>Ник</th><th>User ID</th><th>Текст</th><th>Время</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="5" class="empty-state">Нет сообщений</td></tr>'}</tbody>
             </table>
           </div>
         </div>
       `;
     }
 
-    // РАЗДЕЛ 3: Медиа
+    /* =========================================================
+       РАЗДЕЛ 3: МЕДИА (ОБНОВЛЁННЫЙ)
+       ========================================================= */
     function renderMedia() {
-      const mediaList = state.media || [];
-      const totalCount = mediaList.length;
-
-      if (totalCount === 0) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">Медиа</span><span class="sub-text">Всего: 0</span></div>
-            <div class="empty-state">Нет данных</div>
-          </div>`;
-        return;
-      }
-
-      const list = mediaList.slice().reverse();
-
-      let rows = list.map((m, index) => {
-        const fullFileName = m.file_name || '';
-        const previewFile = fullFileName.length > 40 ? fullFileName.substring(0, 40) + '...' : fullFileName;
-        const mediaId = m.id !== undefined ? `#${m.id}` : '—';
-
+      const list = (state.media || []).slice().reverse();
+      let rows = list.map(m => {
+        const rawUrl = m.url || `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${m.file_name}`;
         return `
-          <tr class="clickable" onclick="openMediaModal(${index})">
-            <td class="col-id">${mediaId}</td>
-            <td>${getMediaBadgeHtml(m.media_type)}</td>
+          <tr>
+            <td class="col-id">#${m.id || '—'}</td>
             <td>${escapeHtml(m.first_name || '—')}</td>
             <td><code>${m.user_id}</code></td>
-            <td class="truncate-media" title="${escapeHtml(fullFileName)}"><code>${escapeHtml(previewFile || '—')}</code></td>
+            <td>${getMediaBadgeHtml(m.media_type)}</td>
             <td>${formatDate(m.time)}</td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <a href="${rawUrl}" target="_blank" class="btn-action">Открыть</a>
+                <button class="btn-action btn-action-danger" onclick="deleteMediaFromGitHub('${escapeHtml(m.file_name)}', ${m.id})">🗑</button>
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
@@ -823,49 +1212,192 @@
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Медиа</span>
-            <span class="sub-text">Всего: ${totalCount}</span>
+            <div>
+              <span class="card-title">Медиа</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+            </div>
           </div>
           <div class="table-container">
             <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Тип</th>
-                  <th>Отправитель</th>
-                  <th>User ID</th>
-                  <th>Файл</th>
-                  <th>Время</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
+              <thead><tr><th>ID</th><th>Отправитель</th><th>User ID</th><th>Тип</th><th>Время</th><th>Действия</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="6" class="empty-state">Медиа не найдено</td></tr>'}</tbody>
             </table>
           </div>
         </div>
       `;
     }
 
-    // РАЗДЕЛ 4: Админы
-    function renderAdmins() {
-      const adminList = state.admins || [];
-      const totalCount = adminList.length;
+    /* =========================================================
+       РАЗДЕЛ 4: ЗАМЕТКИ (НОВЫЙ)
+       ========================================================= */
+    function renderNotes() {
+      const sortedNotes = [...(state.notes || [])].sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
 
-      if (totalCount === 0) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">Админы</span><span class="sub-text">Всего: 0</span></div>
-            <div class="empty-state">Список админов пуст</div>
-          </div>`;
+      let contentHtml = '';
+      if (sortedNotes.length === 0) {
+        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет заметок</div>`;
+      } else {
+        contentHtml = sortedNotes.map(n => `
+          <div class="note-card" onclick="openNoteEditor(${n.id})">
+            <div>
+              <div class="note-card-header">
+                <span class="note-card-title">${escapeHtml(n.title || 'Без названия')}</span>
+                ${n.pinned ? '<span class="note-pin-badge" title="Закреплено">📌</span>' : ''}
+              </div>
+              <div class="note-card-preview">${escapeHtml(n.text || '')}</div>
+            </div>
+            <div class="note-card-date">
+              ${n.last_modified && n.last_modified !== n.created_at 
+                ? `Изменено: ${formatDate(n.last_modified)}` 
+                : `Создано: ${formatDate(n.created_at)}`}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="card-title">Заметки</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${sortedNotes.length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+              <button class="btn-primary" onclick="openNoteEditor('new')">+ Создать заметку</button>
+            </div>
+          </div>
+          <div class="notes-grid">${contentHtml}</div>
+        </div>
+      `;
+    }
+
+    function openNoteEditor(noteId) {
+      state.editingNoteId = noteId;
+      render();
+    }
+
+    function closeNoteEditor() {
+      state.editingNoteId = null;
+      render();
+    }
+
+    function renderNoteEditor(noteId) {
+      const isNew = noteId === 'new';
+      const note = isNew ? { title: '', text: '', pinned: false } : state.notes.find(n => n.id === noteId);
+
+      if (!isNew && !note) {
+        closeNoteEditor();
         return;
       }
 
-      let rows = adminList.map(admin => {
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeNoteEditor()">← Назад</button>
+            <span class="sub-text">${isNew ? 'Новая заметка' : 'Редактирование заметки'}</span>
+          </div>
+          <div class="note-editor">
+            <input type="text" id="note-title" class="note-input-title" placeholder="Заголовок..." value="${escapeHtml(note.title || '')}">
+            <textarea id="note-text" class="note-input-text" placeholder="Текст заметки...">${escapeHtml(note.text || '')}</textarea>
+            <div class="note-editor-toolbar">
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" onclick="saveNote(${isNew ? "'new'" : note.id})">💾 Сохранить</button>
+                <button class="btn-refresh" onclick="togglePinNote(${isNew ? "'new'" : note.id})">
+                  ${note.pinned ? '📍 Открепить' : '📌 Закрепить'}
+                </button>
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteNote(${note.id})">🗑 Удалить</button>` : ''}
+              </div>
+              <div class="sub-text">
+                ${!isNew ? `Создано: ${formatDate(note.created_at)} ${note.last_modified ? ' | Изменено: ' + formatDate(note.last_modified) : ''}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function saveNote(noteId) {
+      const title = document.getElementById('note-title').value.trim();
+      const text = document.getElementById('note-text').value.trim();
+
+      if (!title && !text) {
+        alert('Пустая заметка не сохраняется');
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      if (noteId === 'new') {
+        const nextId = state.notes.length > 0 ? Math.max(...state.notes.map(n => n.id || 0)) + 1 : 1;
+        state.notes.push({
+          id: nextId,
+          title: title,
+          text: text,
+          pinned: false,
+          created_at: now,
+          last_modified: now
+        });
+      } else {
+        const note = state.notes.find(n => n.id === noteId);
+        if (note) {
+          note.title = title;
+          note.text = text;
+          note.last_modified = now;
+        }
+      }
+
+      await saveDataToGitHub();
+      closeNoteEditor();
+    }
+
+    async function togglePinNote(noteId) {
+      if (noteId === 'new') {
+        alert('Сначала сохраните заметку');
+        return;
+      }
+      const note = state.notes.find(n => n.id === noteId);
+      if (note) {
+        note.pinned = !note.pinned;
+        await saveDataToGitHub();
+        renderNoteEditor(noteId);
+      }
+    }
+
+    function confirmDeleteNote(noteId) {
+      openModal(
+        'Удалить заметку?',
+        'Вы уверены, что хотите удалить эту заметку без возможности восстановления?',
+        `
+          <button class="btn-refresh" onclick="closeModal()">Нет</button>
+          <button class="btn-danger" onclick="deleteNote(${noteId})">Да, удалить</button>
+        `
+      );
+    }
+
+    async function deleteNote(noteId) {
+      state.notes = state.notes.filter(n => n.id !== noteId);
+      closeModal();
+      await saveDataToGitHub();
+      closeNoteEditor();
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 5: АДМИНЫ
+       ========================================================= */
+    function renderAdmins() {
+      let rows = (state.admins || []).map(admin => {
         const user = state.users[String(admin.id)];
         const name = user ? user.first_name : '—';
-        const isClickable = !!user;
-
         return `
-          <tr class="${isClickable ? 'clickable' : ''}" ${isClickable ? `onclick="openProfile('${admin.id}')"` : ''}>
+          <tr class="${user ? 'clickable' : ''}" ${user ? `onclick="openProfile('${admin.id}')"` : ''}>
             <td>${escapeHtml(name)}</td>
             <td><code>${admin.id}</code></td>
             <td>${formatDate(admin.appointed_at)}</td>
@@ -876,38 +1408,28 @@
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Админы</span>
-            <span class="sub-text">Всего: ${totalCount}</span>
+            <div>
+              <span class="card-title">Админы</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.admins || []).length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+            </div>
           </div>
           <div class="table-container">
             <table>
-              <thead>
-                <tr>
-                  <th>Ник</th>
-                  <th>ID</th>
-                  <th>Назначен</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
+              <thead><tr><th>Ник</th><th>ID</th><th>Назначен</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="3" class="empty-state">Список админов пуст</td></tr>'}</tbody>
             </table>
           </div>
         </div>
       `;
     }
 
-    // РАЗДЕЛ 5: Журнал аудита
+    /* =========================================================
+       РАЗДЕЛ 6: ЖУРНАЛ АУДИТА
+       ========================================================= */
     function renderAudit() {
-      const auditList = state.audit || [];
-
-      if (auditList.length === 0) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">Журнал аудита</span><span class="sub-text">Всего: 0</span></div>
-            <div class="empty-state">Записей аудита нет</div>
-          </div>`;
-        return;
-      }
-
       const actionText = {
         'ban': 'забанил',
         'unban': 'разбанил',
@@ -917,14 +1439,12 @@
         'del_user_media': 'удалил все медиа'
       };
 
-      const rows = auditList.slice().reverse().map(item => {
-        const actionStr = actionText[item.action] || item.action;
-        const timeStr = formatDate(item.time);
+      const rows = (state.audit || []).slice().reverse().map(item => {
         return `
           <div class="audit-row">
-            <span style="color: var(--text-secondary);">[${timeStr}]</span> 
+            <span style="color: var(--text-secondary);">[${formatDate(item.time)}]</span> 
             <strong>${escapeHtml(item.admin_name || 'Admin')}</strong> 
-            <span>${actionStr}</span> 
+            <span>${actionText[item.action] || item.action}</span> 
             <strong>${escapeHtml(item.target_name || 'Объект')}</strong> 
             <span class="sub-text">(ID: ${item.target_id})</span>
           </div>
@@ -934,61 +1454,32 @@
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Журнал аудита</span>
-            <span class="sub-text">Всего: ${auditList.length}</span>
+            <div>
+              <span class="card-title">Журнал аудита</span>
+              <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.audit || []).length}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+            </div>
           </div>
-          ${rows}
+          ${rows || '<div class="empty-state">Записей аудита нет</div>'}
         </div>
       `;
     }
 
-    // Модальное окно
+    /* =========================================================
+       МОДАЛЬНЫЕ ОКНА
+       ========================================================= */
     const modal = document.getElementById('common-modal');
     const modalTitle = document.getElementById('modal-title');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalContent = document.getElementById('modal-content');
-    const modalMeta = document.getElementById('modal-meta');
-    const modalUserLink = document.getElementById('modal-user-link');
+    const modalActions = document.getElementById('modal-actions');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
 
-    function openMessageModal(index) {
-      const list = (state.messages || []).slice(-200).reverse();
-      const msg = list[index];
-      if (!msg) return;
-
-      const parsed = parseMediaFromText(msg.text);
-
-      modalTitle.textContent = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
-      
-      if (parsed) {
-        modalContent.innerHTML = `<strong>Тип медиа:</strong> ${getMediaBadgeHtml(parsed.media_type)}\n\n<strong>Имя файла:</strong>\n<code>${escapeHtml(parsed.file_name)}</code>`;
-      } else {
-        modalContent.textContent = msg.text || '';
-      }
-
-      modalMeta.textContent = `${msg.first_name || '—'} (ID: ${msg.user_id}) • ${formatDate(msg.time)}`;
-      
-      modalUserLink.onclick = () => {
-        closeModal();
-        openProfile(msg.user_id);
-      };
-
-      modal.classList.add('active');
-    }
-
-    function openMediaModal(index) {
-      const list = (state.media || []).slice().reverse();
-      const item = list[index];
-      if (!item) return;
-
-      modalTitle.textContent = item.id !== undefined ? `Медиафайл #${item.id}` : 'Медиафайл';
-      modalContent.innerHTML = `<strong>Полное имя файла:</strong>\n<code>${escapeHtml(item.file_name || '—')}</code>\n\n<strong>Тип:</strong> ${getMediaBadgeHtml(item.media_type)}`;
-      modalMeta.textContent = `${item.first_name || '—'} (ID: ${item.user_id}) • ${formatDate(item.time)}`;
-
-      modalUserLink.onclick = () => {
-        closeModal();
-        openProfile(item.user_id);
-      };
-
+    function openModal(title, content, actionsHtml) {
+      modalTitle.textContent = title;
+      modalContent.innerHTML = content;
+      modalActions.innerHTML = actionsHtml;
       modal.classList.add('active');
     }
 
@@ -1001,17 +1492,27 @@
       if (e.target === modal) closeModal();
     });
 
-    function escapeHtml(str) {
-      if (typeof str !== 'string') return str;
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    function openMessageModal(index) {
+      const list = (state.messages || []).slice(-200).reverse();
+      const msg = list[index];
+      if (!msg) return;
+
+      const parsed = parseMediaFromText(msg.text);
+      const title = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
+      const body = parsed 
+        ? `<strong>Тип медиа:</strong> ${getMediaBadgeHtml(parsed.media_type)}<br><br><strong>Файл:</strong> <code>${escapeHtml(parsed.file_name)}</code>`
+        : escapeHtml(msg.text || '');
+
+      const actions = `
+        <span class="sub-text" style="margin-right: auto;">${escapeHtml(msg.first_name || '')} • ${formatDate(msg.time)}</span>
+        <button class="btn-primary" onclick="closeModal(); openProfile('${msg.user_id}')">В профиль</button>
+      `;
+
+      openModal(title, body, actions);
     }
 
-    loadData();
+    // Инициализация при старте
+    checkAuth();
   </script>
 </body>
 </html>
