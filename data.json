@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-24T20:29:56+03:00",
+  "last_updated": "2026-09-24T17:32:17.909Z",
   "users": {
     "6706322460": {
       "username": "",
@@ -670,6 +670,16 @@
       "time": "2026-09-24T20:29:47+03:00"
     }
   ],
+  "notes": [
+    {
+      "id": 1,
+      "title": "Бот сделан",
+      "text": "Ессссс",
+      "pinned": false,
+      "created_at": "2026-09-24T17:29:20.694Z",
+      "last_modified": "2026-09-24T17:32:17.491Z"
+    }
+  ],
   "admins": [
     {
       "id": 6706322460,
@@ -680,15 +690,5 @@
       "appointed_at": "—"
     }
   ],
-  "audit": [],
-  "notes": [
-    {
-      "id": 1,
-      "title": "fewfewfew",
-      "text": "sdfsdfesfwe",
-      "pinned": false,
-      "created_at": "2026-09-24T17:29:20.694Z",
-      "last_modified": "2026-09-24T17:29:20.694Z"
-    }
-  ]
+  "audit": []
 }
