@@ -894,33 +894,54 @@
        ЗАГРУЗКА ДАННЫХ
        ========================================================= */
     async function loadData() {
-      const app = document.getElementById('app');
-      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
 
-      try {
-        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/data.json?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Файл data.json не найден');
-        const data = await response.json();
+  try {
+    // Тянем через Worker (API GitHub, без CDN-кэша)
+    const response = await fetch(
+      `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
+      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+    );
 
-        state.last_updated = data.last_updated;
-        state.users = data.users || {};
-        state.messages = data.messages || [];
-        state.notes = data.notes || [];
-        state.admins = data.admins || [];
-        state.audit = data.audit || [];
-
-        buildMediaCache();
-        render();
-      } catch (err) {
-        app.innerHTML = `
-          <div class="card">
-            <div class="empty-state" style="color: var(--status-banned);">
-              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных. Проверьте соединение.</p>
-              <button class="btn-refresh" onclick="loadData()">Повторить</button>
-            </div>
-          </div>`;
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+
+    const jsonMeta = await response.json();
+
+    // GitHub возвращает content в base64 — декодируем
+    const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+    // Преобразуем UTF-8 корректно
+    const utf8Content = decodeURIComponent(
+      Array.prototype.map.call(rawContent, c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join('')
+    );
+
+    const data = JSON.parse(utf8Content);
+
+    state.last_updated = data.last_updated;
+    state.users = data.users || {};
+    state.messages = data.messages || [];
+    state.notes = data.notes || [];
+    state.admins = data.admins || [];
+    state.audit = data.audit || [];
+    state.dataSha = jsonMeta.sha;
+
+    buildMediaCache();
+    render();
+  } catch (err) {
+    app.innerHTML = `
+      <div class="card">
+        <div class="empty-state" style="color: var(--status-banned);">
+          <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных. Проверьте соединение.</p>
+          <p style="font-size: 12px; margin-bottom: 12px;">${escapeHtml(err.message)}</p>
+          <button class="btn-refresh" onclick="loadData()">Повторить</button>
+        </div>
+      </div>`;
+  }
+}
 
     /* =========================================================
        АВТОРИЗАЦИЯ
