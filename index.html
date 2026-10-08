@@ -193,6 +193,71 @@
       font-weight: 600;
     }
 
+    /* ВИДЖЕТЫ */
+    .card-widget {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 16px;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .card-widget-header {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .card-widget-body {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .widget-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .widget-row:last-child {
+      border-bottom: none;
+    }
+
+    .widget-row .label {
+      color: var(--text-secondary);
+    }
+
+    .widget-row .value {
+      font-weight: 500;
+    }
+
+    .widgets-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (min-width: 900px) {
+      .widgets-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .widget-item-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
     /* Табличные списки */
     .table-container {
       overflow-x: auto;
@@ -401,6 +466,11 @@
     .badge-media-sticker { background: rgba(155, 89, 182, 0.2); color: #9b59b6; }
     .badge-media-animation { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
     .badge-media-default { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+
+    /* Бейджи валентностей */
+    .badge-val-const { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+    .badge-val-var { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); }
+    .badge-val-inert { background: rgba(149, 165, 166, 0.15); color: #95a5a6; border: 1px solid rgba(149, 165, 166, 0.3); }
 
     /* СЕТКА ЗАМЕТОК */
     .notes-grid {
@@ -655,6 +725,7 @@
           <button class="nav-btn" data-tab="notes">Заметки</button>
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
+          <button class="nav-btn" data-tab="valencies">Валентности</button>
         </div>
         <button id="logout-btn" class="btn-logout">Выйти</button>
       </div>
@@ -683,8 +754,102 @@
        КОНФИГУРАЦИЯ
        ========================================================= */
     const GITHUB_WORKER = "https://github-proxy.kmaxim242.workers.dev";
-    const GITHUB_REPO = "Abema2342/telegrambotdata";
+    const GITHUB_REPO = "Abema2342/telegrambotSite";
     const ADMIN_PASSWORD = "77790100";
+
+    const VALENCIES = [
+      // Период 1
+      {symbol: "H", name: "Водород", val: "I", type: "const"},
+      {symbol: "He", name: "Гелий", val: "0", type: "inert"},
+
+      // Период 2
+      {symbol: "Li", name: "Литий", val: "I", type: "const"},
+      {symbol: "Be", name: "Бериллий", val: "II", type: "const"},
+      {symbol: "B", name: "Бор", val: "III", type: "const"},
+      {symbol: "C", name: "Углерод", val: "II, IV", type: "var"},
+      {symbol: "N", name: "Азот", val: "I, II, III, IV", type: "var"},
+      {symbol: "O", name: "Кислород", val: "II", type: "const"},
+      {symbol: "F", name: "Фтор", val: "I", type: "const"},
+      {symbol: "Ne", name: "Неон", val: "0", type: "inert"},
+
+      // Период 3
+      {symbol: "Na", name: "Натрий", val: "I", type: "const"},
+      {symbol: "Mg", name: "Магний", val: "II", type: "const"},
+      {symbol: "Al", name: "Алюминий", val: "III", type: "const"},
+      {symbol: "Si", name: "Кремний", val: "IV", type: "const"},
+      {symbol: "P", name: "Фосфор", val: "III, V", type: "var"},
+      {symbol: "S", name: "Сера", val: "II, IV, VI", type: "var"},
+      {symbol: "Cl", name: "Хлор", val: "I, III, V, VII", type: "var"},
+      {symbol: "Ar", name: "Аргон", val: "0", type: "inert"},
+
+      // Период 4
+      {symbol: "K", name: "Калий", val: "I", type: "const"},
+      {symbol: "Ca", name: "Кальций", val: "II", type: "const"},
+      {symbol: "Sc", name: "Скандий", val: "III", type: "const"},
+      {symbol: "Ti", name: "Титан", val: "II, III, IV", type: "var"},
+      {symbol: "V", name: "Ванадий", val: "II, III, IV, V", type: "var"},
+      {symbol: "Cr", name: "Хром", val: "II, III, VI", type: "var"},
+      {symbol: "Mn", name: "Марганец", val: "II, IV, VII", type: "var"},
+      {symbol: "Fe", name: "Железо", val: "II, III", type: "var"},
+      {symbol: "Co", name: "Кобальт", val: "II, III", type: "var"},
+      {symbol: "Ni", name: "Никель", val: "II, III", type: "var"},
+      {symbol: "Cu", name: "Медь", val: "I, II", type: "var"},
+      {symbol: "Zn", name: "Цинк", val: "II", type: "const"},
+      {symbol: "Ga", name: "Галлий", val: "III", type: "const"},
+      {symbol: "Ge", name: "Германий", val: "II, IV", type: "var"},
+      {symbol: "As", name: "Мышьяк", val: "III, V", type: "var"},
+      {symbol: "Se", name: "Селен", val: "II, IV, VI", type: "var"},
+      {symbol: "Br", name: "Бром", val: "I, III, V, VII", type: "var"},
+      {symbol: "Kr", name: "Криптон", val: "0", type: "inert"},
+
+      // Период 5
+      {symbol: "Rb", name: "Рубидий", val: "I", type: "const"},
+      {symbol: "Sr", name: "Стронций", val: "II", type: "const"},
+      {symbol: "Y", name: "Иттрий", val: "III", type: "const"},
+      {symbol: "Zr", name: "Цирконий", val: "IV", type: "const"},
+      {symbol: "Nb", name: "Ниобий", val: "III, V", type: "var"},
+      {symbol: "Mo", name: "Молибден", val: "II, III, IV, VI", type: "var"},
+      {symbol: "Tc", name: "Технеций", val: "IV, VII", type: "var"},
+      {symbol: "Ru", name: "Рутений", val: "II, III, IV, VI, VIII", type: "var"},
+      {symbol: "Rh", name: "Родий", val: "II, III, IV", type: "var"},
+      {symbol: "Pd", name: "Палладий", val: "II, IV", type: "var"},
+      {symbol: "Ag", name: "Серебро", val: "I", type: "const"},
+      {symbol: "Cd", name: "Кадмий", val: "II", type: "const"},
+      {symbol: "In", name: "Индий", val: "III", type: "const"},
+      {symbol: "Sn", name: "Олово", val: "II, IV", type: "var"},
+      {symbol: "Sb", name: "Сурьма", val: "III, V", type: "var"},
+      {symbol: "Te", name: "Теллур", val: "II, IV, VI", type: "var"},
+      {symbol: "I", name: "Йод", val: "I, III, V, VII", type: "var"},
+      {symbol: "Xe", name: "Ксенон", val: "0", type: "inert"},
+
+      // Период 6
+      {symbol: "Cs", name: "Цезий", val: "I", type: "const"},
+      {symbol: "Ba", name: "Барий", val: "II", type: "const"},
+      {symbol: "La", name: "Лантан", val: "III", type: "const"},
+      {symbol: "Ce", name: "Церий", val: "III, IV", type: "var"},
+      {symbol: "Hf", name: "Гафний", val: "IV", type: "const"},
+      {symbol: "Ta", name: "Тантал", val: "V", type: "const"},
+      {symbol: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
+      {symbol: "Re", name: "Рений", val: "IV, VII", type: "var"},
+      {symbol: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
+      {symbol: "Ir", name: "Иридий", val: "III, IV", type: "var"},
+      {symbol: "Pt", name: "Платина", val: "II, IV", type: "var"},
+      {symbol: "Au", name: "Золото", val: "I, III", type: "var"},
+      {symbol: "Hg", name: "Ртуть", val: "I, II", type: "var"},
+      {symbol: "Tl", name: "Таллий", val: "I, III", type: "var"},
+      {symbol: "Pb", name: "Свинец", val: "II, IV", type: "var"},
+      {symbol: "Bi", name: "Висмут", val: "III, V", type: "var"},
+      {symbol: "Po", name: "Полоний", val: "II, IV", type: "var"},
+      {symbol: "At", name: "Астат", val: "I, III, V, VII", type: "var"},
+      {symbol: "Rn", name: "Радон", val: "0", type: "inert"},
+
+      // Период 7
+      {symbol: "Fr", name: "Франций", val: "I", type: "const"},
+      {symbol: "Ra", name: "Радий", val: "II", type: "const"},
+      {symbol: "Ac", name: "Актиний", val: "III", type: "const"},
+      {symbol: "Th", name: "Торий", val: "IV", type: "const"},
+      {symbol: "U", name: "Уран", val: "IV, VI", type: "var"}
+    ];
 
     let state = {
       last_updated: null,
@@ -697,7 +862,8 @@
       currentTab: 'users',
       selectedUserId: null,
       editingNoteId: null, // null, ID или 'new'
-      dataSha: null // SHA data.json на GitHub
+      dataSha: null, // SHA data.json на GitHub
+      valenciesSearch: ''
     };
 
     // Конфигурация типов медиа
@@ -751,23 +917,18 @@
        СИНХРОНИЗАЦИЯ ЧЕРЕЗ CLOUDFLARE WORKER
        ========================================================= */
     async function saveDataToGitHub() {
-    const MAX_RETRIES = 3;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        // 1. Получаем АКТУАЛЬНЫЙ SHA (каждый раз заново)
-        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`, {
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-  
-        if (!getRes.ok) {
-          throw new Error(`Не удалось получить SHA: HTTP ${getRes.status}`);
+
+        let sha = state.dataSha;
+        if (getRes.ok) {
+          const jsonMeta = await getRes.json();
+          sha = jsonMeta.sha;
+          state.dataSha = sha;
         }
-  
-        const jsonMeta = await getRes.json();
-        const sha = jsonMeta.sha;
-  
-        // 2. Формируем тело
+
         const exportData = {
           last_updated: new Date().toISOString(),
           users: state.users,
@@ -776,10 +937,9 @@
           admins: state.admins,
           audit: state.audit
         };
-  
+
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
-  
-        // 3. PUT
+
         const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
           method: 'PUT',
           headers: {
@@ -792,33 +952,20 @@
             sha: sha
           })
         });
-  
-        // 409 — кто-то изменил файл между GET и PUT, пробуем снова
-        if (putRes.status === 409) {
-          console.warn(`Попытка ${attempt}: конфликт SHA, пробуем заново...`);
-          await new Promise(r => setTimeout(r, 500));
-          continue;
-        }
-  
+
         if (!putRes.ok) {
           const errData = await putRes.json();
-          throw new Error(errData.message || `HTTP ${putRes.status}`);
+          throw new Error(errData.message || 'Ошибка сохранения через Worker');
         }
-  
+
         const putSuccess = await putRes.json();
         state.dataSha = putSuccess.content.sha;
-        console.log(`data.json обновлён (попытка ${attempt})`);
-        return;
-  
+        console.log("data.json успешно обновлен через Worker");
       } catch (err) {
-        if (attempt === MAX_RETRIES) {
-          alert(`Ошибка синхронизации после ${MAX_RETRIES} попыток: ${err.message}`);
-          return;
-        }
-        await new Promise(r => setTimeout(r, 500));
+        alert(`Ошибка синхронизации: ${err.message}`);
       }
     }
-  }
+
     async function deleteMediaFromGitHub(fileName, messageId) {
       if (!confirm(`Удалить файл ${fileName} с GitHub репозитория?`)) return;
 
@@ -894,54 +1041,33 @@
        ЗАГРУЗКА ДАННЫХ
        ========================================================= */
     async function loadData() {
-  const app = document.getElementById('app');
-  app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
 
-  try {
-    // Тянем через Worker (API GitHub, без CDN-кэша)
-    const response = await fetch(
-      `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
-      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-    );
+      try {
+        const response = await fetch(`data.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error('Файл data.json не найден');
+        const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+        state.last_updated = data.last_updated;
+        state.users = data.users || {};
+        state.messages = data.messages || [];
+        state.notes = data.notes || [];
+        state.admins = data.admins || [];
+        state.audit = data.audit || [];
+
+        buildMediaCache();
+        render();
+      } catch (err) {
+        app.innerHTML = `
+          <div class="card">
+            <div class="empty-state" style="color: var(--status-banned);">
+              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных. Проверьте соединение.</p>
+              <button class="btn-refresh" onclick="loadData()">Повторить</button>
+            </div>
+          </div>`;
+      }
     }
-
-    const jsonMeta = await response.json();
-
-    // GitHub возвращает content в base64 — декодируем
-    const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
-    // Преобразуем UTF-8 корректно
-    const utf8Content = decodeURIComponent(
-      Array.prototype.map.call(rawContent, c =>
-        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      ).join('')
-    );
-
-    const data = JSON.parse(utf8Content);
-
-    state.last_updated = data.last_updated;
-    state.users = data.users || {};
-    state.messages = data.messages || [];
-    state.notes = data.notes || [];
-    state.admins = data.admins || [];
-    state.audit = data.audit || [];
-    state.dataSha = jsonMeta.sha;
-
-    buildMediaCache();
-    render();
-  } catch (err) {
-    app.innerHTML = `
-      <div class="card">
-        <div class="empty-state" style="color: var(--status-banned);">
-          <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных. Проверьте соединение.</p>
-          <p style="font-size: 12px; margin-bottom: 12px;">${escapeHtml(err.message)}</p>
-          <button class="btn-refresh" onclick="loadData()">Повторить</button>
-        </div>
-      </div>`;
-  }
-}
 
     /* =========================================================
        АВТОРИЗАЦИЯ
@@ -996,10 +1122,153 @@
       });
     });
 
+    /* =========================================================
+       ГЕНЕРАЦИЯ ВИДЖЕТОВ (4 КАРТОЧКИ)
+       ========================================================= */
+    function renderWidgetsHtml() {
+      // 1. Топ пользователь
+      const msgCountByUser = {};
+      (state.messages || []).forEach(m => {
+        const uid = String(m.user_id);
+        msgCountByUser[uid] = (msgCountByUser[uid] || 0) + 1;
+      });
+
+      let topUid = null;
+      let topCount = -1;
+      for (const uid in msgCountByUser) {
+        if (msgCountByUser[uid] > topCount) {
+          topCount = msgCountByUser[uid];
+          topUid = uid;
+        }
+      }
+
+      let topUser = null;
+      let topUserName = '—';
+      let topUserNotesCount = 0;
+
+      if (topUid) {
+        topUser = state.users[topUid];
+        if (topUser) {
+          topUserName = topUser.first_name || 'Без имени';
+        } else {
+          const m = state.messages.find(x => String(x.user_id) === topUid);
+          topUserName = m ? (m.first_name || 'Без имени') : 'ID ' + topUid;
+        }
+        topUserNotesCount = (state.notes || []).filter(n => String(n.author_id) === String(topUid)).length;
+      } else {
+        topCount = 0;
+      }
+
+      const topLetter = topUserName !== '—' ? (topUserName[0] || '?').toUpperCase() : '?';
+
+      // 2. Активность сегодня (UTC+3)
+      const now = new Date();
+      const mskNow = new Date(now.getTime() + (3 * 3600 * 1000));
+      const mskTodayStart = new Date(Date.UTC(mskNow.getUTCFullYear(), mskNow.getUTCMonth(), mskNow.getUTCDate(), 0, 0, 0));
+      const todayStartEpoch = mskTodayStart.getTime() - (3 * 3600 * 1000);
+
+      const isToday = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return !isNaN(d.getTime()) && d.getTime() >= todayStartEpoch;
+      };
+
+      const todayMessages = (state.messages || []).filter(m => isToday(m.time)).length;
+      const todayUsers = Object.values(state.users || {}).filter(u => isToday(u.first_seen)).length;
+      const todayMedia = (state.media || []).filter(m => isToday(m.time)).length;
+      const todayNotes = (state.notes || []).filter(n => isToday(n.created_at)).length;
+
+      // 3. Последние сообщения (10)
+      const last10Messages = (state.messages || []).slice(-10).reverse();
+      let lastMessagesHtml = '';
+      if (last10Messages.length === 0) {
+        lastMessagesHtml = '<div style="color: var(--text-secondary); padding: 8px 0;">Нет сообщений</div>';
+      } else {
+        lastMessagesHtml = last10Messages.map(m => {
+          const rawText = m.text || '';
+          const preview = rawText.length > 60 ? rawText.substring(0, 60) + '...' : rawText;
+          return `
+            <div style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div><strong>${escapeHtml(m.first_name || '—')}</strong>: <span style="color: var(--text-secondary);">${escapeHtml(preview)}</span></div>
+              <div class="widget-item-sub">${formatDate(m.time)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 4. Последние действия (10)
+      const actionText = {
+        'ban': 'забанил',
+        'unban': 'разбанил',
+        'add_admin': 'назначил админом',
+        'del_admin': 'снял с админа',
+        'del_media': 'удалил медиа',
+        'del_user_media': 'удалил все медиа'
+      };
+
+      const last10Audit = (state.audit || []).slice(-10).reverse();
+      let lastAuditHtml = '';
+      if (last10Audit.length === 0) {
+        lastAuditHtml = '<div style="color: var(--text-secondary); padding: 8px 0;">Записей аудита нет</div>';
+      } else {
+        lastAuditHtml = last10Audit.map(a => {
+          const act = actionText[a.action] || a.action;
+          return `
+            <div style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div><strong>${escapeHtml(a.admin_name || 'Admin')}</strong> ${act} <strong>${escapeHtml(a.target_name || 'Объект')}</strong></div>
+              <div class="widget-item-sub">${formatDate(a.time)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="widgets-grid">
+          <!-- Карточка 1 -->
+          <div class="card-widget">
+            <div class="card-widget-header">🏆 Топ пользователь</div>
+            <div class="card-widget-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--accent-color); color: #fff; font-size: 26px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; border: 2px solid var(--border-color);">
+                ${escapeHtml(topLetter)}
+              </div>
+              <div style="font-size: 15px; font-weight: 700; margin-bottom: 2px;">${escapeHtml(topUserName)}</div>
+              <div style="color: var(--text-secondary); font-family: monospace; font-size: 12px; margin-bottom: 8px;">ID: ${topUid || '—'}</div>
+              <div style="font-size: 12px; color: var(--text-main);">
+                Сообщений: <strong>${topCount}</strong> • Заметок: <strong>${topUserNotesCount}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Карточка 2 -->
+          <div class="card-widget">
+            <div class="card-widget-header">📊 Активность сегодня</div>
+            <div class="card-widget-body" style="display: flex; flex-direction: column; justify-content: center;">
+              <div class="widget-row"><span class="label">💬 Сообщений:</span><span class="value">${todayMessages}</span></div>
+              <div class="widget-row"><span class="label">👤 Новых юзеров:</span><span class="value">${todayUsers}</span></div>
+              <div class="widget-row"><span class="label">🖼 Медиа:</span><span class="value">${todayMedia}</span></div>
+              <div class="widget-row"><span class="label">📝 Заметок:</span><span class="value">${todayNotes}</span></div>
+            </div>
+          </div>
+
+          <!-- Карточка 3 -->
+          <div class="card-widget">
+            <div class="card-widget-header">💬 Последние сообщения</div>
+            <div class="card-widget-body">${lastMessagesHtml}</div>
+          </div>
+
+          <!-- Карточка 4 -->
+          <div class="card-widget">
+            <div class="card-widget-header">🛡 Последние действия</div>
+            <div class="card-widget-body">${lastAuditHtml}</div>
+          </div>
+        </div>
+      `;
+    }
+
     function render() {
       const header = document.getElementById('main-header');
 
-      // Режим полного экрана редактора скрывает шапку вкладок
+      // Режим полного экрана редактора скрывает шапку вкладок и виджеты
       if (state.editingNoteId !== null) {
         header.style.display = 'none';
         renderNoteEditor(state.editingNoteId);
@@ -1008,25 +1277,29 @@
         header.style.display = 'block';
       }
 
+      // Профиль пользователя скрывает виджеты
       if (state.selectedUserId) {
         renderUserProfile(state.selectedUserId);
         return;
       }
 
+      const widgetsHtml = renderWidgetsHtml();
+
       switch (state.currentTab) {
-        case 'users': renderUsers(); break;
-        case 'messages': renderMessages(); break;
-        case 'media': renderMedia(); break;
-        case 'notes': renderNotes(); break;
-        case 'admins': renderAdmins(); break;
-        case 'audit': renderAudit(); break;
+        case 'users': renderUsers(widgetsHtml); break;
+        case 'messages': renderMessages(widgetsHtml); break;
+        case 'media': renderMedia(widgetsHtml); break;
+        case 'notes': renderNotes(widgetsHtml); break;
+        case 'admins': renderAdmins(widgetsHtml); break;
+        case 'audit': renderAudit(widgetsHtml); break;
+        case 'valencies': renderValencies(widgetsHtml); break;
       }
     }
 
     /* =========================================================
        РАЗДЕЛ 1: ПОЛЬЗОВАТЕЛИ
        ========================================================= */
-    function renderUsers() {
+    function renderUsers(widgetsHtml = '') {
       const userIds = Object.keys(state.users);
       let rows = userIds.map(id => {
         const u = state.users[id];
@@ -1041,6 +1314,7 @@
       }).join('');
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1158,7 +1432,7 @@
     /* =========================================================
        РАЗДЕЛ 2: СООБЩЕНИЯ
        ========================================================= */
-    function renderMessages() {
+    function renderMessages(widgetsHtml = '') {
       const list = (state.messages || []).slice(-200).reverse();
       let rows = list.map((m, index) => {
         const text = m.text || '';
@@ -1179,6 +1453,7 @@
       }).join('');
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1202,7 +1477,7 @@
     /* =========================================================
        РАЗДЕЛ 3: МЕДИА
        ========================================================= */
-    function renderMedia() {
+    function renderMedia(widgetsHtml = '') {
       const list = (state.media || []).slice().reverse();
       let rows = list.map(m => {
         const rawUrl = m.url || `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${m.file_name}`;
@@ -1224,6 +1499,7 @@
       }).join('');
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1247,7 +1523,7 @@
     /* =========================================================
        РАЗДЕЛ 4: ЗАМЕТКИ
        ========================================================= */
-    function renderNotes() {
+    function renderNotes(widgetsHtml = '') {
       const sortedNotes = [...(state.notes || [])].sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -1277,6 +1553,7 @@
       }
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1406,7 +1683,7 @@
     /* =========================================================
        РАЗДЕЛ 5: АДМИНЫ
        ========================================================= */
-    function renderAdmins() {
+    function renderAdmins(widgetsHtml = '') {
       let rows = (state.admins || []).map(admin => {
         const user = state.users[String(admin.id)];
         const name = user ? user.first_name : '—';
@@ -1420,6 +1697,7 @@
       }).join('');
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1443,7 +1721,7 @@
     /* =========================================================
        РАЗДЕЛ 6: ЖУРНАЛ АУДИТА
        ========================================================= */
-    function renderAudit() {
+    function renderAudit(widgetsHtml = '') {
       const actionText = {
         'ban': 'забанил',
         'unban': 'разбанил',
@@ -1466,6 +1744,7 @@
       }).join('');
 
       document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
         <div class="card">
           <div class="card-header">
             <div>
@@ -1479,6 +1758,81 @@
           ${rows || '<div class="empty-state">Записей аудита нет</div>'}
         </div>
       `;
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 7: ВАЛЕНТНОСТИ (НОВЫЙ)
+       ========================================================= */
+    function getValencyTypeBadge(type) {
+      if (type === 'const') return '<span class="badge badge-val-const">постоянная</span>';
+      if (type === 'var') return '<span class="badge badge-val-var">переменная</span>';
+      if (type === 'inert') return '<span class="badge badge-val-inert">инертный газ</span>';
+      return `<span class="badge">${escapeHtml(type)}</span>`;
+    }
+
+    function renderValencies(widgetsHtml = '') {
+      const q = (state.valenciesSearch || '').toLowerCase().trim();
+      const filtered = VALENCIES.filter(item => {
+        if (!q) return true;
+        return item.symbol.toLowerCase().includes(q) || item.name.toLowerCase().includes(q);
+      });
+
+      let rows = filtered.map(el => `
+        <tr>
+          <td><strong style="font-family: monospace; font-size: 15px;">${escapeHtml(el.symbol)}</strong></td>
+          <td>${escapeHtml(el.name)}</td>
+          <td><strong>${escapeHtml(el.val)}</strong></td>
+          <td>${getValencyTypeBadge(el.type)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('app').innerHTML = `
+        ${widgetsHtml}
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="card-title">⚗️ Валентности</span>
+              <span class="sub-text" style="margin-left: 8px;">Введи символ химического элемента или название</span>
+            </div>
+            <div class="header-actions">
+              <span class="sub-text">Всего: ${filtered.length} из ${VALENCIES.length}</span>
+            </div>
+          </div>
+          <div style="padding: 16px; border-bottom: 1px solid var(--border-color);">
+            <input 
+              type="text" 
+              id="valencies-search-input" 
+              class="form-input" 
+              style="margin-bottom: 0;" 
+              placeholder="Поиск по символу (например, Fe, Na) или названию (Железо, Хлор)..." 
+              value="${escapeHtml(state.valenciesSearch)}"
+            />
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 120px;">Символ</th>
+                  <th>Название</th>
+                  <th style="width: 180px;">Валентность</th>
+                  <th style="width: 180px;">Тип</th>
+                </tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="4" class="empty-state">Элементы не найдены</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const searchInput = document.getElementById('valencies-search-input');
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+        searchInput.addEventListener('input', (e) => {
+          state.valenciesSearch = e.target.value;
+          renderValencies(renderWidgetsHtml());
+        });
+      }
     }
 
     /* =========================================================
