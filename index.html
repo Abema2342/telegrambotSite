@@ -196,7 +196,7 @@
     /* ТРЕХКОЛОНОЧНЫЙ LAYOUT */
     .layout-3col {
       display: grid;
-      grid-template-columns: 280px 1fr 280px;
+      grid-template-columns: 260px minmax(0, 1fr) 260px;
       gap: 16px;
       align-items: start;
     }
@@ -213,7 +213,8 @@
       min-width: 0;
     }
 
-    @media (max-width: 1100px) {
+    /* Адаптив: на узких экранах карточки уходят вниз */
+    @media (max-width: 1200px) {
       .layout-3col {
         grid-template-columns: 1fr;
       }
@@ -1069,52 +1070,52 @@
        ЗАГРУЗКА ДАННЫХ ЧЕРЕЗ CLOUDFLARE WORKER
        ========================================================= */
     async function loadData() {
-  const app = document.getElementById('app');
-  app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
 
-  try {
-    const response = await fetch(
-      `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
-      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-    );
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const jsonMeta = await response.json();
+
+        // GitHub отдаёт content в base64 — декодируем с поддержкой UTF-8
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+
+        state.last_updated = data.last_updated;
+        state.users = data.users || {};
+        state.messages = data.messages || [];
+        state.notes = data.notes || [];
+        state.admins = data.admins || [];
+        state.audit = data.audit || [];
+        state.dataSha = jsonMeta.sha;
+
+        buildMediaCache();
+        render();
+      } catch (err) {
+        app.innerHTML = `
+          <div class="card">
+            <div class="empty-state" style="color: var(--status-banned);">
+              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных.</p>
+              <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-secondary);">${escapeHtml(err.message)}</p>
+              <button class="btn-refresh" onclick="loadData()">Повторить</button>
+            </div>
+          </div>`;
+      }
     }
-
-    const jsonMeta = await response.json();
-
-    // GitHub отдаёт content в base64 — декодируем с поддержкой UTF-8
-    const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
-    const utf8Content = decodeURIComponent(
-      Array.prototype.map.call(rawContent, c =>
-        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      ).join('')
-    );
-
-    const data = JSON.parse(utf8Content);
-
-    state.last_updated = data.last_updated;
-    state.users = data.users || {};
-    state.messages = data.messages || [];
-    state.notes = data.notes || [];
-    state.admins = data.admins || [];
-    state.audit = data.audit || [];
-    state.dataSha = jsonMeta.sha;
-
-    buildMediaCache();
-    render();
-  } catch (err) {
-    app.innerHTML = `
-      <div class="card">
-        <div class="empty-state" style="color: var(--status-banned);">
-          <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных.</p>
-          <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-secondary);">${escapeHtml(err.message)}</p>
-          <button class="btn-refresh" onclick="loadData()">Повторить</button>
-        </div>
-      </div>`;
-  }
-}
 
     /* =========================================================
        АВТОРИЗАЦИЯ
@@ -1362,9 +1363,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1386,9 +1385,7 @@
               </div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1510,9 +1507,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1532,9 +1527,7 @@
               </div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1565,9 +1558,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1587,9 +1578,7 @@
               </div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1628,9 +1617,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1646,9 +1633,7 @@
               <div class="notes-grid">${contentHtml}</div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1781,9 +1766,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1803,9 +1786,7 @@
               </div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1837,9 +1818,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1854,9 +1833,7 @@
               ${rows || '<div class="empty-state">Записей аудита нет</div>'}
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
     }
@@ -1889,9 +1866,7 @@
 
       document.getElementById('app').innerHTML = `
         <div class="layout-3col">
-          <div class="side-col side-col-left">
-            ${renderLeftWidgets()}
-          </div>
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
             <div class="card">
               <div class="card-header">
@@ -1928,9 +1903,7 @@
               </div>
             </div>
           </div>
-          <div class="side-col side-col-right">
-            ${renderRightWidgets()}
-          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
 
