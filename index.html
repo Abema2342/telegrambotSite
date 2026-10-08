@@ -1069,52 +1069,52 @@
        ЗАГРУЗКА ДАННЫХ ЧЕРЕЗ CLOUDFLARE WORKER
        ========================================================= */
     async function loadData() {
-      const app = document.getElementById('app');
-      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
 
-      try {
-        const response = await fetch(
-          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
-          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-        );
+  try {
+    const response = await fetch(
+      `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
+      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+    );
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const jsonMeta = await response.json();
-
-        // GitHub отдаёт content в base64 — декодируем с поддержкой UTF-8
-        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
-        const utf8Content = decodeURIComponent(
-          Array.prototype.map.call(rawContent, c =>
-            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-          ).join('')
-        );
-
-        const data = JSON.parse(utf8Content);
-
-        state.last_updated = data.last_updated;
-        state.users = data.users || {};
-        state.messages = data.messages || [];
-        state.notes = data.notes || [];
-        state.admins = data.admins || [];
-        state.audit = data.audit || [];
-        state.dataSha = jsonMeta.sha;
-
-        buildMediaCache();
-        render();
-      } catch (err) {
-        app.innerHTML = `
-          <div class="card">
-            <div class="empty-state" style="color: var(--status-banned);">
-              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных.</p>
-              <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-secondary);">${escapeHtml(err.message)}</p>
-              <button class="btn-refresh" onclick="loadData()">Повторить</button>
-            </div>
-          </div>`;
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+
+    const jsonMeta = await response.json();
+
+    // GitHub отдаёт content в base64 — декодируем с поддержкой UTF-8
+    const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+    const utf8Content = decodeURIComponent(
+      Array.prototype.map.call(rawContent, c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join('')
+    );
+
+    const data = JSON.parse(utf8Content);
+
+    state.last_updated = data.last_updated;
+    state.users = data.users || {};
+    state.messages = data.messages || [];
+    state.notes = data.notes || [];
+    state.admins = data.admins || [];
+    state.audit = data.audit || [];
+    state.dataSha = jsonMeta.sha;
+
+    buildMediaCache();
+    render();
+  } catch (err) {
+    app.innerHTML = `
+      <div class="card">
+        <div class="empty-state" style="color: var(--status-banned);">
+          <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных.</p>
+          <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-secondary);">${escapeHtml(err.message)}</p>
+          <button class="btn-refresh" onclick="loadData()">Повторить</button>
+        </div>
+      </div>`;
+  }
+}
 
     /* =========================================================
        АВТОРИЗАЦИЯ
