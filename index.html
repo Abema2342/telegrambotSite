@@ -102,7 +102,7 @@
     }
 
     .nav-container {
-      max-width: 1440px;
+      max-width: 1800px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -160,7 +160,7 @@
 
     /* Основной контейнер */
     main {
-      max-width: 1440px;
+      max-width: 1800px;
       margin: 24px auto;
       padding: 0 16px;
     }
@@ -196,8 +196,8 @@
     /* ТРЕХКОЛОНОЧНЫЙ LAYOUT */
     .layout-3col {
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr) 260px;
-      gap: 16px;
+      grid-template-columns: 240px minmax(0, 1fr) 240px;
+      gap: 20px;
       align-items: start;
     }
 
@@ -214,7 +214,7 @@
     }
 
     /* Адаптив: на узких экранах карточки уходят вниз */
-    @media (max-width: 1200px) {
+    @media (max-width: 1400px) {
       .layout-3col {
         grid-template-columns: 1fr;
       }
