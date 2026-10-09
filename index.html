@@ -897,9 +897,15 @@
     /* ЭКРАН ОБНОВЛЕНИЙ */
     .upd-filters {
       display: flex;
+      flex-direction: column;
       gap: 8px;
       padding: 12px 16px;
       border-bottom: 1px solid var(--border-color);
+    }
+
+    .upd-filter-row {
+      display: flex;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
@@ -920,6 +926,28 @@
     }
 
     .upd-filter-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+    }
+
+    .btn-cat {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .btn-cat:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+
+    .btn-cat.active {
       background: var(--accent-color);
       color: #fff;
       border-color: var(--accent-color);
@@ -1213,11 +1241,11 @@
           <button class="nav-btn" data-tab="messages">Сообщения</button>
           <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn" data-tab="notes">Заметки</button>
-          <button class="nav-btn" data-tab="gdz">ГДЗ</button>
+          <button class="nav-btn" data-tab="gdz">📚 ГДЗ</button>
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
-          <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="periodic">🧪 Таблица Менделеева</button>
         </div>
         <div class="header-right">
           <button id="logout-btn" class="btn-logout">Выйти</button>
@@ -1496,7 +1524,8 @@
       updatesLoaded: false,
       showUpdates: false,
       editingUpdateId: null,
-      updateStatusFilter: 'all'
+      updateStatusFilter: 'all',
+      updateCategoryFilter: 'all'
     };
 
     function initThemeColor() {
@@ -2202,14 +2231,42 @@
     };
 
     function renderUpdatesScreen() {
-      const allUpdates = state.updates || [];
-      const countDone = allUpdates.filter(u => u.status === 'done').length;
-      const countInProgress = allUpdates.filter(u => u.status === 'in_progress').length;
-      const countNotDone = allUpdates.filter(u => u.status === 'not_done').length;
+      const rawUpdates = state.updates || [];
 
-      let filtered = allUpdates;
+      // Вспомогательная функция определения категории с поддержкой обратной совместимости
+      const getCategory = (u) => (u && u.category) ? u.category : 'other';
+
+      // 1. Для счётчиков в статусных фильтрах — фильтруем по категории
+      const byCategory = (state.updateCategoryFilter === 'all')
+        ? rawUpdates
+        : rawUpdates.filter(u => getCategory(u) === state.updateCategoryFilter);
+
+      const statusCounts = {
+        all: byCategory.length,
+        done: byCategory.filter(u => u.status === 'done').length,
+        in_progress: byCategory.filter(u => u.status === 'in_progress').length,
+        not_done: byCategory.filter(u => u.status === 'not_done').length
+      };
+
+      // 2. Для счётчиков в категорийных фильтрах — фильтруем по статусу
+      const byStatus = (state.updateStatusFilter === 'all')
+        ? rawUpdates
+        : rawUpdates.filter(u => u.status === state.updateStatusFilter);
+
+      const categoryCounts = {
+        all: byStatus.length,
+        bot: byStatus.filter(u => getCategory(u) === 'bot').length,
+        site: byStatus.filter(u => getCategory(u) === 'site').length,
+        other: byStatus.filter(u => getCategory(u) === 'other').length
+      };
+
+      // 3. Итоговая двойная фильтрация
+      let filtered = rawUpdates;
       if (state.updateStatusFilter !== 'all') {
-        filtered = allUpdates.filter(u => u.status === state.updateStatusFilter);
+        filtered = filtered.filter(u => u.status === state.updateStatusFilter);
+      }
+      if (state.updateCategoryFilter !== 'all') {
+        filtered = filtered.filter(u => getCategory(u) === state.updateCategoryFilter);
       }
 
       // Сортировка: новые сверху
@@ -2259,18 +2316,37 @@
           </div>
 
           <div class="upd-filters">
-            <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateFilter('all')">
-              Все (${allUpdates.length})
-            </button>
-            <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateFilter('done')">
-              ✅ Сделано (${countDone})
-            </button>
-            <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateFilter('in_progress')">
-              🔄 В процессе (${countInProgress})
-            </button>
-            <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateFilter('not_done')">
-              ⏳ Не сделано (${countNotDone})
-            </button>
+            <!-- Ряд 1: Фильтры по статусу -->
+            <div class="upd-filter-row">
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateStatusFilter('all')">
+                Все (${statusCounts.all})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateStatusFilter('done')">
+                ✅ Сделано (${statusCounts.done})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateStatusFilter('in_progress')">
+                🔄 В процессе (${statusCounts.in_progress})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateStatusFilter('not_done')">
+                ⏳ Не сделано (${statusCounts.not_done})
+              </button>
+            </div>
+
+            <!-- Ряд 2: Фильтры по категории -->
+            <div class="upd-filter-row">
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'all' ? 'active' : ''}" onclick="setUpdateCategoryFilter('all')">
+                Все (${categoryCounts.all})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'bot' ? 'active' : ''}" onclick="setUpdateCategoryFilter('bot')">
+                🤖 Бот (${categoryCounts.bot})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'site' ? 'active' : ''}" onclick="setUpdateCategoryFilter('site')">
+                🌐 Сайт (${categoryCounts.site})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'other' ? 'active' : ''}" onclick="setUpdateCategoryFilter('other')">
+                📦 Прочее (${categoryCounts.other})
+              </button>
+            </div>
           </div>
 
           <div class="upd-grid">${contentHtml}</div>
@@ -2284,8 +2360,13 @@
       render();
     }
 
-    function setUpdateFilter(filterKey) {
+    function setUpdateStatusFilter(filterKey) {
       state.updateStatusFilter = filterKey;
+      renderUpdatesScreen();
+    }
+
+    function setUpdateCategoryFilter(filterKey) {
+      state.updateCategoryFilter = filterKey;
       renderUpdatesScreen();
     }
 
@@ -2315,11 +2396,12 @@
     }
 
     let tempEditorStatus = 'not_done';
+    let tempEditorCategory = 'other';
 
     function renderUpdateEditor(updateId) {
       const isNew = updateId === 'new';
       const upd = isNew
-        ? { title: '', text: '', status: 'not_done' }
+        ? { title: '', text: '', status: 'not_done', category: 'other' }
         : state.updates.find(u => u.id === updateId);
 
       if (!isNew && !upd) {
@@ -2328,6 +2410,7 @@
       }
 
       tempEditorStatus = upd.status || 'not_done';
+      tempEditorCategory = upd.category || 'other';
 
       document.getElementById('app').innerHTML = `
         <div class="card">
@@ -2356,6 +2439,29 @@
                 class="upd-status-btn ${tempEditorStatus === 'done' ? 'selected-done' : ''}" 
                 onclick="setEditorStatus('done')">
                 ✅ Сделано
+              </button>
+            </div>
+
+            <!-- Выбор категории -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="sub-text" style="font-weight: 500;">Категория:</span>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'bot' ? 'active' : ''}" 
+                onclick="setEditorCategory('bot')">
+                🤖 Бот
+              </button>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'site' ? 'active' : ''}" 
+                onclick="setEditorCategory('site')">
+                🌐 Сайт
+              </button>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'other' ? 'active' : ''}" 
+                onclick="setEditorCategory('other')">
+                📦 Прочее
               </button>
             </div>
 
@@ -2388,6 +2494,18 @@
       }
     }
 
+    function setEditorCategory(newCat) {
+      tempEditorCategory = newCat;
+      document.querySelectorAll('.btn-cat').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const targetLabel = newCat === 'bot' ? 'Бот' : (newCat === 'site' ? 'Сайт' : 'Прочее');
+      const selectedBtn = Array.from(document.querySelectorAll('.btn-cat')).find(b => b.textContent.includes(targetLabel));
+      if (selectedBtn) {
+        selectedBtn.classList.add('active');
+      }
+    }
+
     async function saveUpdate(updateId) {
       const title = document.getElementById('upd-title').value.trim();
       const text = document.getElementById('upd-text').value.trim();
@@ -2406,6 +2524,7 @@
           title: title,
           text: text,
           status: tempEditorStatus,
+          category: tempEditorCategory || 'other',
           created_at: now,
           last_modified: now
         });
@@ -2415,6 +2534,7 @@
           upd.title = title;
           upd.text = text;
           upd.status = tempEditorStatus;
+          upd.category = tempEditorCategory || 'other';
           upd.last_modified = now;
         }
       }
