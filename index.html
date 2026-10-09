@@ -516,6 +516,11 @@
     .badge-val-var { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); }
     .badge-val-inert { background: rgba(149, 165, 166, 0.15); color: #95a5a6; border: 1px solid rgba(149, 165, 166, 0.3); }
 
+    /* Бейджи растворимости */
+    .badge-sol-r { background: rgba(67, 181, 129, 0.15); color: #43b581; }
+    .badge-sol-m { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+    .badge-sol-n { background: rgba(237, 66, 69, 0.15); color: #ed4245; }
+
     /* СЕТКА ЗАМЕТОК */
     .notes-grid {
       display: grid;
@@ -736,6 +741,109 @@
       margin-top: 16px;
     }
 
+    /* ТАБЛИЦА МЕНДЕЛЕЕВА */
+    .pt-grid {
+      display: grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap: 4px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 900px) {
+      .pt-grid {
+        grid-template-columns: repeat(18, 40px);
+      }
+    }
+
+    .pt-cell {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s, box-shadow 0.15s;
+      z-index: 1;
+      user-select: none;
+    }
+
+    .pt-cell:hover {
+      transform: scale(1.5);
+      z-index: 10;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      border-color: var(--accent-color);
+    }
+
+    .pt-cell .num {
+      font-size: 9px;
+      color: var(--text-secondary);
+      line-height: 1;
+    }
+
+    .pt-cell .sym {
+      font-size: 15px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .pt-cell .nm {
+      font-size: 8px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pt-cell::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+    }
+
+    .pt-cell.type-alkali::after { background: #f39c12; }
+    .pt-cell.type-alkaline::after { background: #e67e22; }
+    .pt-cell.type-transition::after { background: #95a5a6; }
+    .pt-cell.type-post_transition::after { background: #7f8c8d; }
+    .pt-cell.type-metalloid::after { background: #16a085; }
+    .pt-cell.type-nonmetal::after { background: #3498db; }
+    .pt-cell.type-halogen::after { background: #9b59b6; }
+    .pt-cell.type-noble::after { background: #e74c3c; }
+
+    .pt-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 16px 16px;
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .pt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pt-legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
     /* ПЛАВАЮЩАЯ КНОПКА ПАЛИТРЫ (FAB) */
     .fab-theme {
       position: fixed;
@@ -827,7 +935,7 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       width: 100%;
-      max-width: 480px;
+      max-width: 540px;
       margin: 16px;
       display: flex;
       flex-direction: column;
@@ -855,12 +963,15 @@
 
     .modal-body {
       padding: 16px;
-      max-height: 60vh;
+      max-height: 65vh;
       overflow-y: auto;
-      white-space: pre-wrap;
       word-break: break-word;
       font-size: 14px;
       line-height: 1.6;
+    }
+
+    #common-modal .modal-body table {
+      white-space: normal;
     }
 
     .modal-footer {
@@ -919,6 +1030,7 @@
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
+          <button class="nav-btn" data-tab="periodic">🧪 Таблица Менделеева</button>
         </div>
         <button id="logout-btn" class="btn-logout">Выйти</button>
       </div>
@@ -1059,6 +1171,115 @@
       {symbol: "U", name: "Уран", val: "IV, VI", type: "var"}
     ];
 
+    const ELEMENTS = [
+      // Период 1
+      { sym: "H", name: "Водород", num: 1, period: 1, group: 1, type: "nonmetal" },
+      { sym: "He", name: "Гелий", num: 2, period: 1, group: 18, type: "noble" },
+
+      // Период 2
+      { sym: "Li", name: "Литий", num: 3, period: 2, group: 1, type: "alkali" },
+      { sym: "Be", name: "Бериллий", num: 4, period: 2, group: 2, type: "alkaline" },
+      { sym: "B", name: "Бор", num: 5, period: 2, group: 13, type: "metalloid" },
+      { sym: "C", name: "Углерод", num: 6, period: 2, group: 14, type: "nonmetal" },
+      { sym: "N", name: "Азот", num: 7, period: 2, group: 15, type: "nonmetal" },
+      { sym: "O", name: "Кислород", num: 8, period: 2, group: 16, type: "nonmetal" },
+      { sym: "F", name: "Фтор", num: 9, period: 2, group: 17, type: "halogen" },
+      { sym: "Ne", name: "Неон", num: 10, period: 2, group: 18, type: "noble" },
+
+      // Период 3
+      { sym: "Na", name: "Натрий", num: 11, period: 3, group: 1, type: "alkali" },
+      { sym: "Mg", name: "Магний", num: 12, period: 3, group: 2, type: "alkaline" },
+      { sym: "Al", name: "Алюминий", num: 13, period: 3, group: 13, type: "post_transition" },
+      { sym: "Si", name: "Кремний", num: 14, period: 3, group: 14, type: "metalloid" },
+      { sym: "P", name: "Фосфор", num: 15, period: 3, group: 15, type: "nonmetal" },
+      { sym: "S", name: "Сера", num: 16, period: 3, group: 16, type: "nonmetal" },
+      { sym: "Cl", name: "Хлор", num: 17, period: 3, group: 17, type: "halogen" },
+      { sym: "Ar", name: "Аргон", num: 18, period: 3, group: 18, type: "noble" },
+
+      // Период 4
+      { sym: "K", name: "Калий", num: 19, period: 4, group: 1, type: "alkali" },
+      { sym: "Ca", name: "Кальций", num: 20, period: 4, group: 2, type: "alkaline" },
+      { sym: "Sc", name: "Скандий", num: 21, period: 4, group: 3, type: "transition" },
+      { sym: "Ti", name: "Титан", num: 22, period: 4, group: 4, type: "transition" },
+      { sym: "V", name: "Ванадий", num: 23, period: 4, group: 5, type: "transition" },
+      { sym: "Cr", name: "Хром", num: 24, period: 4, group: 6, type: "transition" },
+      { sym: "Mn", name: "Марганец", num: 25, period: 4, group: 7, type: "transition" },
+      { sym: "Fe", name: "Железо", num: 26, period: 4, group: 8, type: "transition" },
+      { sym: "Co", name: "Кобальт", num: 27, period: 4, group: 9, type: "transition" },
+      { sym: "Ni", name: "Никель", num: 28, period: 4, group: 10, type: "transition" },
+      { sym: "Cu", name: "Медь", num: 29, period: 4, group: 11, type: "transition" },
+      { sym: "Zn", name: "Цинк", num: 30, period: 4, group: 12, type: "transition" },
+      { sym: "Ga", name: "Галлий", num: 31, period: 4, group: 13, type: "post_transition" },
+      { sym: "Ge", name: "Германий", num: 32, period: 4, group: 14, type: "metalloid" },
+      { sym: "As", name: "Мышьяк", num: 33, period: 4, group: 15, type: "metalloid" },
+      { sym: "Se", name: "Селен", num: 34, period: 4, group: 16, type: "nonmetal" },
+      { sym: "Br", name: "Бром", num: 35, period: 4, group: 17, type: "halogen" },
+      { sym: "Kr", name: "Криптон", num: 36, period: 4, group: 18, type: "noble" },
+
+      // Период 5
+      { sym: "Rb", name: "Рубидий", num: 37, period: 5, group: 1, type: "alkali" },
+      { sym: "Sr", name: "Стронций", num: 38, period: 5, group: 2, type: "alkaline" },
+      { sym: "Y", name: "Иттрий", num: 39, period: 5, group: 3, type: "transition" },
+      { sym: "Zr", name: "Цирконий", num: 40, period: 5, group: 4, type: "transition" },
+      { sym: "Nb", name: "Ниобий", num: 41, period: 5, group: 5, type: "transition" },
+      { sym: "Mo", name: "Молибден", num: 42, period: 5, group: 6, type: "transition" },
+      { sym: "Tc", name: "Технеций", num: 43, period: 5, group: 7, type: "transition" },
+      { sym: "Ru", name: "Рутений", num: 44, period: 5, group: 8, type: "transition" },
+      { sym: "Rh", name: "Родий", num: 45, period: 5, group: 9, type: "transition" },
+      { sym: "Pd", name: "Палладий", num: 46, period: 5, group: 10, type: "transition" },
+      { sym: "Ag", name: "Серебро", num: 47, period: 5, group: 11, type: "transition" },
+      { sym: "Cd", name: "Кадмий", num: 48, period: 5, group: 12, type: "transition" },
+      { sym: "In", name: "Индий", num: 49, period: 5, group: 13, type: "post_transition" },
+      { sym: "Sn", name: "Олово", num: 50, period: 5, group: 14, type: "post_transition" },
+      { sym: "Sb", name: "Сурьма", num: 51, period: 5, group: 15, type: "metalloid" },
+      { sym: "Te", name: "Теллур", num: 52, period: 5, group: 16, type: "metalloid" },
+      { sym: "I", name: "Йод", num: 53, period: 5, group: 17, type: "halogen" },
+      { sym: "Xe", name: "Ксенон", num: 54, period: 5, group: 18, type: "noble" },
+
+      // Период 6
+      { sym: "Cs", name: "Цезий", num: 55, period: 6, group: 1, type: "alkali" },
+      { sym: "Ba", name: "Барий", num: 56, period: 6, group: 2, type: "alkaline" },
+      { sym: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
+      { sym: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
+      { sym: "W", name: "Вольфрам", num: 74, period: 6, group: 6, type: "transition" },
+      { sym: "Re", name: "Рений", num: 75, period: 6, group: 7, type: "transition" },
+      { sym: "Os", name: "Осмий", num: 76, period: 6, group: 8, type: "transition" },
+      { sym: "Ir", name: "Иридий", num: 77, period: 6, group: 9, type: "transition" },
+      { sym: "Pt", name: "Платина", num: 78, period: 6, group: 10, type: "transition" },
+      { sym: "Au", name: "Золото", num: 79, period: 6, group: 11, type: "transition" },
+      { sym: "Hg", name: "Ртуть", num: 80, period: 6, group: 12, type: "transition" },
+      { sym: "Tl", name: "Таллий", num: 81, period: 6, group: 13, type: "post_transition" },
+      { sym: "Pb", name: "Свинец", num: 82, period: 6, group: 14, type: "post_transition" },
+      { sym: "Bi", name: "Висмут", num: 83, period: 6, group: 15, type: "post_transition" },
+      { sym: "Po", name: "Полоний", num: 84, period: 6, group: 16, type: "post_transition" },
+      { sym: "At", name: "Астат", num: 85, period: 6, group: 17, type: "halogen" },
+      { sym: "Rn", name: "Радон", num: 86, period: 6, group: 18, type: "noble" }
+    ];
+
+    const ELEMENT_TYPE_NAMES = {
+      alkali: "Щелочной металл",
+      alkaline: "Щёлочноземельный металл",
+      transition: "Переходный металл",
+      post_transition: "Постпереходный металл",
+      metalloid: "Полуметалл",
+      nonmetal: "Неметалл",
+      halogen: "Галоген",
+      noble: "Благородный газ"
+    };
+
+    const ACID_RESIDUES = [
+      { key: "Cl", name: "Хлорид", formula: "Cl⁻" },
+      { key: "Br", name: "Бромид", formula: "Br⁻" },
+      { key: "I", name: "Йодид", formula: "I⁻" },
+      { key: "S", name: "Сульфид", formula: "S²⁻" },
+      { key: "SO3", name: "Сульфит", formula: "SO₃²⁻" },
+      { key: "SO4", name: "Сульфат", formula: "SO₄²⁻" },
+      { key: "CO3", name: "Карбонат", formula: "CO₃²⁻" },
+      { key: "NO3", name: "Нитрат", formula: "NO₃⁻" },
+      { key: "PO4", name: "Фосфат", formula: "PO₄³⁻" },
+      { key: "OH", name: "Гидроксид", formula: "OH⁻" }
+    ];
+
     let state = {
       last_updated: null,
       users: {},
@@ -1076,7 +1297,10 @@
       gdzSelectedSubject: null,
       gdzSelectedChapter: null,
       gdzSelectedNum: null,
-      gdzSearchLoading: false
+      gdzSearchLoading: false,
+      periodicSearch: '',
+      periodicSelectedElement: null,
+      chemistryData: null
     };
 
     function initThemeColor() {
@@ -1305,7 +1529,7 @@
     }
 
     /* =========================================================
-       ЗАГРУЗКА DATA.JSON И SUBJECTS.JSON
+       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON
        ========================================================= */
     async function loadData() {
       const app = document.getElementById('app');
@@ -1376,6 +1600,33 @@
         return state.gdzSubjects;
       } catch (err) {
         console.error("Ошибка загрузки subjects.json:", err);
+        return null;
+      }
+    }
+
+    async function loadChemistry() {
+      if (state.chemistryData) return state.chemistryData;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chemistry.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        state.chemistryData = JSON.parse(utf8Content);
+        return state.chemistryData;
+      } catch (err) {
+        console.error("Ошибка загрузки chemistry.json:", err);
         return null;
       }
     }
@@ -1603,6 +1854,7 @@
         case 'admins': renderAdmins(); break;
         case 'audit': renderAudit(); break;
         case 'valencies': renderValencies(); break;
+        case 'periodic': renderPeriodic(); break;
       }
     }
 
@@ -2093,7 +2345,7 @@
           cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
         }
       } 
-      // СОСТОЯНИЕ B: Список разделов предмета (только если has_chapters !== false)
+      // СОСТОЯНИЕ B: Список разделов предмета
       else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
         const subj = subjects[state.gdzSelectedSubject];
         const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
@@ -2447,6 +2699,135 @@
     }
 
     /* =========================================================
+       РАЗДЕЛ 8: 🧪 ТАБЛИЦА МЕНДЕЛЕЕВА
+       ========================================================= */
+    function renderPeriodic() {
+      // 18 колонок × 6 периодов
+      let gridCellsHtml = '';
+      for (let p = 1; p <= 6; p++) {
+        for (let g = 1; g <= 18; g++) {
+          const el = ELEMENTS.find(e => e.period === p && e.group === g);
+          if (el) {
+            gridCellsHtml += `
+              <div class="pt-cell type-${el.type}" onclick="openElementModal('${el.sym}')" title="${escapeHtml(el.name)}">
+                <span class="num">${el.num}</span>
+                <span class="sym">${escapeHtml(el.sym)}</span>
+                <span class="nm">${escapeHtml(el.name)}</span>
+              </div>
+            `;
+          } else {
+            gridCellsHtml += `<div></div>`;
+          }
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">🧪 Таблица Менделеева</span>
+                  <span class="sub-text" style="margin-left: 8px;">Нажми на элемент, чтобы узнать подробнее</span>
+                </div>
+              </div>
+              <div class="pt-grid">
+                ${gridCellsHtml}
+              </div>
+              <div class="pt-legend">
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #f39c12;"></span><span>Щелочные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e67e22;"></span><span>Щёлочноземельные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #95a5a6;"></span><span>Переходные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #7f8c8d;"></span><span>Постпереходные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #16a085;"></span><span>Полуметаллы</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #3498db;"></span><span>Неметаллы</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #9b59b6;"></span><span>Галогены</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e74c3c;"></span><span>Благородные газы</span></div>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    async function openElementModal(symbol) {
+      const el = ELEMENTS.find(e => e.sym.toLowerCase() === symbol.toLowerCase());
+      if (!el) return;
+
+      const valObj = VALENCIES.find(v => v.symbol.toLowerCase() === el.sym.toLowerCase());
+      const valText = valObj ? valObj.val : '—';
+      const typeText = ELEMENT_TYPE_NAMES[el.type] || el.type;
+
+      // Загрузка chemistry.json
+      const chem = await loadChemistry();
+      let solubilityHtml = '';
+
+      if (chem && chem.solubility && chem.solubility[el.sym]) {
+        const elSol = chem.solubility[el.sym];
+        const rows = ACID_RESIDUES.map(ar => {
+          const val = elSol[ar.key] || elSol[ar.key.toLowerCase()] || '-';
+          let badgeHtml = '';
+          if (val === 'Р' || val === 'р' || val === 'R') {
+            badgeHtml = '<span class="badge badge-sol-r">растворим</span>';
+          } else if (val === 'М' || val === 'м' || val === 'M') {
+            badgeHtml = '<span class="badge badge-sol-m">малорастворим</span>';
+          } else if (val === 'Н' || val === 'н' || val === 'N') {
+            badgeHtml = '<span class="badge badge-sol-n">нерастворим</span>';
+          } else {
+            badgeHtml = '<span class="sub-text">—</span>';
+          }
+
+          return `
+            <tr>
+              <td>${escapeHtml(ar.name)}</td>
+              <td><code>${escapeHtml(ar.formula)}</code></td>
+              <td>${badgeHtml}</td>
+            </tr>
+          `;
+        }).join('');
+
+        solubilityHtml = `
+          <h4 style="margin: 16px 0 8px; font-size: 14px; font-weight: 600;">Растворимость с кислотными остатками</h4>
+          <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Остаток</th>
+                  <th>Формула</th>
+                  <th>Растворимость</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        solubilityHtml = `
+          <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 4px; color: var(--text-secondary); font-size: 13px;">
+            Данные о растворимости недоступны для этого элемента
+          </div>
+        `;
+      }
+
+      const title = `${el.sym} — ${el.name}`;
+      const content = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          <div><span class="sub-text">Атомный номер:</span> <strong>${el.num}</strong></div>
+          <div><span class="sub-text">Период:</span> <strong>${el.period}</strong></div>
+          <div><span class="sub-text">Группа:</span> <strong>${el.group}</strong></div>
+          <div><span class="sub-text">Валентность:</span> <strong>${escapeHtml(valText)}</strong></div>
+          <div style="grid-column: 1 / -1;"><span class="sub-text">Тип:</span> <strong>${escapeHtml(typeText)}</strong></div>
+        </div>
+        ${solubilityHtml}
+      `;
+
+      const actions = `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`;
+      openModal(title, content, actions);
+    }
+
+    /* =========================================================
        МОДАЛЬНЫЕ ОКНА
        ========================================================= */
     const modal = document.getElementById('common-modal');
@@ -2480,7 +2861,7 @@
       const title = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
       const body = parsed 
         ? `<strong>Тип медиа:</strong> ${getMediaBadgeHtml(parsed.media_type)}<br><br><strong>Файл:</strong> <code>${escapeHtml(parsed.file_name)}</code>`
-        : escapeHtml(msg.text || '');
+        : `<div style="white-space: pre-wrap;">${escapeHtml(msg.text || '')}</div>`;
 
       const actions = `
         <span class="sub-text" style="margin-right: auto;">${escapeHtml(msg.first_name || '')} • ${formatDate(msg.time)}</span>
