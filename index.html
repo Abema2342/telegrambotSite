@@ -689,13 +689,39 @@
       color: var(--text-secondary);
     }
 
-    .gdz-controls-wrap {
+    .nums-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
       padding: 16px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
+    }
+
+    @media (max-width: 700px) {
+      .nums-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+
+    .num-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 0;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+
+    .num-btn:hover {
+      background: var(--card-hover);
+      border-color: var(--accent-color);
+    }
+
+    .num-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
     }
 
     .gdz-img-wrap {
@@ -1049,10 +1075,10 @@
       gdzSubjects: null,
       gdzSelectedSubject: null,
       gdzSelectedChapter: null,
+      gdzSelectedNum: null,
       gdzSearchLoading: false
     };
 
-    // Применение сохраненного акцентного цвета темы
     function initThemeColor() {
       const savedTheme = localStorage.getItem('theme_accent') || '#5865F2';
       document.documentElement.style.setProperty('--accent-color', savedTheme);
@@ -1078,7 +1104,6 @@
       buildThemePalette(val);
     }
 
-    // Обработчики плавающей кнопки
     const fabBtn = document.getElementById('fab-theme-btn');
     const fabPanel = document.getElementById('fab-theme-panel');
     fabBtn.addEventListener('click', (e) => {
@@ -1112,6 +1137,26 @@
         };
       }
       return null;
+    }
+
+    function parseChapterNumbers(numbersStr) {
+      if (!numbersStr) return [];
+      const str = String(numbersStr).trim();
+      const rangeMatch = str.match(/^(\d+)\s*-\s*(\d+)$/);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10);
+        const end = parseInt(rangeMatch[2], 10);
+        const res = [];
+        for (let i = start; i <= end; i++) {
+          res.push(i);
+        }
+        return res;
+      }
+      return str.split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => parseInt(s, 10))
+        .filter(n => !isNaN(n));
     }
 
     function formatDate(dateStr) {
@@ -2023,11 +2068,16 @@
             const chapters = subj.chapters || subj.sections || [];
             let subtitle = '';
 
-            if (Array.isArray(chapters) && chapters.length > 1) {
+            if (subj.has_chapters === false || chapters.length === 1) {
+              const ch = chapters[0];
+              if (ch && ch.numbers) {
+                const parsedNums = parseChapterNumbers(ch.numbers);
+                subtitle = `Заданий: ${parsedNums.length}`;
+              } else {
+                subtitle = 'Задания';
+              }
+            } else if (Array.isArray(chapters) && chapters.length > 1) {
               subtitle = `Разделов: ${chapters.length}`;
-            } else if (Array.isArray(chapters) && chapters.length === 1 && chapters[0].numbers) {
-              const match = String(chapters[0].numbers).match(/-(\d+)/);
-              subtitle = match ? `Заданий: ${match[1]}` : `Задания: ${chapters[0].numbers}`;
             } else {
               subtitle = subj.description || 'Учебные материалы';
             }
@@ -2043,16 +2093,17 @@
           cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
         }
       } 
-      // СОСТОЯНИЕ B: Список разделов предмета
+      // СОСТОЯНИЕ B: Список разделов предмета (только если has_chapters !== false)
       else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
         const subj = subjects[state.gdzSelectedSubject];
         const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
+        const chapterLabel = subj && subj.chapter_label ? ` → ${escapeHtml(subj.chapter_label)}` : '';
         const chapters = subj ? (subj.chapters || subj.sections || []) : [];
 
         cardHeaderHtml = `
           <div style="display: flex; align-items: center; gap: 10px;">
             <button class="back-btn" onclick="backToGdzSubjects()">← Назад к предметам</button>
-            <span class="card-title">${escapeHtml(subjName)}</span>
+            <span class="card-title">${escapeHtml(subjName)}${chapterLabel}</span>
           </div>
         `;
 
@@ -2060,8 +2111,8 @@
           cardBodyHtml = '<div class="empty-state">Разделы не найдены</div>';
         } else {
           const cardsHtml = chapters.map((ch, idx) => {
-            const title = ch.title || ch.name || `Раздел ${idx + 1}`;
-            const nums = ch.numbers || ch.range || 'Все';
+            const title = ch.text || ch.title || ch.name || `Раздел ${idx + 1}`;
+            const nums = ch.numbers || ch.range || '';
             return `
               <div class="gdz-card" onclick="selectGdzChapter(${idx})">
                 <div class="gdz-card-title">${escapeHtml(title)}</div>
@@ -2073,40 +2124,68 @@
           cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
         }
       } 
-      // СОСТОЯНИЕ C: Ввод задания и отображение картинки
+      // СОСТОЯНИЕ C: Сетка номеров и решение
       else {
         const subj = subjects[state.gdzSelectedSubject];
         const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
         const chapter = state.gdzSelectedChapter;
-        const chapterTitle = chapter ? (chapter.title || chapter.name || 'Раздел') : '';
-        const numbers = chapter ? (chapter.numbers || chapter.range || '1-100') : '';
+        const chapterTitle = chapter ? (chapter.text || chapter.title || chapter.name || 'Задания') : 'Задания';
+        const hasChapters = subj && subj.has_chapters !== false;
+
+        const backBtnAction = hasChapters ? 'backToGdzChapters()' : 'backToGdzSubjects()';
+        const backBtnText = hasChapters ? '← Назад к разделам' : '← Назад к предметам';
 
         cardHeaderHtml = `
           <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="back-btn" onclick="backToGdzChapters()">← Назад к разделам</button>
-            <span class="card-title">${escapeHtml(subjName)} → ${escapeHtml(chapterTitle)}</span>
+            <button class="back-btn" onclick="${backBtnAction}">${backBtnText}</button>
+            <div>
+              <div class="card-title">${escapeHtml(subjName)} → ${escapeHtml(chapterTitle)}</div>
+              <div class="sub-text">Выбери номер задания</div>
+            </div>
           </div>
         `;
 
-        cardBodyHtml = `
-          <div class="gdz-controls-wrap">
-            <span class="sub-text">Доступные номера: <strong>${escapeHtml(numbers)}</strong></span>
-            <div style="display: flex; gap: 8px; width: 100%; max-width: 320px; margin-top: 6px;">
-              <input 
-                type="text" 
-                id="gdz-task-num" 
-                class="form-input" 
-                style="margin-bottom: 0;" 
-                placeholder="Номер (например, 25)" 
-                onkeydown="if(event.key === 'Enter') showGdzImage()" 
-              />
-              <button class="btn-primary" onclick="showGdzImage()">Показать</button>
-            </div>
-          </div>
-          <div class="gdz-img-wrap" id="gdz-img-container">
-            <div class="sub-text" style="color: var(--text-secondary);">Введите номер задания для отображения решения</div>
-          </div>
-        `;
+        const numbersList = chapter ? parseChapterNumbers(chapter.numbers) : [];
+        if (numbersList.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Нет доступных номеров заданий</div>';
+        } else {
+          const buttonsHtml = numbersList.map(num => `
+            <button 
+              class="num-btn ${state.gdzSelectedNum === num ? 'active' : ''}" 
+              onclick="selectGdzNumber(${num})">
+              ${num}
+            </button>
+          `).join('');
+
+          let imageSectionHtml = '';
+          if (state.gdzSelectedNum !== null) {
+            const base = subj.base || state.gdzSelectedSubject;
+            const folder = chapter.folder || '1';
+            const imgUrl = `https://resheba.top/${base}/${folder}/${state.gdzSelectedNum}.png`;
+
+            imageSectionHtml = `
+              <div class="gdz-img-wrap" id="gdz-img-container">
+                <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(state.gdzSelectedNum))}</div>
+                <img 
+                  src="${escapeHtml(imgUrl)}" 
+                  alt="Задание ${escapeHtml(String(state.gdzSelectedNum))}" 
+                  onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
+                />
+              </div>
+            `;
+          } else {
+            imageSectionHtml = `
+              <div class="gdz-img-wrap" id="gdz-img-container">
+                <div class="sub-text" style="color: var(--text-secondary);">Выберите номер задания для показа решения</div>
+              </div>
+            `;
+          }
+
+          cardBodyHtml = `
+            <div class="nums-grid">${buttonsHtml}</div>
+            ${imageSectionHtml}
+          `;
+        }
       }
 
       document.getElementById('app').innerHTML = `
@@ -2133,13 +2212,22 @@
 
     function selectGdzSubject(key) {
       state.gdzSelectedSubject = key;
-      state.gdzSelectedChapter = null;
+      state.gdzSelectedNum = null;
+      const subj = state.gdzSubjects ? state.gdzSubjects[key] : null;
+
+      if (subj && subj.has_chapters === false) {
+        const chapters = subj.chapters || subj.sections || [];
+        state.gdzSelectedChapter = chapters[0] || null;
+      } else {
+        state.gdzSelectedChapter = null;
+      }
       render();
     }
 
     function backToGdzSubjects() {
       state.gdzSelectedSubject = null;
       state.gdzSelectedChapter = null;
+      state.gdzSelectedNum = null;
       render();
     }
 
@@ -2147,41 +2235,45 @@
       const subj = state.gdzSubjects[state.gdzSelectedSubject];
       const chapters = subj ? (subj.chapters || subj.sections || []) : [];
       state.gdzSelectedChapter = chapters[idx] || null;
+      state.gdzSelectedNum = null;
       render();
     }
 
     function backToGdzChapters() {
       state.gdzSelectedChapter = null;
+      state.gdzSelectedNum = null;
       render();
     }
 
-    function showGdzImage() {
-      const input = document.getElementById('gdz-task-num');
-      const container = document.getElementById('gdz-img-container');
-      if (!input || !container) return;
-
-      const num = input.value.trim();
-      if (!num) {
-        alert('Введите номер задания');
-        return;
-      }
-
+    function selectGdzNumber(num) {
+      state.gdzSelectedNum = num;
       const subj = state.gdzSubjects[state.gdzSelectedSubject];
       const chapter = state.gdzSelectedChapter;
       if (!subj || !chapter) return;
 
-      const base = subj.base || state.gdzSelectedSubject;
-      const folder = chapter.folder || chapter.id || '1';
-      const url = `https://resheba.top/${base}/${folder}/${num}.png`;
+      document.querySelectorAll('.num-btn').forEach(btn => {
+        if (parseInt(btn.textContent.trim(), 10) === num) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
 
-      container.innerHTML = `
-        <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(num)}</div>
-        <img 
-          src="${escapeHtml(url)}" 
-          alt="Задание ${escapeHtml(num)}" 
-          onerror="this.onerror=null; this.parentNode.innerHTML='<div style=\\'color: var(--status-banned); padding: 24px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет, или сайт блокирует запросы.</div>';" 
-        />
-      `;
+      const container = document.getElementById('gdz-img-container');
+      if (container) {
+        const base = subj.base || state.gdzSelectedSubject;
+        const folder = chapter.folder || '1';
+        const imgUrl = `https://resheba.top/${base}/${folder}/${num}.png`;
+
+        container.innerHTML = `
+          <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(num))}</div>
+          <img 
+            src="${escapeHtml(imgUrl)}" 
+            alt="Задание ${escapeHtml(String(num))}" 
+            onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
+          />
+        `;
+      }
     }
 
     /* =========================================================
