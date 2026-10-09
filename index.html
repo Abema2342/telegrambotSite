@@ -143,10 +143,14 @@
       color: #ffffff;
     }
 
-    .btn-logout {
+    .header-right {
       grid-column: 3;
       justify-self: end;
-      margin-left: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .btn-logout {
       background: transparent;
       border: 1px solid var(--border-color);
       color: var(--text-secondary);
@@ -161,6 +165,52 @@
       background: var(--card-hover);
       color: var(--status-banned);
       border-color: var(--status-banned);
+    }
+
+    .btn-updates {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+      position: relative;
+    }
+
+    .btn-updates:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+      border-color: var(--accent-color);
+    }
+
+    .btn-updates::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--accent-color);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--card-bg);
+    }
+
+    .btn-updates[data-count="0"]::after {
+      display: none;
     }
 
     @media (max-width: 900px) {
@@ -844,6 +894,143 @@
       flex-shrink: 0;
     }
 
+    /* ЭКРАН ОБНОВЛЕНИЙ */
+    .upd-filters {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .upd-filter-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .upd-filter-btn:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+
+    .upd-filter-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+    }
+
+    .upd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    @media (max-width: 700px) {
+      .upd-grid { grid-template-columns: 1fr; }
+    }
+
+    .upd-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left-width: 4px;
+      border-radius: 6px;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 120px;
+      transition: background-color 0.15s;
+    }
+
+    .upd-card:hover {
+      background: var(--card-hover);
+    }
+
+    .upd-card.status-done { border-left-color: #43b581; }
+    .upd-card.status-in_progress { border-left-color: #f1c40f; }
+    .upd-card.status-not_done { border-left-color: #6a6a6a; }
+
+    .upd-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .upd-card-preview {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 12px;
+      word-break: break-word;
+    }
+
+    .upd-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .badge-upd-done { background: rgba(67, 181, 129, 0.15); color: #43b581; }
+    .badge-upd-in_progress { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+    .badge-upd-not_done { background: rgba(106, 106, 106, 0.2); color: #a0a0a0; }
+
+    .upd-status-switch {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .upd-status-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #111;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .upd-status-btn.selected-done {
+      background: rgba(67, 181, 129, 0.2);
+      border-color: #43b581;
+      color: #43b581;
+    }
+
+    .upd-status-btn.selected-in_progress {
+      background: rgba(241, 196, 15, 0.2);
+      border-color: #f1c40f;
+      color: #f1c40f;
+    }
+
+    .upd-status-btn.selected-not_done {
+      background: rgba(106, 106, 106, 0.2);
+      border-color: #a0a0a0;
+      color: #e0e0e0;
+    }
+
     /* ПЛАВАЮЩАЯ КНОПКА ПАЛИТРЫ (FAB) */
     .fab-theme {
       position: fixed;
@@ -1026,13 +1213,16 @@
           <button class="nav-btn" data-tab="messages">Сообщения</button>
           <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn" data-tab="notes">Заметки</button>
-          <button class="nav-btn" data-tab="gdz">ГДЗ</button>
+          <button class="nav-btn" data-tab="gdz">📚 ГДЗ</button>
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
-          <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="periodic">🧪 Таблица Менделеева</button>
         </div>
-        <button id="logout-btn" class="btn-logout">Выйти</button>
+        <div class="header-right">
+          <button id="logout-btn" class="btn-logout">Выйти</button>
+          <button id="updates-btn" class="btn-updates" data-count="0" title="Обновления">📋</button>
+        </div>
       </div>
     </header>
 
@@ -1300,7 +1490,13 @@
       gdzSearchLoading: false,
       periodicSearch: '',
       periodicSelectedElement: null,
-      chemistryData: null
+      chemistryData: null,
+      updates: [],
+      updatesSha: null,
+      updatesLoaded: false,
+      showUpdates: false,
+      editingUpdateId: null,
+      updateStatusFilter: 'all'
     };
 
     function initThemeColor() {
@@ -1529,7 +1725,7 @@
     }
 
     /* =========================================================
-       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON
+       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON
        ========================================================= */
     async function loadData() {
       const app = document.getElementById('app');
@@ -1631,6 +1827,117 @@
       }
     }
 
+    function updateBadgeCount() {
+      const btn = document.getElementById('updates-btn');
+      if (!btn) return;
+      const count = (state.updates || []).filter(u => u.status === 'in_progress').length;
+      btn.setAttribute('data-count', String(count));
+    }
+
+    async function loadUpdates() {
+      if (state.updatesLoaded) return state.updates;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.updates = [];
+          state.updatesSha = null;
+          state.updatesLoaded = true;
+          updateBadgeCount();
+          return state.updates;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.updatesSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.updates = Array.isArray(data.updates) ? data.updates : (Array.isArray(data) ? data : []);
+        state.updatesLoaded = true;
+        updateBadgeCount();
+        return state.updates;
+      } catch (err) {
+        console.warn("Ошибка загрузки updates.json:", err);
+        state.updates = [];
+        state.updatesLoaded = true;
+        updateBadgeCount();
+        return null;
+      }
+    }
+
+    async function saveUpdatesToGitHub() {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json?_=${Date.now()}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
+
+          let sha = state.updatesSha;
+          if (getRes.ok) {
+            const jsonMeta = await getRes.json();
+            sha = jsonMeta.sha;
+            state.updatesSha = sha;
+          }
+
+          const exportData = {
+            updates: state.updates
+          };
+
+          const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+          const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json`, {
+            method: 'PUT',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Update updates.json via dashboard [skip ci]`,
+              content: contentBase64,
+              sha: sha
+            })
+          });
+
+          if (putRes.status === 409 && attempt < maxRetries - 1) {
+            attempt++;
+            await new Promise(r => setTimeout(r, 400));
+            continue;
+          }
+
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            throw new Error(errData.message || 'Ошибка сохранения updates.json');
+          }
+
+          const putSuccess = await putRes.json();
+          state.updatesSha = putSuccess.content.sha;
+          updateBadgeCount();
+          return;
+        } catch (err) {
+          if (attempt >= maxRetries - 1) {
+            alert(`Ошибка сохранения обновлений: ${err.message}`);
+            return;
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    }
+
     /* =========================================================
        АВТОРИЗАЦИЯ
        ========================================================= */
@@ -1646,6 +1953,7 @@
         loginScreen.style.display = 'none';
         dashboardScreen.style.display = 'block';
         loadData();
+        loadUpdates();
       } else {
         loginScreen.style.display = 'flex';
         dashboardScreen.style.display = 'none';
@@ -1667,7 +1975,19 @@
 
     logoutBtn.addEventListener('click', () => {
       localStorage.removeItem('admin_auth');
+      state.showUpdates = false;
+      state.editingUpdateId = null;
       checkAuth();
+    });
+
+    const updatesBtn = document.getElementById('updates-btn');
+    updatesBtn.addEventListener('click', async () => {
+      state.showUpdates = true;
+      state.editingUpdateId = null;
+      if (!state.updatesLoaded) {
+        await loadUpdates();
+      }
+      render();
     });
 
     /* =========================================================
@@ -1680,6 +2000,8 @@
         state.currentTab = btn.getAttribute('data-tab');
         state.selectedUserId = null;
         state.editingNoteId = null;
+        state.showUpdates = false;
+        state.editingUpdateId = null;
 
         if (state.currentTab === 'gdz' && !state.gdzSubjects) {
           state.gdzSearchLoading = true;
@@ -1832,6 +2154,18 @@
     function render() {
       const header = document.getElementById('main-header');
 
+      // Экран обновлений
+      if (state.showUpdates) {
+        if (state.editingUpdateId !== null) {
+          header.style.display = 'none';
+          renderUpdateEditor(state.editingUpdateId);
+        } else {
+          header.style.display = 'none';
+          renderUpdatesScreen();
+        }
+        return;
+      }
+
       if (state.editingNoteId !== null) {
         header.style.display = 'none';
         renderNoteEditor(state.editingNoteId);
@@ -1856,6 +2190,255 @@
         case 'valencies': renderValencies(); break;
         case 'periodic': renderPeriodic(); break;
       }
+    }
+
+    /* =========================================================
+       РАЗДЕЛ: 📋 ОБНОВЛЕНИЯ
+       ========================================================= */
+    const UPDATE_STATUS_NAMES = {
+      done: 'Сделано',
+      in_progress: 'В процессе',
+      not_done: 'Не сделано'
+    };
+
+    function renderUpdatesScreen() {
+      const allUpdates = state.updates || [];
+      const countDone = allUpdates.filter(u => u.status === 'done').length;
+      const countInProgress = allUpdates.filter(u => u.status === 'in_progress').length;
+      const countNotDone = allUpdates.filter(u => u.status === 'not_done').length;
+
+      let filtered = allUpdates;
+      if (state.updateStatusFilter !== 'all') {
+        filtered = allUpdates.filter(u => u.status === state.updateStatusFilter);
+      }
+
+      // Сортировка: новые сверху
+      filtered = [...filtered].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+      let contentHtml = '';
+      if (filtered.length === 0) {
+        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет записей об обновлениях</div>`;
+      } else {
+        contentHtml = filtered.map(u => {
+          const statusKey = u.status || 'not_done';
+          const statusText = UPDATE_STATUS_NAMES[statusKey] || 'Не сделано';
+          const dateText = u.last_modified && u.last_modified !== u.created_at
+            ? `Изм: ${formatDate(u.last_modified)}`
+            : `Созд: ${formatDate(u.created_at)}`;
+
+          return `
+            <div class="upd-card status-${statusKey}" onclick="openUpdateEditor(${u.id})">
+              <div>
+                <div class="upd-card-title">${escapeHtml(u.title || 'Без названия')}</div>
+                <div class="upd-card-preview">${escapeHtml(u.text || '')}</div>
+              </div>
+              <div class="upd-card-footer">
+                <span 
+                  class="badge badge-upd-${statusKey}" 
+                  onclick="event.stopPropagation(); cycleUpdateStatus(${u.id})" 
+                  title="Нажмите, чтобы изменить статус">
+                  ${statusText} ⟳
+                </span>
+                <span class="sub-text" style="font-size: 11px;">${dateText}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="closeUpdatesScreen()">← Назад</button>
+              <span class="card-title">📋 Обновления</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="openUpdateEditor('new')">+ Добавить обновление</button>
+            </div>
+          </div>
+
+          <div class="upd-filters">
+            <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateFilter('all')">
+              Все (${allUpdates.length})
+            </button>
+            <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateFilter('done')">
+              ✅ Сделано (${countDone})
+            </button>
+            <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateFilter('in_progress')">
+              🔄 В процессе (${countInProgress})
+            </button>
+            <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateFilter('not_done')">
+              ⏳ Не сделано (${countNotDone})
+            </button>
+          </div>
+
+          <div class="upd-grid">${contentHtml}</div>
+        </div>
+      `;
+    }
+
+    function closeUpdatesScreen() {
+      state.showUpdates = false;
+      state.editingUpdateId = null;
+      render();
+    }
+
+    function setUpdateFilter(filterKey) {
+      state.updateStatusFilter = filterKey;
+      renderUpdatesScreen();
+    }
+
+    async function cycleUpdateStatus(updateId) {
+      const upd = (state.updates || []).find(u => u.id === updateId);
+      if (!upd) return;
+
+      const order = ['not_done', 'in_progress', 'done'];
+      const currentIdx = order.indexOf(upd.status || 'not_done');
+      const nextStatus = order[(currentIdx + 1) % order.length];
+
+      upd.status = nextStatus;
+      upd.last_modified = new Date().toISOString();
+
+      renderUpdatesScreen();
+      await saveUpdatesToGitHub();
+    }
+
+    function openUpdateEditor(updateId) {
+      state.editingUpdateId = updateId;
+      render();
+    }
+
+    function closeUpdateEditor() {
+      state.editingUpdateId = null;
+      render();
+    }
+
+    let tempEditorStatus = 'not_done';
+
+    function renderUpdateEditor(updateId) {
+      const isNew = updateId === 'new';
+      const upd = isNew
+        ? { title: '', text: '', status: 'not_done' }
+        : state.updates.find(u => u.id === updateId);
+
+      if (!isNew && !upd) {
+        closeUpdateEditor();
+        return;
+      }
+
+      tempEditorStatus = upd.status || 'not_done';
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeUpdateEditor()">← Назад</button>
+            <span class="sub-text">${isNew ? 'Новое обновление' : 'Редактирование обновления'}</span>
+          </div>
+          <div class="note-editor">
+            <input type="text" id="upd-title" class="note-input-title" placeholder="Заголовок обновления..." value="${escapeHtml(upd.title || '')}">
+            
+            <div class="upd-status-switch">
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'not_done' ? 'selected-not_done' : ''}" 
+                onclick="setEditorStatus('not_done')">
+                ⏳ Не сделано
+              </button>
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'in_progress' ? 'selected-in_progress' : ''}" 
+                onclick="setEditorStatus('in_progress')">
+                🔄 В процессе
+              </button>
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'done' ? 'selected-done' : ''}" 
+                onclick="setEditorStatus('done')">
+                ✅ Сделано
+              </button>
+            </div>
+
+            <textarea id="upd-text" class="note-input-text" placeholder="Описание задачи или обновления...">${escapeHtml(upd.text || '')}</textarea>
+            
+            <div class="note-editor-toolbar">
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" onclick="saveUpdate(${isNew ? "'new'" : upd.id})">💾 Сохранить</button>
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteUpdate(${upd.id})">🗑 Удалить</button>` : ''}
+              </div>
+              <div class="sub-text">
+                ${!isNew ? `Создано: ${formatDate(upd.created_at)} ${upd.last_modified ? ' | Изменено: ' + formatDate(upd.last_modified) : ''}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setEditorStatus(newStatus) {
+      tempEditorStatus = newStatus;
+      document.querySelectorAll('.upd-status-btn').forEach(btn => {
+        btn.classList.remove('selected-not_done', 'selected-in_progress', 'selected-done');
+      });
+      const selectedBtn = Array.from(document.querySelectorAll('.upd-status-btn')).find(b => b.textContent.includes(
+        newStatus === 'done' ? 'Сделано' : (newStatus === 'in_progress' ? 'В процессе' : 'Не сделано')
+      ));
+      if (selectedBtn) {
+        selectedBtn.classList.add(`selected-${newStatus}`);
+      }
+    }
+
+    async function saveUpdate(updateId) {
+      const title = document.getElementById('upd-title').value.trim();
+      const text = document.getElementById('upd-text').value.trim();
+
+      if (!title && !text) {
+        alert('Пустая запись не сохраняется');
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      if (updateId === 'new') {
+        const nextId = (state.updates || []).length > 0 ? Math.max(...state.updates.map(u => u.id || 0)) + 1 : 1;
+        state.updates.push({
+          id: nextId,
+          title: title,
+          text: text,
+          status: tempEditorStatus,
+          created_at: now,
+          last_modified: now
+        });
+      } else {
+        const upd = state.updates.find(u => u.id === updateId);
+        if (upd) {
+          upd.title = title;
+          upd.text = text;
+          upd.status = tempEditorStatus;
+          upd.last_modified = now;
+        }
+      }
+
+      closeUpdateEditor();
+      await saveUpdatesToGitHub();
+    }
+
+    function confirmDeleteUpdate(updateId) {
+      openModal(
+        'Удалить обновление?',
+        'Вы уверены, что хотите удалить эту запись без возможности восстановления?',
+        `
+          <button class="btn-refresh" onclick="closeModal()">Нет</button>
+          <button class="btn-danger" onclick="deleteUpdate(${updateId})">Да, удалить</button>
+        `
+      );
+    }
+
+    async function deleteUpdate(updateId) {
+      state.updates = state.updates.filter(u => u.id !== updateId);
+      closeModal();
+      closeUpdateEditor();
+      await saveUpdatesToGitHub();
     }
 
     /* =========================================================
@@ -2301,7 +2884,6 @@
       let cardHeaderHtml = '';
       let cardBodyHtml = '';
 
-      // СОСТОЯНИЕ A: Список предметов
       if (state.gdzSelectedSubject === null) {
         cardHeaderHtml = `
           <div>
@@ -2344,9 +2926,7 @@
 
           cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
         }
-      } 
-      // СОСТОЯНИЕ B: Список разделов предмета
-      else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
+      } else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
         const subj = subjects[state.gdzSelectedSubject];
         const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
         const chapterLabel = subj && subj.chapter_label ? ` → ${escapeHtml(subj.chapter_label)}` : '';
@@ -2375,9 +2955,7 @@
 
           cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
         }
-      } 
-      // СОСТОЯНИЕ C: Сетка номеров и решение
-      else {
+      } else {
         const subj = subjects[state.gdzSelectedSubject];
         const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
         const chapter = state.gdzSelectedChapter;
@@ -2702,7 +3280,6 @@
        РАЗДЕЛ 8: 🧪 ТАБЛИЦА МЕНДЕЛЕЕВА
        ========================================================= */
     function renderPeriodic() {
-      // 18 колонок × 6 периодов
       let gridCellsHtml = '';
       for (let p = 1; p <= 6; p++) {
         for (let g = 1; g <= 18; g++) {
@@ -2760,7 +3337,6 @@
       const valText = valObj ? valObj.val : '—';
       const typeText = ELEMENT_TYPE_NAMES[el.type] || el.type;
 
-      // Загрузка chemistry.json
       const chem = await loadChemistry();
       let solubilityHtml = '';
 
