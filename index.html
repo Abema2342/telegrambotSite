@@ -1021,6 +1021,19 @@
       gap: 16px;
     }
 
+    .useful-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .useful-divider {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: 16px 0;
+    }
+
     /* ЭКРАН ОБНОВЛЕНИЙ */
     .upd-filters {
       display: flex;
@@ -1773,8 +1786,44 @@
 
     function renderSectionContentView(content) {
       const escaped = escapeHtml(content || '');
-      const html = escaped.replace(/\$([^$]+)\$/g, '<span class="formula-inline">$1</span>');
-      return html.split('\n').map(line => `<p>${line}</p>`).join('');
+      const withFormulas = escaped.replace(/\$([^$]+)\$/g, '<span class="formula-inline">$1</span>');
+      return withFormulas.split('\n').map(line => {
+        if (line.trim() === '---') {
+          return '<hr class="useful-divider">';
+        }
+        return `<p>${line}</p>`;
+      }).join('');
+    }
+
+    function insertAtCursor(textarea, text) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      textarea.value = before + text + after;
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+      const sectionId = state.usefulEditingSectionId;
+      updateSectionContent(sectionId, textarea.value);
+    }
+
+    function insertFormula() {
+      const ta = document.getElementById('useful-edit-content');
+      if (!ta) return;
+      insertAtCursor(ta, '$E=mc^2$');
+    }
+
+    function insertDivider() {
+      const ta = document.getElementById('useful-edit-content');
+      if (!ta) return;
+      insertAtCursor(ta, '\n---\n');
+    }
+
+    function updateSectionContent(sectionId, value) {
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (sec) sec.content = value;
     }
 
     function utf8ToBase64(str) {
@@ -2551,7 +2600,7 @@
             </div>
           `;
         } 
-        // 2B. Редактирование конкретного параграфа
+        // 2B. Редактирование конкретного параграфа (Состояние C)
         else if (state.usefulEditingSectionId !== null) {
           const sec = (subj.sections || []).find(s => s.id === state.usefulEditingSectionId);
           if (!sec) {
@@ -2570,7 +2619,13 @@
           cardBodyHtml = `
             <div class="useful-edit-form">
               <input type="text" id="edit-section-title" class="note-input-title" placeholder="Название параграфа..." value="${escapeHtml(sec.title || '')}">
-              <textarea id="edit-section-content" class="note-input-text" placeholder="Пиши текст. Формулы в $долларах$, например $E=mc^2$.">${escapeHtml(sec.content || '')}</textarea>
+              <div class="useful-toolbar">
+                <button type="button" class="btn-refresh" onclick="insertFormula()">+ Формула</button>
+                <button type="button" class="btn-refresh" onclick="insertDivider()">+ Разделитель</button>
+              </div>
+              <textarea id="useful-edit-content" class="note-input-text"
+                        placeholder="Пиши текст. Формулы в $долларах$, разделитель — три дефиса ---."
+                        oninput="updateSectionContent(${sec.id}, this.value)">${escapeHtml(sec.content || '')}</textarea>
               <div class="note-editor-toolbar">
                 <div style="display: flex; gap: 8px;">
                   <button class="btn-primary" onclick="saveSectionEdit(${sec.id})">Сохранить</button>
@@ -2580,7 +2635,7 @@
             </div>
           `;
         } 
-        // 2C. Просмотр конкретного параграфа (полный текст)
+        // 2C. Просмотр конкретного параграфа (Состояние B, режим чтения)
         else if (state.usefulSelectedSectionId !== null) {
           const sec = (subj.sections || []).find(s => s.id === state.usefulSelectedSectionId);
           if (!sec) {
@@ -2598,9 +2653,6 @@
               <button class="back-btn" onclick="backToSectionsList()">← Назад к параграфам</button>
               <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
             </div>
-            <div class="header-actions">
-              <button class="btn-primary" onclick="startEditSection(${sec.id})">Редактировать</button>
-            </div>
           `;
 
           cardBodyHtml = `
@@ -2617,7 +2669,7 @@
             </div>
           `;
         } 
-        // 2D. Сетка параграфов предмета (режим чтения по умолчанию)
+        // 2D. Сетка параграфов предмета (Состояние A, режим чтения по умолчанию)
         else {
           cardHeaderHtml = `
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -2724,7 +2776,7 @@
 
     async function saveSectionEdit(id) {
       const titleInput = document.getElementById('edit-section-title');
-      const contentInput = document.getElementById('edit-section-content');
+      const contentInput = document.getElementById('useful-edit-content');
       if (!titleInput || !contentInput) return;
 
       const title = titleInput.value.trim();
@@ -2849,7 +2901,7 @@
 
       const byStatus = (state.updateStatusFilter === 'all')
         ? rawUpdates
-        : rawUpdates.filter(u => u.status === state.updateStatusFilter);
+        : rawUpdates.filter(u => getCategory(u) === state.updateStatusFilter);
 
       const categoryCounts = {
         all: byStatus.length,
