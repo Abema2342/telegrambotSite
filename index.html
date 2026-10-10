@@ -182,6 +182,13 @@
       margin-left: 8px;
       transition: background-color 0.15s, border-color 0.15s, color 0.15s;
       position: relative;
+      padding: 0;
+    }
+
+    .btn-updates svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
     }
 
     .btn-updates:hover {
@@ -278,7 +285,7 @@
       min-width: 0;
     }
 
-    /* Адаптив: на узких экранах карточки уходят вниз */
+    /* Адаптив */
     @media (max-width: 1400px) {
       .layout-3col {
         grid-template-columns: 1fr;
@@ -621,8 +628,12 @@
     }
 
     .note-pin-badge {
-      font-size: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-color);
       flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .note-card-preview {
@@ -1070,7 +1081,7 @@
       background: var(--accent-color);
       color: #fff;
       border: none;
-      font-size: 22px;
+      font-size: 20px;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       z-index: 900;
@@ -1078,6 +1089,13 @@
       align-items: center;
       justify-content: center;
       transition: transform 0.2s, background-color 0.2s;
+      padding: 0;
+    }
+
+    .fab-theme svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
     }
 
     .fab-theme:hover {
@@ -1241,15 +1259,17 @@
           <button class="nav-btn" data-tab="messages">Сообщения</button>
           <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn" data-tab="notes">Заметки</button>
-          <button class="nav-btn" data-tab="gdz">📚 ГДЗ</button>
+          <button class="nav-btn" data-tab="gdz">ГДЗ</button>
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
-          <button class="nav-btn" data-tab="periodic">🧪 Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
         </div>
         <div class="header-right">
           <button id="logout-btn" class="btn-logout">Выйти</button>
-          <button id="updates-btn" class="btn-updates" data-count="0" title="Обновления">📋</button>
+          <button id="updates-btn" class="btn-updates" data-count="0" title="Обновления">
+            <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+          </button>
         </div>
       </div>
     </header>
@@ -1261,7 +1281,9 @@
   </div>
 
   <!-- ПЛАВАЮЩАЯ КНОПКА И ПАНЕЛЬ ВЫБОРА ТЕМЫ -->
-  <button class="fab-theme" id="fab-theme-btn" title="Выбрать цвет темы">🎨</button>
+  <button class="fab-theme" id="fab-theme-btn" title="Выбрать цвет темы">
+    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.58 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-4.5 9c-.83 0-1.5-.67-1.5-1.5S6.67 9 7.5 9s1.5.67 1.5 1.5S8.33 12 7.5 12zm3-4c-.83 0-1.5-.67-1.5-1.5S9.67 5 10.5 5s1.5.67 1.5 1.5S11.33 8 10.5 8zm3 0c-.83 0-1.5-.67-1.5-1.5S12.67 5 13.5 5s1.5.67 1.5 1.5S14.33 8 13.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S15.67 9 16.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+  </button>
   <div class="fab-panel" id="fab-theme-panel"></div>
 
   <!-- Универсальное модальное окно -->
@@ -1566,14 +1588,14 @@
     });
 
     const mediaTypeConfig = {
-      photo: { label: 'фото', emoji: '🖼', class: 'badge-media-photo' },
-      sticker: { label: 'стикер', emoji: '🎨', class: 'badge-media-sticker' },
-      animation: { label: 'гифка', emoji: '🎞', class: 'badge-media-animation' }
+      photo: { label: 'фото', class: 'badge-media-photo' },
+      sticker: { label: 'стикер', class: 'badge-media-sticker' },
+      animation: { label: 'гифка', class: 'badge-media-animation' }
     };
 
     function getMediaBadgeHtml(type) {
-      const conf = mediaTypeConfig[type] || { label: type || 'медиа', emoji: '📎', class: 'badge-media-default' };
-      return `<span class="badge ${conf.class}">${conf.emoji} ${escapeHtml(conf.label)}</span>`;
+      const conf = mediaTypeConfig[type] || { label: type || 'медиа', class: 'badge-media-default' };
+      return `<span class="badge ${conf.class}">${escapeHtml(conf.label)}</span>`;
     }
 
     function parseMediaFromText(text) {
@@ -2099,7 +2121,7 @@
 
       return `
         <div class="card-widget">
-          <div class="card-widget-header">🏆 Топ пользователь</div>
+          <div class="card-widget-header">Топ пользователь</div>
           <div class="card-widget-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
             <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--accent-color); color: #fff; font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; border: 2px solid var(--border-color); flex-shrink: 0;">
               ${escapeHtml(topLetter)}
@@ -2113,12 +2135,12 @@
         </div>
 
         <div class="card-widget">
-          <div class="card-widget-header">📊 Активность сегодня</div>
+          <div class="card-widget-header">Активность сегодня</div>
           <div class="card-widget-body" style="display: flex; flex-direction: column; justify-content: center;">
-            <div class="widget-row"><span class="label">💬 Сообщений:</span><span class="value">${todayMessages}</span></div>
-            <div class="widget-row"><span class="label">👤 Новых юзеров:</span><span class="value">${todayUsers}</span></div>
-            <div class="widget-row"><span class="label">🖼 Медиа:</span><span class="value">${todayMedia}</span></div>
-            <div class="widget-row"><span class="label">📝 Заметок:</span><span class="value">${todayNotes}</span></div>
+            <div class="widget-row"><span class="label">Сообщений:</span><span class="value">${todayMessages}</span></div>
+            <div class="widget-row"><span class="label">Новых юзеров:</span><span class="value">${todayUsers}</span></div>
+            <div class="widget-row"><span class="label">Медиа:</span><span class="value">${todayMedia}</span></div>
+            <div class="widget-row"><span class="label">Заметок:</span><span class="value">${todayNotes}</span></div>
           </div>
         </div>
       `;
@@ -2169,12 +2191,12 @@
 
       return `
         <div class="card-widget">
-          <div class="card-widget-header">💬 Последние сообщения</div>
+          <div class="card-widget-header">Последние сообщения</div>
           <div class="card-widget-body">${lastMessagesHtml}</div>
         </div>
 
         <div class="card-widget">
-          <div class="card-widget-header">🛡 Последние действия</div>
+          <div class="card-widget-header">Последние действия</div>
           <div class="card-widget-body">${lastAuditHtml}</div>
         </div>
       `;
@@ -2222,7 +2244,7 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ: 📋 ОБНОВЛЕНИЯ
+       РАЗДЕЛ: ОБНОВЛЕНИЯ
        ========================================================= */
     const UPDATE_STATUS_NAMES = {
       done: 'Сделано',
@@ -2232,11 +2254,8 @@
 
     function renderUpdatesScreen() {
       const rawUpdates = state.updates || [];
-
-      // Вспомогательная функция определения категории с поддержкой обратной совместимости
       const getCategory = (u) => (u && u.category) ? u.category : 'other';
 
-      // 1. Для счётчиков в статусных фильтрах — фильтруем по категории
       const byCategory = (state.updateCategoryFilter === 'all')
         ? rawUpdates
         : rawUpdates.filter(u => getCategory(u) === state.updateCategoryFilter);
@@ -2248,7 +2267,6 @@
         not_done: byCategory.filter(u => u.status === 'not_done').length
       };
 
-      // 2. Для счётчиков в категорийных фильтрах — фильтруем по статусу
       const byStatus = (state.updateStatusFilter === 'all')
         ? rawUpdates
         : rawUpdates.filter(u => u.status === state.updateStatusFilter);
@@ -2260,7 +2278,6 @@
         other: byStatus.filter(u => getCategory(u) === 'other').length
       };
 
-      // 3. Итоговая двойная фильтрация
       let filtered = rawUpdates;
       if (state.updateStatusFilter !== 'all') {
         filtered = filtered.filter(u => u.status === state.updateStatusFilter);
@@ -2269,7 +2286,6 @@
         filtered = filtered.filter(u => getCategory(u) === state.updateCategoryFilter);
       }
 
-      // Сортировка: новые сверху
       filtered = [...filtered].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
       let contentHtml = '';
@@ -2308,7 +2324,7 @@
           <div class="card-header">
             <div style="display: flex; align-items: center; gap: 10px;">
               <button class="back-btn" onclick="closeUpdatesScreen()">← Назад</button>
-              <span class="card-title">📋 Обновления</span>
+              <span class="card-title">Обновления</span>
             </div>
             <div class="header-actions">
               <button class="btn-primary" onclick="openUpdateEditor('new')">+ Добавить обновление</button>
@@ -2322,13 +2338,13 @@
                 Все (${statusCounts.all})
               </button>
               <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateStatusFilter('done')">
-                ✅ Сделано (${statusCounts.done})
+                Сделано (${statusCounts.done})
               </button>
               <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateStatusFilter('in_progress')">
-                🔄 В процессе (${statusCounts.in_progress})
+                В процессе (${statusCounts.in_progress})
               </button>
               <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateStatusFilter('not_done')">
-                ⏳ Не сделано (${statusCounts.not_done})
+                Не сделано (${statusCounts.not_done})
               </button>
             </div>
 
@@ -2338,13 +2354,13 @@
                 Все (${categoryCounts.all})
               </button>
               <button class="upd-filter-btn ${state.updateCategoryFilter === 'bot' ? 'active' : ''}" onclick="setUpdateCategoryFilter('bot')">
-                🤖 Бот (${categoryCounts.bot})
+                Бот (${categoryCounts.bot})
               </button>
               <button class="upd-filter-btn ${state.updateCategoryFilter === 'site' ? 'active' : ''}" onclick="setUpdateCategoryFilter('site')">
-                🌐 Сайт (${categoryCounts.site})
+                Сайт (${categoryCounts.site})
               </button>
               <button class="upd-filter-btn ${state.updateCategoryFilter === 'other' ? 'active' : ''}" onclick="setUpdateCategoryFilter('other')">
-                📦 Прочее (${categoryCounts.other})
+                Прочее (${categoryCounts.other})
               </button>
             </div>
           </div>
@@ -2426,19 +2442,19 @@
                 type="button" 
                 class="upd-status-btn ${tempEditorStatus === 'not_done' ? 'selected-not_done' : ''}" 
                 onclick="setEditorStatus('not_done')">
-                ⏳ Не сделано
+                Не сделано
               </button>
               <button 
                 type="button" 
                 class="upd-status-btn ${tempEditorStatus === 'in_progress' ? 'selected-in_progress' : ''}" 
                 onclick="setEditorStatus('in_progress')">
-                🔄 В процессе
+                В процессе
               </button>
               <button 
                 type="button" 
                 class="upd-status-btn ${tempEditorStatus === 'done' ? 'selected-done' : ''}" 
                 onclick="setEditorStatus('done')">
-                ✅ Сделано
+                Сделано
               </button>
             </div>
 
@@ -2449,19 +2465,19 @@
                 type="button" 
                 class="btn-cat ${tempEditorCategory === 'bot' ? 'active' : ''}" 
                 onclick="setEditorCategory('bot')">
-                🤖 Бот
+                Бот
               </button>
               <button 
                 type="button" 
                 class="btn-cat ${tempEditorCategory === 'site' ? 'active' : ''}" 
                 onclick="setEditorCategory('site')">
-                🌐 Сайт
+                Сайт
               </button>
               <button 
                 type="button" 
                 class="btn-cat ${tempEditorCategory === 'other' ? 'active' : ''}" 
                 onclick="setEditorCategory('other')">
-                📦 Прочее
+                Прочее
               </button>
             </div>
 
@@ -2469,8 +2485,8 @@
             
             <div class="note-editor-toolbar">
               <div style="display: flex; gap: 8px;">
-                <button class="btn-primary" onclick="saveUpdate(${isNew ? "'new'" : upd.id})">💾 Сохранить</button>
-                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteUpdate(${upd.id})">🗑 Удалить</button>` : ''}
+                <button class="btn-primary" onclick="saveUpdate(${isNew ? "'new'" : upd.id})">Сохранить</button>
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteUpdate(${upd.id})">Удалить</button>` : ''}
               </div>
               <div class="sub-text">
                 ${!isNew ? `Создано: ${formatDate(upd.created_at)} ${upd.last_modified ? ' | Изменено: ' + formatDate(upd.last_modified) : ''}` : ''}
@@ -2486,7 +2502,7 @@
       document.querySelectorAll('.upd-status-btn').forEach(btn => {
         btn.classList.remove('selected-not_done', 'selected-in_progress', 'selected-done');
       });
-      const selectedBtn = Array.from(document.querySelectorAll('.upd-status-btn')).find(b => b.textContent.includes(
+      const selectedBtn = Array.from(document.querySelectorAll('.upd-status-btn')).find(b => b.textContent.trim() === (
         newStatus === 'done' ? 'Сделано' : (newStatus === 'in_progress' ? 'В процессе' : 'Не сделано')
       ));
       if (selectedBtn) {
@@ -2500,7 +2516,7 @@
         btn.classList.remove('active');
       });
       const targetLabel = newCat === 'bot' ? 'Бот' : (newCat === 'site' ? 'Сайт' : 'Прочее');
-      const selectedBtn = Array.from(document.querySelectorAll('.btn-cat')).find(b => b.textContent.includes(targetLabel));
+      const selectedBtn = Array.from(document.querySelectorAll('.btn-cat')).find(b => b.textContent.trim() === targetLabel);
       if (selectedBtn) {
         selectedBtn.classList.add('active');
       }
@@ -2589,7 +2605,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${userIds.length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
               <div class="table-container">
@@ -2733,7 +2749,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.messages || []).length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
               <div class="table-container">
@@ -2766,7 +2782,7 @@
             <td>
               <div style="display: flex; gap: 6px;">
                 <a href="${rawUrl}" target="_blank" class="btn-action">Открыть</a>
-                <button class="btn-action btn-action-danger" onclick="deleteMediaFromGitHub('${escapeHtml(m.file_name)}', ${m.id})">🗑</button>
+                <button class="btn-action btn-action-danger" onclick="deleteMediaFromGitHub('${escapeHtml(m.file_name)}', ${m.id})">Удалить</button>
               </div>
             </td>
           </tr>
@@ -2784,7 +2800,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
               <div class="table-container">
@@ -2819,7 +2835,7 @@
             <div>
               <div class="note-card-header">
                 <span class="note-card-title">${escapeHtml(n.title || 'Без названия')}</span>
-                ${n.pinned ? '<span class="note-pin-badge" title="Закреплено">📌</span>' : ''}
+                ${n.pinned ? '<span class="note-pin-badge" title="Закреплено">Закреплено</span>' : ''}
               </div>
               <div class="note-card-preview">${escapeHtml(n.text || '')}</div>
             </div>
@@ -2843,7 +2859,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${sortedNotes.length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                   <button class="btn-primary" onclick="openNoteEditor('new')">+ Создать заметку</button>
                 </div>
               </div>
@@ -2885,11 +2901,11 @@
             <textarea id="note-text" class="note-input-text" placeholder="Текст заметки...">${escapeHtml(note.text || '')}</textarea>
             <div class="note-editor-toolbar">
               <div style="display: flex; gap: 8px;">
-                <button class="btn-primary" onclick="saveNote(${isNew ? "'new'" : note.id})">💾 Сохранить</button>
+                <button class="btn-primary" onclick="saveNote(${isNew ? "'new'" : note.id})">Сохранить</button>
                 <button class="btn-refresh" onclick="togglePinNote(${isNew ? "'new'" : note.id})">
-                  ${note.pinned ? '📍 Открепить' : '📌 Закрепить'}
+                  ${note.pinned ? 'Открепить' : 'Закрепить'}
                 </button>
-                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteNote(${note.id})">🗑 Удалить</button>` : ''}
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteNote(${note.id})">Удалить</button>` : ''}
               </div>
               <div class="sub-text">
                 ${!isNew ? `Создано: ${formatDate(note.created_at)} ${note.last_modified ? ' | Изменено: ' + formatDate(note.last_modified) : ''}` : ''}
@@ -2966,7 +2982,7 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ: 📚 ГДЗ
+       РАЗДЕЛ: ГДЗ
        ========================================================= */
     function renderGdz() {
       if (state.gdzSearchLoading) {
@@ -3007,7 +3023,7 @@
       if (state.gdzSelectedSubject === null) {
         cardHeaderHtml = `
           <div>
-            <span class="card-title">📚 ГДЗ</span>
+            <span class="card-title">ГДЗ</span>
             <span class="sub-text" style="margin-left: 8px;">Выбери предмет</span>
           </div>
         `;
@@ -3253,7 +3269,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.admins || []).length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
               <div class="table-container">
@@ -3277,7 +3293,7 @@
         'ban': 'забанил',
         'unban': 'разбанил',
         'add_admin': 'назначил админом',
-        'del_admin': 'снял с поста админа',
+        'del_admin': 'снял с админа',
         'del_media': 'удалил медиа',
         'del_user_media': 'удалил все медиа'
       };
@@ -3305,7 +3321,7 @@
                   <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.audit || []).length}</span>
                 </div>
                 <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">🔄 Обновить</button>
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
               ${rows || '<div class="empty-state">Записей аудита нет</div>'}
@@ -3349,7 +3365,7 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <span class="card-title">⚗️ Валентности</span>
+                  <span class="card-title">Валентности</span>
                   <span class="sub-text" style="margin-left: 8px;">Введи символ химического элемента или название</span>
                 </div>
                 <div class="header-actions">
@@ -3397,7 +3413,7 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ 8: 🧪 ТАБЛИЦА МЕНДЕЛЕЕВА
+       РАЗДЕЛ 8: ТАБЛИЦА МЕНДЕЛЕЕВА
        ========================================================= */
     function renderPeriodic() {
       let gridCellsHtml = '';
@@ -3425,7 +3441,7 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <span class="card-title">🧪 Таблица Менделеева</span>
+                  <span class="card-title">Таблица Менделеева</span>
                   <span class="sub-text" style="margin-left: 8px;">Нажми на элемент, чтобы узнать подробнее</span>
                 </div>
               </div>
