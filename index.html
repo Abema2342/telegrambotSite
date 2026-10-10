@@ -905,6 +905,147 @@
       flex-shrink: 0;
     }
 
+    /* РАЗДЕЛ: ПОЛЕЗНОЕ */
+    .useful-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      padding: 16px;
+    }
+
+    .useful-section-header {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .useful-section-title {
+      flex: 1;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-main);
+      font-size: 16px;
+      font-weight: 600;
+      padding: 6px 8px;
+      border-radius: 4px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .useful-section-title:hover,
+    .useful-section-title:focus {
+      background: #111;
+      border-color: var(--border-color);
+    }
+
+    .useful-section-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .useful-section-actions button {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .useful-section-actions button:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+
+    .useful-section-actions .btn-danger:hover {
+      background: rgba(240, 71, 71, 0.15);
+      color: var(--status-banned);
+    }
+
+    .useful-block {
+      position: relative;
+      margin-bottom: 8px;
+      padding-right: 90px;
+    }
+
+    .useful-block-actions {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .useful-block:hover .useful-block-actions {
+      opacity: 1;
+    }
+
+    .useful-block-actions button {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .formula-box {
+      display: block;
+      width: 100%;
+      background: #111;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 14px;
+      color: #e8e8e8;
+      overflow-x: auto;
+      outline: none;
+    }
+
+    .formula-box:focus {
+      border-color: var(--accent-color);
+    }
+
+    .divider-block {
+      height: 1px;
+      background: var(--border-color);
+      margin: 12px 0;
+    }
+
+    .useful-section-footer {
+      display: flex;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .useful-actions-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
     /* ЭКРАН ОБНОВЛЕНИЙ */
     .upd-filters {
       display: flex;
@@ -1260,6 +1401,7 @@
           <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn" data-tab="notes">Заметки</button>
           <button class="nav-btn" data-tab="gdz">ГДЗ</button>
+          <button class="nav-btn" data-tab="useful">Полезное</button>
           <button class="nav-btn" data-tab="admins">Админы</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
@@ -1387,8 +1529,8 @@
       {symbol: "Ba", name: "Барий", val: "II", type: "const"},
       {symbol: "La", name: "Лантан", val: "III", type: "const"},
       {symbol: "Ce", name: "Церий", val: "III, IV", type: "var"},
-      {symbol: "Hf", name: "Гафний", val: "IV", type: "const"},
-      {symbol: "Ta", name: "Тантал", val: "V", type: "const"},
+      {symbol: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
+      {symbol: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
       {symbol: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
       {symbol: "Re", name: "Рений", val: "IV, VII", type: "var"},
       {symbol: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
@@ -1547,7 +1689,11 @@
       showUpdates: false,
       editingUpdateId: null,
       updateStatusFilter: 'all',
-      updateCategoryFilter: 'all'
+      updateCategoryFilter: 'all',
+      usefulSubjects: null,
+      usefulLoaded: false,
+      usefulSelectedSubjectId: null,
+      usefulSha: null
     };
 
     function initThemeColor() {
@@ -1776,7 +1922,7 @@
     }
 
     /* =========================================================
-       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON
+       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON, USEFUL.JSON
        ========================================================= */
     async function loadData() {
       const app = document.getElementById('app');
@@ -1985,6 +2131,110 @@
           }
           attempt++;
           await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    }
+
+    /* =========================================================
+       ЗАГРУЗКА И СОХРАНЕНИЕ USEFUL.JSON
+       ========================================================= */
+    async function loadUseful() {
+      if (state.usefulLoaded) return state.usefulSubjects;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.usefulSubjects = [];
+          state.usefulSha = null;
+          state.usefulLoaded = true;
+          return state.usefulSubjects;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.usefulSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.usefulSubjects = Array.isArray(data.subjects) ? data.subjects : (Array.isArray(data) ? data : []);
+        state.usefulLoaded = true;
+        return state.usefulSubjects;
+      } catch (err) {
+        console.warn("Ошибка загрузки useful.json:", err);
+        state.usefulSubjects = [];
+        state.usefulLoaded = true;
+        return state.usefulSubjects;
+      }
+    }
+
+    async function saveUseful() {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
+
+          let sha = state.usefulSha;
+          if (getRes.ok) {
+            const jsonMeta = await getRes.json();
+            sha = jsonMeta.sha;
+            state.usefulSha = sha;
+          }
+
+          const exportData = {
+            subjects: state.usefulSubjects || []
+          };
+
+          const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+          const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json`, {
+            method: 'PUT',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Update useful.json via dashboard [skip ci]`,
+              content: contentBase64,
+              sha: sha
+            })
+          });
+
+          if (putRes.status === 409 && attempt < maxRetries - 1) {
+            attempt++;
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            throw new Error(errData.message || 'Ошибка сохранения useful.json');
+          }
+
+          const putSuccess = await putRes.json();
+          state.usefulSha = putSuccess.content.sha;
+          alert("Сохранено");
+          return;
+        } catch (err) {
+          if (attempt >= maxRetries - 1) {
+            alert(`Ошибка сохранения: ${err.message}`);
+            return;
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, 500));
         }
       }
     }
@@ -2236,10 +2486,350 @@
         case 'media': renderMedia(); break;
         case 'notes': renderNotes(); break;
         case 'gdz': renderGdz(); break;
+        case 'useful':
+          if (!state.usefulLoaded) {
+            document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
+            loadUseful().then(() => renderUseful());
+          } else {
+            renderUseful();
+          }
+          break;
         case 'admins': renderAdmins(); break;
         case 'audit': renderAudit(); break;
         case 'valencies': renderValencies(); break;
         case 'periodic': renderPeriodic(); break;
+      }
+    }
+
+    /* =========================================================
+       РАЗДЕЛ: ПОЛЕЗНОЕ
+       ========================================================= */
+    function renderUseful() {
+      const subjects = state.usefulSubjects || [];
+      let cardHeaderHtml = '';
+      let cardBodyHtml = '';
+
+      // СОСТОЯНИЕ A: Список предметов
+      if (state.usefulSelectedSubjectId === null) {
+        cardHeaderHtml = `
+          <div>
+            <span class="card-title">Полезное</span>
+            <span class="sub-text" style="margin-left: 8px;">Полезные материалы по предметам</span>
+          </div>
+          <div class="header-actions">
+            <button class="btn-primary" onclick="openNewSubjectModal()">+ Создать предмет</button>
+          </div>
+        `;
+
+        if (subjects.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Нет предметов</div>';
+        } else {
+          const cardsHtml = subjects.map(s => {
+            const subtitle = s.is_chemistry ? 'Химия' : `Разделов: ${(s.sections || []).length}`;
+            return `
+              <div class="note-card" onclick="selectUsefulSubject(${s.id})">
+                <div class="note-card-header">
+                  <span class="note-card-title">${escapeHtml(s.name || 'Без названия')}</span>
+                </div>
+                <div class="note-card-preview" style="margin-bottom: 0;">${escapeHtml(subtitle)}</div>
+              </div>
+            `;
+          }).join('');
+
+          cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
+        }
+      } 
+      // СОСТОЯНИЕ B: Страница предмета
+      else {
+        const subj = subjects.find(s => s.id === state.usefulSelectedSubjectId);
+        if (!subj) {
+          state.usefulSelectedSubjectId = null;
+          renderUseful();
+          return;
+        }
+
+        cardHeaderHtml = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
+            <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+          </div>
+        `;
+
+        if (subj.is_chemistry) {
+          cardBodyHtml = `
+            <div style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('valencies')">
+                Валентности
+              </button>
+              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('periodic')">
+                Таблица Менделеева
+              </button>
+            </div>
+          `;
+        } else {
+          const sections = subj.sections || [];
+          let sectionsHtml = '';
+
+          if (sections.length === 0) {
+            sectionsHtml = '<div class="empty-state" style="padding: 24px 16px;">Нет разделов. Нажмите «+ Создать раздел» ниже.</div>';
+          } else {
+            sectionsHtml = sections.map((sec, sIdx) => {
+              const blocksHtml = (sec.blocks || []).map((b, bIdx) => {
+                let blockContentHtml = '';
+                if (b.type === 'text') {
+                  blockContentHtml = `
+                    <textarea 
+                      class="note-input-text" 
+                      style="min-height: 80px; padding: 10px 12px; margin-bottom: 0;" 
+                      placeholder="Текст..." 
+                      oninput="updateBlockContent(${sec.id}, ${b.id}, this.value)">${escapeHtml(b.content || '')}</textarea>
+                  `;
+                } else if (b.type === 'formula') {
+                  blockContentHtml = `
+                    <input 
+                      type="text" 
+                      class="formula-box" 
+                      placeholder="Формула..." 
+                      value="${escapeHtml(b.content || '')}" 
+                      oninput="updateBlockContent(${sec.id}, ${b.id}, this.value)" 
+                    />
+                  `;
+                } else if (b.type === 'divider') {
+                  blockContentHtml = `<div class="divider-block"></div>`;
+                }
+
+                return `
+                  <div class="useful-block">
+                    ${blockContentHtml}
+                    <div class="useful-block-actions">
+                      <button title="Вверх" onclick="moveBlock(${sec.id}, ${bIdx}, -1)">↑</button>
+                      <button title="Вниз" onclick="moveBlock(${sec.id}, ${bIdx}, 1)">↓</button>
+                      <button title="Удалить" class="btn-danger" onclick="deleteBlock(${sec.id}, ${b.id})">✕</button>
+                    </div>
+                  </div>
+                `;
+              }).join('');
+
+              return `
+                <div class="useful-section">
+                  <div class="useful-section-header">
+                    <input 
+                      type="text" 
+                      class="useful-section-title" 
+                      value="${escapeHtml(sec.title || '')}" 
+                      placeholder="Название раздела..." 
+                      oninput="updateSectionTitle(${sec.id}, this.value)" 
+                    />
+                    <div class="useful-section-actions">
+                      <button title="Вверх" onclick="moveSection(${sIdx}, -1)">↑</button>
+                      <button title="Вниз" onclick="moveSection(${sIdx}, 1)">↓</button>
+                      <button title="Удалить раздел" class="btn-danger" onclick="confirmDeleteSection(${sec.id})">✕</button>
+                    </div>
+                  </div>
+                  <div class="useful-section-body">
+                    ${blocksHtml}
+                  </div>
+                  <div class="useful-section-footer">
+                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'text')">+ Текст</button>
+                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'formula')">+ Формула</button>
+                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'divider')">+ Разделитель</button>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+
+          cardBodyHtml = `
+            <div style="padding: 16px;">
+              ${sectionsHtml}
+            </div>
+            <div class="useful-actions-bottom">
+              <button class="btn-refresh" onclick="addSection()">+ Создать раздел</button>
+              <button class="btn-primary" onclick="saveUseful()">Сохранить всё</button>
+            </div>
+          `;
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">${cardHeaderHtml}</div>
+              ${cardBodyHtml}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    function selectUsefulSubject(id) {
+      state.usefulSelectedSubjectId = id;
+      renderUseful();
+    }
+
+    function backToUsefulSubjects() {
+      state.usefulSelectedSubjectId = null;
+      renderUseful();
+    }
+
+    function switchToTab(tabName) {
+      const targetBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+      if (targetBtn) {
+        targetBtn.click();
+      }
+    }
+
+    function openNewSubjectModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label class="sub-text" style="display: block; margin-bottom: 6px;">Название предмета</label>
+            <input type="text" id="new-subject-name" class="form-input" placeholder="Например, Физика" style="margin-bottom: 0;" />
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="new-subject-is-chemistry" style="width: 16px; height: 16px; cursor: pointer;" />
+            <span>Это химия?</span>
+          </label>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="createNewSubject()">Создать</button>
+      `;
+      openModal("Новый предмет", content, actions);
+    }
+
+    async function createNewSubject() {
+      const nameInput = document.getElementById('new-subject-name');
+      const chemInput = document.getElementById('new-subject-is-chemistry');
+      if (!nameInput) return;
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("Введите название предмета");
+        return;
+      }
+
+      const isChemistry = chemInput ? chemInput.checked : false;
+      state.usefulSubjects = state.usefulSubjects || [];
+      const nextId = state.usefulSubjects.length > 0 ? Math.max(...state.usefulSubjects.map(s => s.id || 0)) + 1 : 1;
+
+      state.usefulSubjects.push({
+        id: nextId,
+        name: name,
+        is_chemistry: isChemistry,
+        sections: []
+      });
+
+      closeModal();
+      await saveUseful();
+      renderUseful();
+    }
+
+    function getSelectedSubject() {
+      return (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+    }
+
+    function addSection() {
+      const subj = getSelectedSubject();
+      if (!subj) return;
+      subj.sections = subj.sections || [];
+      const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(sec => sec.id || 0)) + 1 : 1;
+      subj.sections.push({
+        id: nextId,
+        title: "Новый раздел",
+        blocks: []
+      });
+      renderUseful();
+    }
+
+    function confirmDeleteSection(sectionId) {
+      openModal(
+        "Удалить раздел?",
+        "Вы уверены, что хотите удалить этот раздел со всем содержимым?",
+        `
+          <button class="btn-refresh" onclick="closeModal()">Нет</button>
+          <button class="btn-danger" onclick="deleteSection(${sectionId})">Да, удалить</button>
+        `
+      );
+    }
+
+    function deleteSection(sectionId) {
+      const subj = getSelectedSubject();
+      if (!subj) return;
+      subj.sections = (subj.sections || []).filter(s => s.id !== sectionId);
+      closeModal();
+      renderUseful();
+    }
+
+    function moveSection(index, direction) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= subj.sections.length) return;
+      const temp = subj.sections[index];
+      subj.sections[index] = subj.sections[newIndex];
+      subj.sections[newIndex] = temp;
+      renderUseful();
+    }
+
+    function updateSectionTitle(sectionId, val) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (sec) {
+        sec.title = val;
+      }
+    }
+
+    function addBlock(sectionId, type) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (!sec) return;
+      sec.blocks = sec.blocks || [];
+      const nextId = sec.blocks.length > 0 ? Math.max(...sec.blocks.map(b => b.id || 0)) + 1 : 1;
+      sec.blocks.push({
+        id: nextId,
+        type: type,
+        content: ""
+      });
+      renderUseful();
+    }
+
+    function deleteBlock(sectionId, blockId) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (!sec || !sec.blocks) return;
+      sec.blocks = sec.blocks.filter(b => b.id !== blockId);
+      renderUseful();
+    }
+
+    function moveBlock(sectionId, blockIndex, direction) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (!sec || !sec.blocks) return;
+      const newIndex = blockIndex + direction;
+      if (newIndex < 0 || newIndex >= sec.blocks.length) return;
+      const temp = sec.blocks[blockIndex];
+      sec.blocks[blockIndex] = sec.blocks[newIndex];
+      sec.blocks[newIndex] = temp;
+      renderUseful();
+    }
+
+    function updateBlockContent(sectionId, blockId, val) {
+      const subj = getSelectedSubject();
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => s.id === sectionId);
+      if (!sec || !sec.blocks) return;
+      const b = sec.blocks.find(blk => blk.id === blockId);
+      if (b) {
+        b.content = val;
       }
     }
 
@@ -2332,7 +2922,6 @@
           </div>
 
           <div class="upd-filters">
-            <!-- Ряд 1: Фильтры по статусу -->
             <div class="upd-filter-row">
               <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateStatusFilter('all')">
                 Все (${statusCounts.all})
@@ -2348,7 +2937,6 @@
               </button>
             </div>
 
-            <!-- Ряд 2: Фильтры по категории -->
             <div class="upd-filter-row">
               <button class="upd-filter-btn ${state.updateCategoryFilter === 'all' ? 'active' : ''}" onclick="setUpdateCategoryFilter('all')">
                 Все (${categoryCounts.all})
@@ -2458,7 +3046,6 @@
               </button>
             </div>
 
-            <!-- Выбор категории -->
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span class="sub-text" style="font-weight: 500;">Категория:</span>
               <button 
