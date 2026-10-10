@@ -971,71 +971,48 @@
       color: var(--status-banned);
     }
 
-    .useful-block {
-      position: relative;
-      margin-bottom: 8px;
-      padding-right: 90px;
-    }
-
-    .useful-block-actions {
-      position: absolute;
-      top: 0;
-      right: 0;
-      display: flex;
-      gap: 4px;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-
-    .useful-block:hover .useful-block-actions {
-      opacity: 1;
-    }
-
-    .useful-block-actions button {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      width: 26px;
-      height: 26px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 11px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .formula-box {
-      display: block;
+    .useful-section-content {
       width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.7;
+      padding: 8px 0;
+      outline: none;
+      resize: vertical;
+      min-height: 120px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      transition: background 0.15s, padding 0.15s;
+    }
+
+    .useful-section-content:focus {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+
+    .useful-preview {
+      padding: 8px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .useful-preview .formula-inline {
+      display: inline-block;
       background: #111;
       border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px 14px;
+      border-radius: 3px;
+      padding: 1px 8px;
       font-family: 'Courier New', Consolas, monospace;
-      font-size: 14px;
+      font-size: 13px;
       color: #e8e8e8;
-      overflow-x: auto;
-      outline: none;
-    }
-
-    .formula-box:focus {
-      border-color: var(--accent-color);
-    }
-
-    .divider-block {
-      height: 1px;
-      background: var(--border-color);
-      margin: 12px 0;
-    }
-
-    .useful-section-footer {
-      display: flex;
-      gap: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border-color);
-      margin-top: 12px;
-      flex-wrap: wrap;
+      margin: 0 2px;
+      vertical-align: middle;
     }
 
     .useful-actions-bottom {
@@ -1496,7 +1473,7 @@
       {symbol: "Co", name: "Кобальт", val: "II, III", type: "var"},
       {symbol: "Ni", name: "Никель", val: "II, III", type: "var"},
       {symbol: "Cu", name: "Медь", val: "I, II", type: "var"},
-      {symbol: "Zn", name: "Цинк", val: "II", type: "const"},
+      {symbol: "Zn", name: "Цинк", val: "II, type: 'const'"},
       {symbol: "Ga", name: "Галлий", val: "III", type: "const"},
       {symbol: "Ge", name: "Германий", val: "II, IV", type: "var"},
       {symbol: "As", name: "Мышьяк", val: "III, V", type: "var"},
@@ -1792,6 +1769,18 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function formatUsefulContent(text) {
+      if (!text) return '<span class="sub-text">Пустой раздел...</span>';
+      const parts = text.split(/(\$[^$]+\$)/g);
+      return parts.map(part => {
+        if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+          const code = part.slice(1, -1);
+          return `<span class="formula-inline">${escapeHtml(code)}</span>`;
+        }
+        return escapeHtml(part);
+      }).join('');
     }
 
     function utf8ToBase64(str) {
@@ -2574,44 +2563,9 @@
             sectionsHtml = '<div class="empty-state" style="padding: 24px 16px;">Нет разделов. Нажмите «+ Создать раздел» ниже.</div>';
           } else {
             sectionsHtml = sections.map((sec, sIdx) => {
-              const blocksHtml = (sec.blocks || []).map((b, bIdx) => {
-                let blockContentHtml = '';
-                if (b.type === 'text') {
-                  blockContentHtml = `
-                    <textarea 
-                      class="note-input-text" 
-                      style="min-height: 80px; padding: 10px 12px; margin-bottom: 0;" 
-                      placeholder="Текст..." 
-                      oninput="updateBlockContent(${sec.id}, ${b.id}, this.value)">${escapeHtml(b.content || '')}</textarea>
-                  `;
-                } else if (b.type === 'formula') {
-                  blockContentHtml = `
-                    <input 
-                      type="text" 
-                      class="formula-box" 
-                      placeholder="Формула..." 
-                      value="${escapeHtml(b.content || '')}" 
-                      oninput="updateBlockContent(${sec.id}, ${b.id}, this.value)" 
-                    />
-                  `;
-                } else if (b.type === 'divider') {
-                  blockContentHtml = `<div class="divider-block"></div>`;
-                }
-
-                return `
-                  <div class="useful-block">
-                    ${blockContentHtml}
-                    <div class="useful-block-actions">
-                      <button title="Вверх" onclick="moveBlock(${sec.id}, ${bIdx}, -1)">↑</button>
-                      <button title="Вниз" onclick="moveBlock(${sec.id}, ${bIdx}, 1)">↓</button>
-                      <button title="Удалить" class="btn-danger" onclick="deleteBlock(${sec.id}, ${b.id})">✕</button>
-                    </div>
-                  </div>
-                `;
-              }).join('');
-
+              const isPreview = sec._preview === true;
               return `
-                <div class="useful-section">
+                <div class="useful-section" id="sec-${sec.id}">
                   <div class="useful-section-header">
                     <input 
                       type="text" 
@@ -2621,18 +2575,23 @@
                       oninput="updateSectionTitle(${sec.id}, this.value)" 
                     />
                     <div class="useful-section-actions">
+                      <button title="${isPreview ? 'Редактировать' : 'Предпросмотр'}" onclick="toggleSectionPreview(${sec.id})">
+                        ${isPreview ? '✎' : '👁'}
+                      </button>
                       <button title="Вверх" onclick="moveSection(${sIdx}, -1)">↑</button>
                       <button title="Вниз" onclick="moveSection(${sIdx}, 1)">↓</button>
                       <button title="Удалить раздел" class="btn-danger" onclick="confirmDeleteSection(${sec.id})">✕</button>
                     </div>
                   </div>
                   <div class="useful-section-body">
-                    ${blocksHtml}
-                  </div>
-                  <div class="useful-section-footer">
-                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'text')">+ Текст</button>
-                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'formula')">+ Формула</button>
-                    <button class="btn-refresh" onclick="addBlock(${sec.id}, 'divider')">+ Разделитель</button>
+                    ${isPreview ? `
+                      <div class="useful-preview">${formatUsefulContent(sec.content)}</div>
+                    ` : `
+                      <textarea 
+                        class="useful-section-content" 
+                        placeholder="Пишите текст здесь... Формулы пишите в долларах, например: $E=mc^2$"
+                        oninput="updateSectionContent(${sec.id}, this.value)">${escapeHtml(sec.content || '')}</textarea>
+                    `}
                   </div>
                 </div>
               `;
@@ -2738,10 +2697,14 @@
       if (!subj) return;
       subj.sections = subj.sections || [];
       const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(sec => sec.id || 0)) + 1 : 1;
+      const now = new Date().toISOString();
       subj.sections.push({
         id: nextId,
         title: "Новый раздел",
-        blocks: []
+        content: "",
+        created_at: now,
+        last_modified: now,
+        _preview: false
       });
       renderUseful();
     }
@@ -2785,51 +2748,23 @@
       }
     }
 
-    function addBlock(sectionId, type) {
+    function updateSectionContent(sectionId, val) {
       const subj = getSelectedSubject();
       if (!subj || !subj.sections) return;
       const sec = subj.sections.find(s => s.id === sectionId);
-      if (!sec) return;
-      sec.blocks = sec.blocks || [];
-      const nextId = sec.blocks.length > 0 ? Math.max(...sec.blocks.map(b => b.id || 0)) + 1 : 1;
-      sec.blocks.push({
-        id: nextId,
-        type: type,
-        content: ""
-      });
-      renderUseful();
+      if (sec) {
+        sec.content = val;
+        sec.last_modified = new Date().toISOString();
+      }
     }
 
-    function deleteBlock(sectionId, blockId) {
+    function toggleSectionPreview(sectionId) {
       const subj = getSelectedSubject();
       if (!subj || !subj.sections) return;
       const sec = subj.sections.find(s => s.id === sectionId);
-      if (!sec || !sec.blocks) return;
-      sec.blocks = sec.blocks.filter(b => b.id !== blockId);
-      renderUseful();
-    }
-
-    function moveBlock(sectionId, blockIndex, direction) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
-      if (!sec || !sec.blocks) return;
-      const newIndex = blockIndex + direction;
-      if (newIndex < 0 || newIndex >= sec.blocks.length) return;
-      const temp = sec.blocks[blockIndex];
-      sec.blocks[blockIndex] = sec.blocks[newIndex];
-      sec.blocks[newIndex] = temp;
-      renderUseful();
-    }
-
-    function updateBlockContent(sectionId, blockId, val) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
-      if (!sec || !sec.blocks) return;
-      const b = sec.blocks.find(blk => blk.id === blockId);
-      if (b) {
-        b.content = val;
+      if (sec) {
+        sec._preview = !sec._preview;
+        renderUseful();
       }
     }
 
