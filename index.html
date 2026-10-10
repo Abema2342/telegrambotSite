@@ -1034,6 +1034,50 @@
       margin: 16px 0;
     }
 
+    /* РЕДАКТОР СТРУКТУРЫ ДАННЫХ (DATA STRUCTURE) */
+    .ds-textarea {
+      width: 100%;
+      min-height: 600px;
+      background: #111;
+      border: none;
+      color: var(--text-main);
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      padding: 16px;
+      outline: none;
+      resize: vertical;
+      white-space: pre;
+      overflow: auto;
+    }
+
+    .ds-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: rgba(0, 0, 0, 0.15);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ds-status-bar .ds-valid { color: #43b581; }
+    .ds-status-bar .ds-invalid { color: #ed4245; }
+
+    .ds-header-select {
+      background: #111;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
     /* ЭКРАН ОБНОВЛЕНИЙ */
     .upd-filters {
       display: flex;
@@ -1394,7 +1438,7 @@
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
-          <button class="nav-btn" data-tab="structure">Структура данных</button>
+          <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
         <div class="header-right">
           <button id="logout-btn" class="btn-logout">Выйти</button>
@@ -1684,7 +1728,11 @@
       usefulSelectedSubjectId: null,
       usefulSelectedSectionId: null,
       usefulEditingSectionId: null,
-      usefulSha: null
+      usefulSha: null,
+      dsSelectedFile: 'data.json',
+      dsContent: '',
+      dsLoading: false,
+      dsSha: null
     };
 
     function initThemeColor() {
@@ -2272,6 +2320,208 @@
     }
 
     /* =========================================================
+       РЕДАКТОР СТРУКТУРЫ ДАННЫХ (DATA STRUCTURE)
+       ========================================================= */
+    async function dsLoadFile(fileName) {
+      state.dsSelectedFile = fileName;
+      state.dsLoading = true;
+      state.dsContent = 'Загрузка...';
+      renderDataStructure();
+
+      try {
+        const response = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+
+        if (response.status === 404) {
+          state.dsContent = '/* Файл не найден на сервере */';
+          state.dsSha = null;
+          state.dsLoading = false;
+          renderDataStructure();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const jsonMeta = await response.json();
+        state.dsSha = jsonMeta.sha;
+
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        let parsed = JSON.parse(utf8Content);
+        state.dsContent = JSON.stringify(parsed, null, 2);
+        state.dsLoading = false;
+        renderDataStructure();
+      } catch (err) {
+        state.dsContent = `/* Ошибка загрузки файла: ${err.message} */`;
+        state.dsSha = null;
+        state.dsLoading = false;
+        renderDataStructure();
+      }
+    }
+
+    async function dsSaveFile() {
+      const ta = document.getElementById('ds-textarea');
+      if (!ta) return;
+      const content = ta.value;
+
+      let parsed = null;
+      try {
+        parsed = JSON.parse(content);
+      } catch (err) {
+        alert(`Невалидный JSON: ${err.message}`);
+        return;
+      }
+
+      const fileName = state.dsSelectedFile;
+      const contentBase64 = utf8ToBase64(JSON.stringify(parsed, null, 2));
+
+      try {
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Manual edit ${fileName} via dashboard`,
+            content: contentBase64,
+            sha: state.dsSha
+          })
+        });
+
+        if (putRes.status === 409) {
+          alert("Конфликт SHA, обновите файл");
+          return;
+        }
+
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          throw new Error(errData.message || 'Ошибка сохранения файла');
+        }
+
+        const putSuccess = await putRes.json();
+        state.dsSha = putSuccess.content.sha;
+        state.dsContent = JSON.stringify(parsed, null, 2);
+        alert("Сохранено");
+
+        if (fileName === 'data.json') {
+          await loadData();
+        } else if (fileName === 'subjects.json') {
+          state.gdzSubjects = null;
+          await loadSubjects();
+        } else if (fileName === 'useful.json') {
+          state.usefulLoaded = false;
+          await loadUseful();
+        } else if (fileName === 'updates.json') {
+          state.updatesLoaded = false;
+          await loadUpdates();
+        } else if (fileName === 'chemistry.json') {
+          state.chemistryData = null;
+          await loadChemistry();
+        }
+      } catch (err) {
+        alert(`Ошибка при сохранении: ${err.message}`);
+      }
+    }
+
+    function dsFormatJSON() {
+      const ta = document.getElementById('ds-textarea');
+      if (!ta) return;
+      try {
+        const parsed = JSON.parse(ta.value);
+        ta.value = JSON.stringify(parsed, null, 2);
+        state.dsContent = ta.value;
+        dsValidate();
+      } catch (err) {
+        alert(`Невозможно форматировать, невалидный JSON: ${err.message}`);
+      }
+    }
+
+    function dsValidate() {
+      const ta = document.getElementById('ds-textarea');
+      const countsEl = document.getElementById('ds-counts');
+      const statusEl = document.getElementById('ds-status-text');
+      if (!ta || !countsEl || !statusEl) return;
+
+      const val = ta.value;
+      state.dsContent = val;
+
+      const lines = val ? val.split('\n').length : 0;
+      const chars = val.length;
+      countsEl.textContent = `Строк: ${lines} • Символов: ${chars}`;
+
+      try {
+        JSON.parse(val);
+        statusEl.innerHTML = '<span class="ds-valid">JSON валидный</span>';
+      } catch (err) {
+        statusEl.innerHTML = `<span class="ds-invalid">Ошибка: ${escapeHtml(err.message)}</span>`;
+      }
+    }
+
+    function renderDataStructure() {
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json'];
+      const selectHtml = `
+        <select class="ds-header-select" onchange="dsChangeFile(this.value)">
+          ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+      `;
+
+      let initialStatusHtml = '';
+      let initialLines = 0;
+      let initialChars = 0;
+
+      if (!state.dsLoading && state.dsContent) {
+        initialLines = state.dsContent.split('\n').length;
+        initialChars = state.dsContent.length;
+        try {
+          JSON.parse(state.dsContent);
+          initialStatusHtml = '<span class="ds-valid">JSON валидный</span>';
+        } catch (err) {
+          initialStatusHtml = `<span class="ds-invalid">Ошибка: ${escapeHtml(err.message)}</span>`;
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Структура данных</span>
+                </div>
+                <div class="header-actions">
+                  ${selectHtml}
+                  <button class="btn-refresh" onclick="dsLoadFile('${state.dsSelectedFile}')">Загрузить</button>
+                  <button class="btn-refresh" onclick="dsFormatJSON()">Форматировать</button>
+                  <button class="btn-primary" onclick="dsSaveFile()">Сохранить</button>
+                </div>
+              </div>
+              <textarea id="ds-textarea" class="ds-textarea" spellcheck="false" oninput="dsValidate()">${escapeHtml(state.dsContent || '')}</textarea>
+              <div class="ds-status-bar">
+                <span id="ds-counts">Строк: ${initialLines} • Символов: ${initialChars}</span>
+                <span id="ds-status-text">${initialStatusHtml}</span>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    function dsChangeFile(val) {
+      dsLoadFile(val);
+    }
+
+    /* =========================================================
        АВТОРИЗАЦИЯ
        ========================================================= */
     const loginScreen = document.getElementById('login-screen');
@@ -2341,6 +2591,12 @@
           render();
           await loadSubjects();
           state.gdzSearchLoading = false;
+        }
+
+        if (state.currentTab === 'datastructure') {
+          if (!state.dsContent) {
+            await dsLoadFile(state.dsSelectedFile || 'data.json');
+          }
         }
 
         render();
@@ -2530,6 +2786,7 @@
         case 'audit': renderAudit(); break;
         case 'valencies': renderValencies(); break;
         case 'periodic': renderPeriodic(); break;
+        case 'datastructure': renderDataStructure(); break;
       }
     }
 
@@ -2902,7 +3159,7 @@
 
       const byStatus = (state.updateStatusFilter === 'all')
         ? rawUpdates
-        : rawUpdates.filter(u => getCategory(u) === state.updateStatusFilter);
+        : rawUpdates.filter(u => u.status === state.updateStatusFilter);
 
       const categoryCounts = {
         all: byStatus.length,
