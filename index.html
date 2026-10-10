@@ -905,104 +905,80 @@
       flex-shrink: 0;
     }
 
-    /* РАЗДЕЛ: ПОЛЕЗНОЕ */
-    .useful-section {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      margin-bottom: 16px;
+    /* РАЗДЕЛ: ПОЛЕЗНОЕ (РЕЖИМ ЧТЕНИЯ И СЕТКА ПАРАГРАФОВ) */
+    .useful-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
       padding: 16px;
     }
 
-    .useful-section-header {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-color);
+    @media (max-width: 700px) {
+      .useful-grid { grid-template-columns: 1fr; }
     }
 
-    .useful-section-title {
-      flex: 1;
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-main);
-      font-size: 16px;
-      font-weight: 600;
-      padding: 6px 8px;
-      border-radius: 4px;
-      outline: none;
-      font-family: inherit;
-    }
-
-    .useful-section-title:hover,
-    .useful-section-title:focus {
-      background: #111;
-      border-color: var(--border-color);
-    }
-
-    .useful-section-actions {
-      display: flex;
-      gap: 4px;
-    }
-
-    .useful-section-actions button {
-      background: transparent;
+    .useful-card {
+      background: var(--card-bg);
       border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
+      border-radius: 6px;
+      padding: 16px;
       cursor: pointer;
-      font-size: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 140px;
+      transition: background-color 0.15s, border-color 0.15s;
     }
 
-    .useful-section-actions button:hover {
+    .useful-card:hover {
       background: var(--card-hover);
-      color: var(--text-main);
+      border-color: #383838;
     }
 
-    .useful-section-actions .btn-danger:hover {
-      background: rgba(240, 71, 71, 0.15);
-      color: var(--status-banned);
+    .useful-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .useful-section-content {
-      width: 100%;
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 14px;
-      line-height: 1.7;
-      padding: 8px 0;
-      outline: none;
-      resize: vertical;
-      min-height: 120px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      transition: background 0.15s, padding 0.15s;
-    }
-
-    .useful-section-content:focus {
-      background: rgba(255, 255, 255, 0.02);
-      padding: 8px 12px;
-      border-radius: 4px;
-    }
-
-    .useful-preview {
-      padding: 8px 0;
-      font-size: 14px;
-      line-height: 1.7;
-      white-space: pre-wrap;
+    .useful-card-preview {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 16px;
       word-break: break-word;
     }
 
-    .useful-preview .formula-inline {
+    .useful-card-date {
+      font-size: 11px;
+      color: #666;
+    }
+
+    .useful-section-content-view {
+      padding: 20px 24px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-main);
+    }
+
+    .useful-section-content-view p {
+      margin: 0 0 12px 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .useful-section-content-view p:last-child {
+      margin-bottom: 0;
+    }
+
+    .formula-inline {
       display: inline-block;
       background: #111;
       border: 1px solid var(--border-color);
@@ -1015,12 +991,34 @@
       vertical-align: middle;
     }
 
-    .useful-actions-bottom {
+    .useful-view-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .useful-view-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .useful-view-dates {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .useful-view-actions {
       display: flex;
-      justify-content: space-between;
       gap: 8px;
-      padding: 16px;
+      padding: 16px 24px;
       border-top: 1px solid var(--border-color);
+    }
+
+    .useful-edit-form {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     /* ЭКРАН ОБНОВЛЕНИЙ */
@@ -1473,7 +1471,7 @@
       {symbol: "Co", name: "Кобальт", val: "II, III", type: "var"},
       {symbol: "Ni", name: "Никель", val: "II, III", type: "var"},
       {symbol: "Cu", name: "Медь", val: "I, II", type: "var"},
-      {symbol: "Zn", name: "Цинк", val: "II, type: 'const'"},
+      {symbol: "Zn", name: "Цинк", val: "II", type: "const"},
       {symbol: "Ga", name: "Галлий", val: "III", type: "const"},
       {symbol: "Ge", name: "Германий", val: "II, IV", type: "var"},
       {symbol: "As", name: "Мышьяк", val: "III, V", type: "var"},
@@ -1600,19 +1598,19 @@
       { sym: "Ba", name: "Барий", num: 56, period: 6, group: 2, type: "alkaline" },
       { sym: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
       { sym: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
-      { sym: "W", name: "Вольфрам", num: 74, period: 6, group: 6, type: "transition" },
-      { sym: "Re", name: "Рений", num: 75, period: 6, group: 7, type: "transition" },
-      { sym: "Os", name: "Осмий", num: 76, period: 6, group: 8, type: "transition" },
-      { sym: "Ir", name: "Иридий", num: 77, period: 6, group: 9, type: "transition" },
-      { sym: "Pt", name: "Платина", num: 78, period: 6, group: 10, type: "transition" },
-      { sym: "Au", name: "Золото", num: 79, period: 6, group: 11, type: "transition" },
-      { sym: "Hg", name: "Ртуть", num: 80, period: 6, group: 12, type: "transition" },
-      { sym: "Tl", name: "Таллий", num: 81, period: 6, group: 13, type: "post_transition" },
-      { sym: "Pb", name: "Свинец", num: 82, period: 6, group: 14, type: "post_transition" },
-      { sym: "Bi", name: "Висмут", num: 83, period: 6, group: 15, type: "post_transition" },
-      { sym: "Po", name: "Полоний", num: 84, period: 6, group: 16, type: "post_transition" },
-      { sym: "At", name: "Астат", num: 85, period: 6, group: 17, type: "halogen" },
-      { sym: "Rn", name: "Радон", num: 86, period: 6, group: 18, type: "noble" }
+      { sym: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
+      { sym: "Re", name: "Рений", val: "IV, VII", type: "var"},
+      { sym: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
+      { sym: "Ir", name: "Иридий", val: "III, IV", type: "var"},
+      { sym: "Pt", name: "Платина", val: "II, IV", type: "var"},
+      { sym: "Au", name: "Золото", val: "I, III", type: "var"},
+      { sym: "Hg", name: "Ртуть", val: "I, II", type: "var"},
+      { sym: "Tl", name: "Таллий", val: "I, III", type: "var"},
+      { sym: "Pb", name: "Свинец", val: "II, IV", type: "var"},
+      { sym: "Bi", name: "Висмут", val: "III, V", type: "var"},
+      { sym: "Po", name: "Полоний", val: "II, IV", type: "var"},
+      { sym: "At", name: "Астат", val: "I, III, V, VII", type: "var"},
+      { sym: "Rn", name: "Радон", val: "0", type: "inert"}
     ];
 
     const ELEMENT_TYPE_NAMES = {
@@ -1670,6 +1668,8 @@
       usefulSubjects: null,
       usefulLoaded: false,
       usefulSelectedSubjectId: null,
+      usefulSelectedSectionId: null,
+      usefulEditingSectionId: null,
       usefulSha: null
     };
 
@@ -1771,16 +1771,10 @@
         .replace(/'/g, "&#039;");
     }
 
-    function formatUsefulContent(text) {
-      if (!text) return '<span class="sub-text">Пустой раздел...</span>';
-      const parts = text.split(/(\$[^$]+\$)/g);
-      return parts.map(part => {
-        if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-          const code = part.slice(1, -1);
-          return `<span class="formula-inline">${escapeHtml(code)}</span>`;
-        }
-        return escapeHtml(part);
-      }).join('');
+    function renderSectionContentView(content) {
+      const escaped = escapeHtml(content || '');
+      const html = escaped.replace(/\$([^$]+)\$/g, '<span class="formula-inline">$1</span>');
+      return html.split('\n').map(line => `<p>${line}</p>`).join('');
     }
 
     function utf8ToBase64(str) {
@@ -2215,7 +2209,6 @@
 
           const putSuccess = await putRes.json();
           state.usefulSha = putSuccess.content.sha;
-          alert("Сохранено");
           return;
         } catch (err) {
           if (attempt >= maxRetries - 1) {
@@ -2491,14 +2484,14 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ: ПОЛЕЗНОЕ
+       РАЗДЕЛ: ПОЛЕЗНОЕ (РЕЖИМ ЧТЕНИЯ, ПРОСМОТРА И РЕДАКТИРОВАНИЯ)
        ========================================================= */
     function renderUseful() {
       const subjects = state.usefulSubjects || [];
       let cardHeaderHtml = '';
       let cardBodyHtml = '';
 
-      // СОСТОЯНИЕ A: Список предметов
+      // СОСТОЯНИЕ 1: Список предметов (режим чтения)
       if (state.usefulSelectedSubjectId === null) {
         cardHeaderHtml = `
           <div>
@@ -2528,23 +2521,25 @@
           cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
         }
       } 
-      // СОСТОЯНИЕ B: Страница предмета
+      // СОСТОЯНИЕ 2: Внутри предмета
       else {
         const subj = subjects.find(s => s.id === state.usefulSelectedSubjectId);
         if (!subj) {
           state.usefulSelectedSubjectId = null;
+          state.usefulSelectedSectionId = null;
+          state.usefulEditingSectionId = null;
           renderUseful();
           return;
         }
 
-        cardHeaderHtml = `
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
-            <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
-          </div>
-        `;
-
+        // 2A. Режим для химии
         if (subj.is_chemistry) {
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Химия')}</span>
+            </div>
+          `;
           cardBodyHtml = `
             <div style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
               <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('valencies')">
@@ -2555,58 +2550,106 @@
               </button>
             </div>
           `;
-        } else {
-          const sections = subj.sections || [];
-          let sectionsHtml = '';
+        } 
+        // 2B. Редактирование конкретного параграфа
+        else if (state.usefulEditingSectionId !== null) {
+          const sec = (subj.sections || []).find(s => s.id === state.usefulEditingSectionId);
+          if (!sec) {
+            state.usefulEditingSectionId = null;
+            renderUseful();
+            return;
+          }
 
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="cancelEditSection()">← Отмена</button>
+              <span class="card-title">Редактирование параграфа</span>
+            </div>
+          `;
+
+          cardBodyHtml = `
+            <div class="useful-edit-form">
+              <input type="text" id="edit-section-title" class="note-input-title" placeholder="Название параграфа..." value="${escapeHtml(sec.title || '')}">
+              <textarea id="edit-section-content" class="note-input-text" placeholder="Пиши текст. Формулы в $долларах$, например $E=mc^2$.">${escapeHtml(sec.content || '')}</textarea>
+              <div class="note-editor-toolbar">
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn-primary" onclick="saveSectionEdit(${sec.id})">Сохранить</button>
+                  <button class="btn-refresh" onclick="cancelEditSection()">Отмена</button>
+                </div>
+              </div>
+            </div>
+          `;
+        } 
+        // 2C. Просмотр конкретного параграфа (полный текст)
+        else if (state.usefulSelectedSectionId !== null) {
+          const sec = (subj.sections || []).find(s => s.id === state.usefulSelectedSectionId);
+          if (!sec) {
+            state.usefulSelectedSectionId = null;
+            renderUseful();
+            return;
+          }
+
+          const dateText = sec.last_modified && sec.last_modified !== sec.created_at
+            ? `Изменено: ${formatDate(sec.last_modified)}`
+            : (sec.created_at ? `Создано: ${formatDate(sec.created_at)}` : '');
+
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToSectionsList()">← Назад к параграфам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="startEditSection(${sec.id})">Редактировать</button>
+            </div>
+          `;
+
+          cardBodyHtml = `
+            <div class="useful-view-header">
+              <div class="useful-view-title">${escapeHtml(sec.title || 'Без названия')}</div>
+              ${dateText ? `<div class="useful-view-dates">${dateText}</div>` : ''}
+            </div>
+            <div class="useful-section-content-view">
+              ${renderSectionContentView(sec.content)}
+            </div>
+            <div class="useful-view-actions">
+              <button class="btn-primary" onclick="startEditSection(${sec.id})">Редактировать</button>
+              <button class="btn-danger" onclick="confirmDeleteSection(${sec.id})">Удалить</button>
+            </div>
+          `;
+        } 
+        // 2D. Сетка параграфов предмета (режим чтения по умолчанию)
+        else {
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
+            </div>
+          `;
+
+          const sections = subj.sections || [];
           if (sections.length === 0) {
-            sectionsHtml = '<div class="empty-state" style="padding: 24px 16px;">Нет разделов. Нажмите «+ Создать раздел» ниже.</div>';
+            cardBodyHtml = '<div class="empty-state">Нет параграфов. Нажмите «+ Добавить параграф», чтобы создать первый.</div>';
           } else {
-            sectionsHtml = sections.map((sec, sIdx) => {
-              const isPreview = sec._preview === true;
+            const cardsHtml = sections.map(sec => {
+              const previewText = sec.content ? escapeHtml(sec.content.replace(/\$([^$]+)\$/g, '$1')) : 'Пустой параграф...';
+              const dateText = sec.last_modified || sec.created_at ? formatDate(sec.last_modified || sec.created_at) : '';
+
               return `
-                <div class="useful-section" id="sec-${sec.id}">
-                  <div class="useful-section-header">
-                    <input 
-                      type="text" 
-                      class="useful-section-title" 
-                      value="${escapeHtml(sec.title || '')}" 
-                      placeholder="Название раздела..." 
-                      oninput="updateSectionTitle(${sec.id}, this.value)" 
-                    />
-                    <div class="useful-section-actions">
-                      <button title="${isPreview ? 'Редактировать' : 'Предпросмотр'}" onclick="toggleSectionPreview(${sec.id})">
-                        ${isPreview ? '✎' : '👁'}
-                      </button>
-                      <button title="Вверх" onclick="moveSection(${sIdx}, -1)">↑</button>
-                      <button title="Вниз" onclick="moveSection(${sIdx}, 1)">↓</button>
-                      <button title="Удалить раздел" class="btn-danger" onclick="confirmDeleteSection(${sec.id})">✕</button>
-                    </div>
+                <div class="useful-card" onclick="viewSection(${sec.id})">
+                  <div>
+                    <div class="useful-card-title">${escapeHtml(sec.title || 'Без названия')}</div>
+                    <div class="useful-card-preview">${previewText}</div>
                   </div>
-                  <div class="useful-section-body">
-                    ${isPreview ? `
-                      <div class="useful-preview">${formatUsefulContent(sec.content)}</div>
-                    ` : `
-                      <textarea 
-                        class="useful-section-content" 
-                        placeholder="Пишите текст здесь... Формулы пишите в долларах, например: $E=mc^2$"
-                        oninput="updateSectionContent(${sec.id}, this.value)">${escapeHtml(sec.content || '')}</textarea>
-                    `}
-                  </div>
+                  <div class="useful-card-date">${dateText}</div>
                 </div>
               `;
             }).join('');
-          }
 
-          cardBodyHtml = `
-            <div style="padding: 16px;">
-              ${sectionsHtml}
-            </div>
-            <div class="useful-actions-bottom">
-              <button class="btn-refresh" onclick="addSection()">+ Создать раздел</button>
-              <button class="btn-primary" onclick="saveUseful()">Сохранить всё</button>
-            </div>
-          `;
+            cardBodyHtml = `<div class="useful-grid">${cardsHtml}</div>`;
+          }
         }
       }
 
@@ -2626,11 +2669,103 @@
 
     function selectUsefulSubject(id) {
       state.usefulSelectedSubjectId = id;
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
       renderUseful();
     }
 
     function backToUsefulSubjects() {
       state.usefulSelectedSubjectId = null;
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function viewSection(id) {
+      state.usefulSelectedSectionId = id;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function backToSectionsList() {
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function startEditSection(id) {
+      state.usefulEditingSectionId = id;
+      renderUseful();
+    }
+
+    function cancelEditSection() {
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function createSection() {
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      if (!subj) return;
+      subj.sections = subj.sections || [];
+      const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(s => s.id || 0)) + 1 : 1;
+      const now = new Date().toISOString();
+      const newSec = {
+        id: nextId,
+        title: "",
+        content: "",
+        created_at: now,
+        last_modified: now
+      };
+      subj.sections.push(newSec);
+      state.usefulSelectedSectionId = nextId;
+      state.usefulEditingSectionId = nextId;
+      renderUseful();
+    }
+
+    async function saveSectionEdit(id) {
+      const titleInput = document.getElementById('edit-section-title');
+      const contentInput = document.getElementById('edit-section-content');
+      if (!titleInput || !contentInput) return;
+
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      if (!subj || !subj.sections) return;
+
+      const sec = subj.sections.find(s => s.id === id);
+      if (!sec) return;
+
+      sec.title = title || "Без названия";
+      sec.content = content;
+      sec.last_modified = new Date().toISOString();
+
+      state.usefulEditingSectionId = null;
+      state.usefulSelectedSectionId = id;
+
+      await saveUseful();
+      renderUseful();
+    }
+
+    function confirmDeleteSection(sectionId) {
+      openModal(
+        "Удалить параграф?",
+        "Вы уверены, что хотите удалить этот параграф без возможности восстановления?",
+        `
+          <button class="btn-refresh" onclick="closeModal()">Нет</button>
+          <button class="btn-danger" onclick="deleteSection(${sectionId})">Да, удалить</button>
+        `
+      );
+    }
+
+    async function deleteSection(sectionId) {
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      if (!subj || !subj.sections) return;
+      subj.sections = subj.sections.filter(s => s.id !== sectionId);
+      closeModal();
+      state.usefulEditingSectionId = null;
+      state.usefulSelectedSectionId = null;
+      await saveUseful();
       renderUseful();
     }
 
@@ -2686,86 +2821,6 @@
       closeModal();
       await saveUseful();
       renderUseful();
-    }
-
-    function getSelectedSubject() {
-      return (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
-    }
-
-    function addSection() {
-      const subj = getSelectedSubject();
-      if (!subj) return;
-      subj.sections = subj.sections || [];
-      const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(sec => sec.id || 0)) + 1 : 1;
-      const now = new Date().toISOString();
-      subj.sections.push({
-        id: nextId,
-        title: "Новый раздел",
-        content: "",
-        created_at: now,
-        last_modified: now,
-        _preview: false
-      });
-      renderUseful();
-    }
-
-    function confirmDeleteSection(sectionId) {
-      openModal(
-        "Удалить раздел?",
-        "Вы уверены, что хотите удалить этот раздел со всем содержимым?",
-        `
-          <button class="btn-refresh" onclick="closeModal()">Нет</button>
-          <button class="btn-danger" onclick="deleteSection(${sectionId})">Да, удалить</button>
-        `
-      );
-    }
-
-    function deleteSection(sectionId) {
-      const subj = getSelectedSubject();
-      if (!subj) return;
-      subj.sections = (subj.sections || []).filter(s => s.id !== sectionId);
-      closeModal();
-      renderUseful();
-    }
-
-    function moveSection(index, direction) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= subj.sections.length) return;
-      const temp = subj.sections[index];
-      subj.sections[index] = subj.sections[newIndex];
-      subj.sections[newIndex] = temp;
-      renderUseful();
-    }
-
-    function updateSectionTitle(sectionId, val) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
-      if (sec) {
-        sec.title = val;
-      }
-    }
-
-    function updateSectionContent(sectionId, val) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
-      if (sec) {
-        sec.content = val;
-        sec.last_modified = new Date().toISOString();
-      }
-    }
-
-    function toggleSectionPreview(sectionId) {
-      const subj = getSelectedSubject();
-      if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
-      if (sec) {
-        sec._preview = !sec._preview;
-        renderUseful();
-      }
     }
 
     /* =========================================================
