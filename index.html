@@ -1885,16 +1885,28 @@
       }, 3000);
     }
 
+    let pendingConfirmAction = null;
+
     function confirmAction(message, onConfirm) {
-      openModal(
-        'Подтверждение действия',
-        `<p>${escapeHtml(message)}</p>`,
-        `
-          <button class="btn-refresh" onclick="closeModal()">Отмена</button>
-          <button class="btn-primary" onclick="closeModal(); (${onConfirm})();">Да</button>
-        `
-      );
-    }
+    pendingConfirmAction = onConfirm;
+    openModal(
+      'Подтверждение действия',
+      `<p>${escapeHtml(message)}</p>`,
+      `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="runPendingConfirm()">Да</button>
+      `
+    );
+  }
+
+function runPendingConfirm() {
+  closeModal();
+  if (pendingConfirmAction) {
+    const action = pendingConfirmAction;
+    pendingConfirmAction = null;
+    action();
+  }
+}
 
     function initThemeColor() {
       const savedTheme = localStorage.getItem('theme_accent') || '#5865F2';
