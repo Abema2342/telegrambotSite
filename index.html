@@ -38,6 +38,124 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    /* АНИМАЦИИ */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes softPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(40px); }
+    }
+
+    /* TOAST-УВЕДОМЛЕНИЯ */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      min-width: 240px;
+      max-width: 360px;
+      pointer-events: auto;
+      animation: toastIn 0.3s ease;
+      word-break: break-word;
+    }
+
+    .toast.success { border-left-color: #43b581; }
+    .toast.error { border-left-color: #ed4245; }
+    .toast.info { border-left-color: var(--accent-color); }
+    .toast.hiding { animation: toastOut 0.3s ease forwards; }
+
+    /* ХЛЕБНЫЕ КРОШКИ */
+    .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+
+    .crumbs a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    .crumbs a:hover {
+      color: var(--text-main);
+      background: var(--card-hover);
+    }
+
+    .crumbs .separator { opacity: 0.4; }
+    .crumbs .current { color: var(--text-main); font-weight: 500; }
+
+    /* ПОИСКОВАЯ СТРОКА */
+    .search-bar {
+      position: relative;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+    }
+
+    .search-bar::before {
+      content: '🔍';
+      position: absolute;
+      left: 28px;
+      font-size: 13px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .search-bar input {
+      width: 100%;
+      background: #111;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px 8px 36px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .search-bar input:focus {
+      border-color: var(--accent-color);
+    }
+
     /* ЭКРАН АВТОРИЗАЦИИ */
     #login-screen {
       display: flex;
@@ -50,7 +168,8 @@
     .login-box {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       padding: 32px 24px;
       width: 100%;
       max-width: 360px;
@@ -68,7 +187,7 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 10px 14px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 14px;
       outline: none;
       font-family: inherit;
@@ -127,7 +246,7 @@
       padding: 8px 14px;
       font-size: 14px;
       font-weight: 500;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
       white-space: nowrap;
@@ -141,6 +260,7 @@
     .nav-btn.active {
       background-color: var(--accent-color);
       color: #ffffff;
+      box-shadow: 0 2px 8px rgba(88,101,242,0.3);
     }
 
     .header-right {
@@ -155,10 +275,11 @@
       border: 1px solid var(--border-color);
       color: var(--text-secondary);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
       white-space: nowrap;
+      transition: all 0.15s ease;
     }
 
     .btn-logout:hover {
@@ -173,7 +294,7 @@
       color: var(--text-secondary);
       width: 36px;
       height: 36px;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 16px;
       display: inline-flex;
@@ -216,6 +337,10 @@
       border: 2px solid var(--card-bg);
     }
 
+    .btn-updates[data-count]:not([data-count="0"])::after {
+      animation: softPulse 2s ease-in-out infinite;
+    }
+
     .btn-updates[data-count="0"]::after {
       display: none;
     }
@@ -240,8 +365,10 @@
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       overflow: hidden;
+      animation: fadeInUp 0.3s ease;
     }
 
     .card-header {
@@ -285,7 +412,6 @@
       min-width: 0;
     }
 
-    /* Адаптив */
     @media (max-width: 1400px) {
       .layout-3col {
         grid-template-columns: 1fr;
@@ -311,12 +437,14 @@
     .card-widget {
       background-color: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       padding: 14px;
       display: flex;
       flex-direction: column;
       max-height: 320px;
       overflow: hidden;
+      animation: fadeInUp 0.3s ease;
     }
 
     .card-widget-header {
@@ -432,17 +560,20 @@
       color: #fff;
       border: none;
       padding: 8px 14px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      box-shadow: 0 2px 6px rgba(88,101,242,0.3);
+      transition: all 0.15s ease;
     }
 
     .btn-primary:hover {
       background: var(--accent-hover);
+      box-shadow: 0 4px 10px rgba(88,101,242,0.4);
     }
 
     .btn-refresh {
@@ -450,16 +581,18 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      transition: all 0.15s ease;
     }
 
     .btn-refresh:hover {
       background: var(--card-hover);
+      border-color: #383838;
     }
 
     .btn-action {
@@ -467,12 +600,13 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 4px 10px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 12px;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
+      transition: all 0.15s ease;
     }
 
     .btn-action:hover {
@@ -495,12 +629,13 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
       font-size: 13px;
+      transition: all 0.15s ease;
     }
 
     .back-btn:hover {
@@ -554,7 +689,7 @@
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
       white-space: nowrap;
@@ -568,12 +703,10 @@
     .badge-media-animation { background: rgba(230, 126, 34, 0.2); color: #e67e22; }
     .badge-media-default { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
 
-    /* Бейджи валентностей */
     .badge-val-const { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
     .badge-val-var { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); }
     .badge-val-inert { background: rgba(149, 165, 166, 0.15); color: #95a5a6; border: 1px solid rgba(149, 165, 166, 0.3); }
 
-    /* Бейджи растворимости */
     .badge-sol-r { background: rgba(67, 181, 129, 0.15); color: #43b581; }
     .badge-sol-m { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
     .badge-sol-n { background: rgba(237, 66, 69, 0.15); color: #ed4245; }
@@ -595,20 +728,23 @@
     .note-card {
       background-color: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       padding: 16px;
       cursor: pointer;
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: background-color 0.15s, border-color 0.15s;
       min-height: 140px;
+      transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+      animation: fadeInUp 0.3s ease;
     }
 
     .note-card:hover {
       background-color: var(--card-hover);
       border-color: #383838;
+      transform: translateY(-2px);
     }
 
     .note-card-header {
@@ -664,7 +800,7 @@
     .note-input-title {
       background: #111;
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 6px;
       color: var(--text-main);
       font-size: 18px;
       font-weight: 700;
@@ -680,7 +816,7 @@
     .note-input-text {
       background: #111;
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 6px;
       color: var(--text-main);
       font-size: 14px;
       padding: 14px 16px;
@@ -709,9 +845,10 @@
       color: #fff;
       border: none;
       padding: 8px 14px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 13px;
       cursor: pointer;
+      transition: all 0.15s ease;
     }
 
     .btn-danger:hover {
@@ -733,7 +870,7 @@
     .gdz-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 16px;
       cursor: pointer;
       transition: background-color 0.15s, border-color 0.15s;
@@ -771,7 +908,7 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 10px 0;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -797,7 +934,7 @@
 
     .gdz-img-wrap img {
       max-width: 100%;
-      border-radius: 6px;
+      border-radius: 8px;
       border: 1px solid var(--border-color);
       margin-top: 16px;
     }
@@ -822,7 +959,7 @@
       aspect-ratio: 1 / 1;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 6px;
       padding: 4px;
       cursor: pointer;
       display: flex;
@@ -831,6 +968,7 @@
       transition: transform 0.15s, box-shadow 0.15s;
       z-index: 1;
       user-select: none;
+      animation: fadeInUp 0.3s ease;
     }
 
     .pt-cell:hover {
@@ -870,7 +1008,7 @@
       left: 0;
       right: 0;
       height: 3px;
-      border-radius: 0 0 4px 4px;
+      border-radius: 0 0 6px 6px;
     }
 
     .pt-cell.type-alkali::after { background: #f39c12; }
@@ -901,11 +1039,11 @@
     .pt-legend-color {
       width: 12px;
       height: 12px;
-      border-radius: 2px;
+      border-radius: 3px;
       flex-shrink: 0;
     }
 
-    /* РАЗДЕЛ: ПОЛЕЗНОЕ (РЕЖИМ ЧТЕНИЯ И СЕТКА ПАРАГРАФОВ) */
+    /* РАЗДЕЛ: ПОЛЕЗНОЕ */
     .useful-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -920,19 +1058,22 @@
     .useful-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       padding: 16px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       min-height: 140px;
-      transition: background-color 0.15s, border-color 0.15s;
+      transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+      animation: fadeInUp 0.3s ease;
     }
 
     .useful-card:hover {
       background: var(--card-hover);
       border-color: #383838;
+      transform: translateY(-2px);
     }
 
     .useful-card-title {
@@ -1034,7 +1175,7 @@
       margin: 16px 0;
     }
 
-    /* РЕДАКТОР СТРУКТУРЫ ДАННЫХ (DATA STRUCTURE) */
+    /* РЕДАКТОР СТРУКТУРЫ ДАННЫХ */
     .ds-textarea {
       width: 100%;
       min-height: 600px;
@@ -1072,7 +1213,7 @@
       border: 1px solid var(--border-color);
       color: var(--text-main);
       padding: 6px 10px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 13px;
       font-family: inherit;
       cursor: pointer;
@@ -1098,7 +1239,7 @@
       border: 1px solid var(--border-color);
       color: var(--text-secondary);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
       transition: all 0.15s;
@@ -1120,7 +1261,7 @@
       border: 1px solid var(--border-color);
       color: var(--text-secondary);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
       transition: all 0.15s;
@@ -1152,18 +1293,21 @@
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-left-width: 4px;
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       padding: 14px 16px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       min-height: 120px;
-      transition: background-color 0.15s;
+      transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+      animation: fadeInUp 0.3s ease;
     }
 
     .upd-card:hover {
       background: var(--card-hover);
+      transform: translateY(-2px);
     }
 
     .upd-card.status-done { border-left-color: #43b581; }
@@ -1214,7 +1358,7 @@
     .upd-status-btn {
       flex: 1;
       padding: 8px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       border: 1px solid var(--border-color);
       background: #111;
       color: var(--text-secondary);
@@ -1243,7 +1387,7 @@
       color: #e0e0e0;
     }
 
-    /* ПЛАВАЮЩАЯ КНОПКА ПАЛИТРЫ (FAB) */
+    /* ПЛАВАЮЩАЯ КНОПКА ПАЛИТРЫ */
     .fab-theme {
       position: fixed;
       bottom: 20px;
@@ -1281,7 +1425,7 @@
       right: 20px;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 12px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.5);
       z-index: 900;
@@ -1339,12 +1483,19 @@
     .modal-window {
       background-color: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
       width: 100%;
       max-width: 540px;
       margin: 16px;
       display: flex;
       flex-direction: column;
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-overlay.active .modal-window {
+      transform: scale(1);
     }
 
     .modal-header {
@@ -1410,6 +1561,9 @@
 </head>
 <body>
 
+  <!-- КОНТЕЙНЕР ДЛЯ TOAST-УВЕДОМЛЕНИЙ -->
+  <div class="toast-container" id="toast-container"></div>
+
   <!-- ЭКРАН 1: ЛОГИН -->
   <div id="login-screen">
     <div class="login-box">
@@ -1424,7 +1578,6 @@
 
   <!-- ЭКРАН 2: ОСНОВНАЯ ПАНЕЛЬ -->
   <div id="dashboard-screen">
-    <!-- Навигация -->
     <header id="main-header">
       <div class="nav-container">
         <div class="nav-tabs">
@@ -1449,7 +1602,6 @@
       </div>
     </header>
 
-    <!-- Основной контейнер -->
     <main id="app">
       <div class="empty-state">Загрузка данных...</div>
     </main>
@@ -1493,11 +1645,8 @@
     ];
 
     const VALENCIES = [
-      // Период 1
       {symbol: "H", name: "Водород", val: "I", type: "const"},
       {symbol: "He", name: "Гелий", val: "0", type: "inert"},
-
-      // Период 2
       {symbol: "Li", name: "Литий", val: "I", type: "const"},
       {symbol: "Be", name: "Бериллий", val: "II", type: "const"},
       {symbol: "B", name: "Бор", val: "III", type: "const"},
@@ -1506,8 +1655,6 @@
       {symbol: "O", name: "Кислород", val: "II", type: "const"},
       {symbol: "F", name: "Фтор", val: "I", type: "const"},
       {symbol: "Ne", name: "Неон", val: "0", type: "inert"},
-
-      // Период 3
       {symbol: "Na", name: "Натрий", val: "I", type: "const"},
       {symbol: "Mg", name: "Магний", val: "II", type: "const"},
       {symbol: "Al", name: "Алюминий", val: "III", type: "const"},
@@ -1516,8 +1663,6 @@
       {symbol: "S", name: "Сера", val: "II, IV, VI", type: "var"},
       {symbol: "Cl", name: "Хлор", val: "I, III, V, VII", type: "var"},
       {symbol: "Ar", name: "Аргон", val: "0", type: "inert"},
-
-      // Период 4
       {symbol: "K", name: "Калий", val: "I", type: "const"},
       {symbol: "Ca", name: "Кальций", val: "II", type: "const"},
       {symbol: "Sc", name: "Скандий", val: "III", type: "const"},
@@ -1536,8 +1681,6 @@
       {symbol: "Se", name: "Селен", val: "II, IV, VI", type: "var"},
       {symbol: "Br", name: "Бром", val: "I, III, V, VII", type: "var"},
       {symbol: "Kr", name: "Криптон", val: "0", type: "inert"},
-
-      // Период 5
       {symbol: "Rb", name: "Рубидий", val: "I", type: "const"},
       {symbol: "Sr", name: "Стронций", val: "II", type: "const"},
       {symbol: "Y", name: "Иттрий", val: "III", type: "const"},
@@ -1556,14 +1699,12 @@
       {symbol: "Te", name: "Теллур", val: "II, IV, VI", type: "var"},
       {symbol: "I", name: "Йод", val: "I, III, V, VII", type: "var"},
       {symbol: "Xe", name: "Ксенон", val: "0", type: "inert"},
-
-      // Период 6
       {symbol: "Cs", name: "Цезий", val: "I", type: "const"},
       {symbol: "Ba", name: "Барий", val: "II", type: "const"},
       {symbol: "La", name: "Лантан", val: "III", type: "const"},
       {symbol: "Ce", name: "Церий", val: "III, IV", type: "var"},
-      {symbol: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
-      {symbol: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
+      {symbol: "Hf", name: "Гафний", val: "IV", type: "const"},
+      {symbol: "Ta", name: "Тантал", val: "V", type: "const"},
       {symbol: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
       {symbol: "Re", name: "Рений", val: "IV, VII", type: "var"},
       {symbol: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
@@ -1577,8 +1718,6 @@
       {symbol: "Po", name: "Полоний", val: "II, IV", type: "var"},
       {symbol: "At", name: "Астат", val: "I, III, V, VII", type: "var"},
       {symbol: "Rn", name: "Радон", val: "0", type: "inert"},
-
-      // Период 7
       {symbol: "Fr", name: "Франций", val: "I", type: "const"},
       {symbol: "Ra", name: "Радий", val: "II", type: "const"},
       {symbol: "Ac", name: "Актиний", val: "III", type: "const"},
@@ -1587,11 +1726,8 @@
     ];
 
     const ELEMENTS = [
-      // Период 1
       { sym: "H", name: "Водород", num: 1, period: 1, group: 1, type: "nonmetal" },
       { sym: "He", name: "Гелий", num: 2, period: 1, group: 18, type: "noble" },
-
-      // Период 2
       { sym: "Li", name: "Литий", num: 3, period: 2, group: 1, type: "alkali" },
       { sym: "Be", name: "Бериллий", num: 4, period: 2, group: 2, type: "alkaline" },
       { sym: "B", name: "Бор", num: 5, period: 2, group: 13, type: "metalloid" },
@@ -1600,8 +1736,6 @@
       { sym: "O", name: "Кислород", num: 8, period: 2, group: 16, type: "nonmetal" },
       { sym: "F", name: "Фтор", num: 9, period: 2, group: 17, type: "halogen" },
       { sym: "Ne", name: "Неон", num: 10, period: 2, group: 18, type: "noble" },
-
-      // Период 3
       { sym: "Na", name: "Натрий", num: 11, period: 3, group: 1, type: "alkali" },
       { sym: "Mg", name: "Магний", num: 12, period: 3, group: 2, type: "alkaline" },
       { sym: "Al", name: "Алюминий", num: 13, period: 3, group: 13, type: "post_transition" },
@@ -1610,8 +1744,6 @@
       { sym: "S", name: "Сера", num: 16, period: 3, group: 16, type: "nonmetal" },
       { sym: "Cl", name: "Хлор", num: 17, period: 3, group: 17, type: "halogen" },
       { sym: "Ar", name: "Аргон", num: 18, period: 3, group: 18, type: "noble" },
-
-      // Период 4
       { sym: "K", name: "Калий", num: 19, period: 4, group: 1, type: "alkali" },
       { sym: "Ca", name: "Кальций", num: 20, period: 4, group: 2, type: "alkaline" },
       { sym: "Sc", name: "Скандий", num: 21, period: 4, group: 3, type: "transition" },
@@ -1630,8 +1762,6 @@
       { sym: "Se", name: "Селен", num: 34, period: 4, group: 16, type: "nonmetal" },
       { sym: "Br", name: "Бром", num: 35, period: 4, group: 17, type: "halogen" },
       { sym: "Kr", name: "Криптон", num: 36, period: 4, group: 18, type: "noble" },
-
-      // Период 5
       { sym: "Rb", name: "Рубидий", num: 37, period: 5, group: 1, type: "alkali" },
       { sym: "Sr", name: "Стронций", num: 38, period: 5, group: 2, type: "alkaline" },
       { sym: "Y", name: "Иттрий", num: 39, period: 5, group: 3, type: "transition" },
@@ -1650,25 +1780,23 @@
       { sym: "Te", name: "Теллур", num: 52, period: 5, group: 16, type: "metalloid" },
       { sym: "I", name: "Йод", num: 53, period: 5, group: 17, type: "halogen" },
       { sym: "Xe", name: "Ксенон", num: 54, period: 5, group: 18, type: "noble" },
-
-      // Период 6
       { sym: "Cs", name: "Цезий", num: 55, period: 6, group: 1, type: "alkali" },
       { sym: "Ba", name: "Барий", num: 56, period: 6, group: 2, type: "alkaline" },
       { sym: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
       { sym: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
-      { sym: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
-      { sym: "Re", name: "Рений", val: "IV, VII", type: "var"},
-      { sym: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
-      { sym: "Ir", name: "Иридий", val: "III, IV", type: "var"},
-      { sym: "Pt", name: "Платина", val: "II, IV", type: "var"},
-      { sym: "Au", name: "Золото", val: "I, III", type: "var"},
-      { sym: "Hg", name: "Ртуть", val: "I, II", type: "var"},
-      { sym: "Tl", name: "Таллий", val: "I, III", type: "var"},
-      { sym: "Pb", name: "Свинец", val: "II, IV", type: "var"},
-      { sym: "Bi", name: "Висмут", val: "III, V", type: "var"},
-      { sym: "Po", name: "Полоний", val: "II, IV", type: "var"},
-      { sym: "At", name: "Астат", val: "I, III, V, VII", type: "var"},
-      { sym: "Rn", name: "Радон", val: "0", type: "inert"}
+      { sym: "W", name: "Вольфрам", num: 74, period: 6, group: 6, type: "transition" },
+      { sym: "Re", name: "Рений", num: 75, period: 6, group: 7, type: "transition" },
+      { sym: "Os", name: "Осмий", num: 76, period: 6, group: 8, type: "transition" },
+      { sym: "Ir", name: "Иридий", num: 77, period: 6, group: 9, type: "transition" },
+      { sym: "Pt", name: "Платина", num: 78, period: 6, group: 10, type: "transition" },
+      { sym: "Au", name: "Золото", num: 79, period: 6, group: 11, type: "transition" },
+      { sym: "Hg", name: "Ртуть", num: 80, period: 6, group: 12, type: "transition" },
+      { sym: "Tl", name: "Таллий", num: 81, period: 6, group: 13, type: "post_transition" },
+      { sym: "Pb", name: "Свинец", num: 82, period: 6, group: 14, type: "post_transition" },
+      { sym: "Bi", name: "Висмут", num: 83, period: 6, group: 15, type: "post_transition" },
+      { sym: "Po", name: "Полоний", num: 84, period: 6, group: 16, type: "post_transition" },
+      { sym: "At", name: "Астат", num: 85, period: 6, group: 17, type: "halogen" },
+      { sym: "Rn", name: "Радон", num: 86, period: 6, group: 18, type: "noble" }
     ];
 
     const ELEMENT_TYPE_NAMES = {
@@ -1732,8 +1860,41 @@
       dsSelectedFile: 'data.json',
       dsContent: '',
       dsLoading: false,
-      dsSha: null
+      dsSha: null,
+      searchUsers: '',
+      searchMessages: '',
+      searchMedia: '',
+      searchNotes: '',
+      searchUpdates: '',
+      searchAdmins: '',
+      searchAudit: ''
     };
+
+    /* TOAST & CONFIRM */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function confirmAction(message, onConfirm) {
+      openModal(
+        'Подтверждение действия',
+        `<p>${escapeHtml(message)}</p>`,
+        `
+          <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+          <button class="btn-primary" onclick="closeModal(); (${onConfirm})();">Да</button>
+        `
+      );
+    }
 
     function initThemeColor() {
       const savedTheme = localStorage.getItem('theme_accent') || '#5865F2';
@@ -1926,61 +2087,61 @@
 
         const putSuccess = await putRes.json();
         state.dataSha = putSuccess.content.sha;
-        console.log("data.json успешно обновлен через Worker");
+        showToast("Данные успешно сохранены", "success");
       } catch (err) {
-        alert(`Ошибка синхронизации: ${err.message}`);
+        showToast(`Ошибка синхронизации: ${err.message}`, "error");
       }
     }
 
-    async function deleteMediaFromGitHub(fileName, messageId) {
-      if (!confirm(`Удалить файл ${fileName} с GitHub репозитория?`)) return;
+    function deleteMediaFromGitHub(fileName, messageId) {
+      confirmAction(`Удалить файл ${fileName} с GitHub репозитория?`, async () => {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
 
-      try {
-        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
+          if (!getRes.ok) {
+            throw new Error(`Файл media/${fileName} не найден на GitHub или нет доступа`);
+          }
 
-        if (!getRes.ok) {
-          throw new Error(`Файл media/${fileName} не найден на GitHub или нет доступа`);
+          const fileMeta = await getRes.json();
+
+          const delRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Delete media: ${fileName}`,
+              sha: fileMeta.sha
+            })
+          });
+
+          if (!delRes.ok) {
+            const errData = await delRes.json();
+            throw new Error(errData.message || 'Ошибка удаления медиа');
+          }
+
+          state.messages = state.messages.filter(m => m.id !== messageId);
+          buildMediaCache();
+
+          state.audit.push({
+            admin_id: 0,
+            admin_name: "WebAdmin",
+            action: "del_media",
+            target_id: messageId,
+            target_name: fileName,
+            time: new Date().toISOString()
+          });
+
+          await saveDataToGitHub();
+          render();
+          showToast(`Файл ${fileName} успешно удален!`, 'success');
+        } catch (err) {
+          showToast(`Ошибка при удалении медиа: ${err.message}`, 'error');
         }
-
-        const fileMeta = await getRes.json();
-
-        const delRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
-          method: 'DELETE',
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: `Delete media: ${fileName}`,
-            sha: fileMeta.sha
-          })
-        });
-
-        if (!delRes.ok) {
-          const errData = await delRes.json();
-          throw new Error(errData.message || 'Ошибка удаления медиа');
-        }
-
-        state.messages = state.messages.filter(m => m.id !== messageId);
-        buildMediaCache();
-
-        state.audit.push({
-          admin_id: 0,
-          admin_name: "WebAdmin",
-          action: "del_media",
-          target_id: messageId,
-          target_name: fileName,
-          time: new Date().toISOString()
-        });
-
-        await saveDataToGitHub();
-        render();
-        alert(`Файл ${fileName} успешно удален!`);
-      } catch (err) {
-        alert(`Ошибка при удалении медиа: ${err.message}`);
-      }
+      });
     }
 
     function buildMediaCache() {
@@ -2204,10 +2365,11 @@
           const putSuccess = await putRes.json();
           state.updatesSha = putSuccess.content.sha;
           updateBadgeCount();
+          showToast("Обновления сохранены", "success");
           return;
         } catch (err) {
           if (attempt >= maxRetries - 1) {
-            alert(`Ошибка сохранения обновлений: ${err.message}`);
+            showToast(`Ошибка сохранения обновлений: ${err.message}`, "error");
             return;
           }
           attempt++;
@@ -2307,10 +2469,11 @@
 
           const putSuccess = await putRes.json();
           state.usefulSha = putSuccess.content.sha;
+          showToast("Сохранено", "success");
           return;
         } catch (err) {
           if (attempt >= maxRetries - 1) {
-            alert(`Ошибка сохранения: ${err.message}`);
+            showToast(`Ошибка сохранения: ${err.message}`, "error");
             return;
           }
           attempt++;
@@ -2376,7 +2539,7 @@
       try {
         parsed = JSON.parse(content);
       } catch (err) {
-        alert(`Невалидный JSON: ${err.message}`);
+        showToast(`Невалидный JSON: ${err.message}`, "error");
         return;
       }
 
@@ -2398,7 +2561,7 @@
         });
 
         if (putRes.status === 409) {
-          alert("Конфликт SHA, обновите файл");
+          showToast("Конфликт SHA, обновите файл", "error");
           return;
         }
 
@@ -2410,7 +2573,7 @@
         const putSuccess = await putRes.json();
         state.dsSha = putSuccess.content.sha;
         state.dsContent = JSON.stringify(parsed, null, 2);
-        alert("Сохранено");
+        showToast("Файл сохранен", "success");
 
         if (fileName === 'data.json') {
           await loadData();
@@ -2428,7 +2591,7 @@
           await loadChemistry();
         }
       } catch (err) {
-        alert(`Ошибка при сохранении: ${err.message}`);
+        showToast(`Ошибка при сохранении: ${err.message}`, "error");
       }
     }
 
@@ -2441,7 +2604,7 @@
         state.dsContent = ta.value;
         dsValidate();
       } catch (err) {
-        alert(`Невозможно форматировать, невалидный JSON: ${err.message}`);
+        showToast(`Невозможно форматировать, невалидный JSON: ${err.message}`, "error");
       }
     }
 
@@ -2743,7 +2906,6 @@
     function render() {
       const header = document.getElementById('main-header');
 
-      // Экран обновлений
       if (state.showUpdates) {
         if (state.editingUpdateId !== null) {
           header.style.display = 'none';
@@ -2791,14 +2953,13 @@
     }
 
     /* =========================================================
-       РАЗДЕЛ: ПОЛЕЗНОЕ (РЕЖИМ ЧТЕНИЯ, ПРОСМОТРА И РЕДАКТИРОВАНИЯ)
+       РАЗДЕЛ: ПОЛЕЗНОЕ
        ========================================================= */
     function renderUseful() {
       const subjects = state.usefulSubjects || [];
       let cardHeaderHtml = '';
       let cardBodyHtml = '';
 
-      // СОСТОЯНИЕ 1: Список предметов (режим чтения)
       if (state.usefulSelectedSubjectId === null) {
         cardHeaderHtml = `
           <div>
@@ -2827,9 +2988,7 @@
 
           cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
         }
-      } 
-      // СОСТОЯНИЕ 2: Внутри предмета
-      else {
+      } else {
         const subj = subjects.find(s => s.id === state.usefulSelectedSubjectId);
         if (!subj) {
           state.usefulSelectedSubjectId = null;
@@ -2839,7 +2998,6 @@
           return;
         }
 
-        // 2A. Режим для химии
         if (subj.is_chemistry) {
           cardHeaderHtml = `
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -2857,9 +3015,7 @@
               </button>
             </div>
           `;
-        } 
-        // 2B. Редактирование конкретного параграфа (Состояние C)
-        else if (state.usefulEditingSectionId !== null) {
+        } else if (state.usefulEditingSectionId !== null) {
           const sec = (subj.sections || []).find(s => s.id === state.usefulEditingSectionId);
           if (!sec) {
             state.usefulEditingSectionId = null;
@@ -2892,9 +3048,7 @@
               </div>
             </div>
           `;
-        } 
-        // 2C. Просмотр конкретного параграфа (Состояние B, режим чтения)
-        else if (state.usefulSelectedSectionId !== null) {
+        } else if (state.usefulSelectedSectionId !== null) {
           const sec = (subj.sections || []).find(s => s.id === state.usefulSelectedSectionId);
           if (!sec) {
             state.usefulSelectedSectionId = null;
@@ -2926,9 +3080,7 @@
               <button class="btn-danger" onclick="confirmDeleteSection(${sec.id})">Удалить</button>
             </div>
           `;
-        } 
-        // 2D. Сетка параграфов предмета (Состояние A, режим чтения по умолчанию)
-        else {
+        } else {
           cardHeaderHtml = `
             <div style="display: flex; align-items: center; gap: 10px;">
               <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
@@ -3058,21 +3210,15 @@
     }
 
     function confirmDeleteSection(sectionId) {
-      openModal(
-        "Удалить параграф?",
-        "Вы уверены, что хотите удалить этот параграф без возможности восстановления?",
-        `
-          <button class="btn-refresh" onclick="closeModal()">Нет</button>
-          <button class="btn-danger" onclick="deleteSection(${sectionId})">Да, удалить</button>
-        `
-      );
+      confirmAction("Вы уверены, что хотите удалить этот параграф без возможности восстановления?", () => {
+        deleteSection(sectionId);
+      });
     }
 
     async function deleteSection(sectionId) {
       const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
       if (!subj || !subj.sections) return;
       subj.sections = subj.sections.filter(s => s.id !== sectionId);
-      closeModal();
       state.usefulEditingSectionId = null;
       state.usefulSelectedSectionId = null;
       await saveUseful();
@@ -3113,7 +3259,7 @@
 
       const name = nameInput.value.trim();
       if (!name) {
-        alert("Введите название предмета");
+        showToast("Введите название предмета", "error");
         return;
       }
 
@@ -3176,7 +3322,11 @@
         filtered = filtered.filter(u => getCategory(u) === state.updateCategoryFilter);
       }
 
-      // Сортировка: сначала не сделанные (created_at DESC), затем сделанные (completed_at DESC)
+      const q = (state.searchUpdates || '').toLowerCase().trim();
+      if (q) {
+        filtered = filtered.filter(u => (u.title || '').toLowerCase().includes(q) || (u.text || '').toLowerCase().includes(q));
+      }
+
       filtered = [...filtered].sort((a, b) => {
         const aDone = a.status === 'done';
         const bDone = b.status === 'done';
@@ -3274,6 +3424,10 @@
                 Прочее (${categoryCounts.other})
               </button>
             </div>
+          </div>
+
+          <div class="search-bar">
+            <input type="text" id="search-updates-input" placeholder="Поиск обновлений по заголовку и описанию..." value="${escapeHtml(state.searchUpdates)}" oninput="state.searchUpdates = this.value; renderUpdatesScreen(); document.getElementById('search-updates-input').focus();" />
           </div>
 
           <div class="upd-grid">${contentHtml}</div>
@@ -3438,7 +3592,7 @@
       const text = document.getElementById('upd-text').value.trim();
 
       if (!title && !text) {
-        alert('Пустая запись не сохраняется');
+        showToast('Пустая запись не сохраняется', 'error');
         return;
       }
 
@@ -3480,19 +3634,13 @@
     }
 
     function confirmDeleteUpdate(updateId) {
-      openModal(
-        'Удалить обновление?',
-        'Вы уверены, что хотите удалить эту запись без возможности восстановления?',
-        `
-          <button class="btn-refresh" onclick="closeModal()">Нет</button>
-          <button class="btn-danger" onclick="deleteUpdate(${updateId})">Да, удалить</button>
-        `
-      );
+      confirmAction("Вы уверены, что хотите удалить эту запись без возможности восстановления?", () => {
+        deleteUpdate(updateId);
+      });
     }
 
     async function deleteUpdate(updateId) {
       state.updates = state.updates.filter(u => u.id !== updateId);
-      closeModal();
       closeUpdateEditor();
       await saveUpdatesToGitHub();
     }
@@ -3502,7 +3650,19 @@
        ========================================================= */
     function renderUsers() {
       const userIds = Object.keys(state.users);
-      let rows = userIds.map(id => {
+      const q = (state.searchUsers || '').toLowerCase().trim();
+
+      let filteredIds = userIds;
+      if (q) {
+        filteredIds = userIds.filter(id => {
+          const u = state.users[id];
+          return id.includes(q) ||
+            (u.first_name || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q);
+        });
+      }
+
+      let rows = filteredIds.map(id => {
         const u = state.users[id];
         return `
           <tr class="clickable" onclick="openProfile('${id}')">
@@ -3522,11 +3682,14 @@
               <div class="card-header">
                 <div>
                   <span class="card-title">Пользователи</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${userIds.length}</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${filteredIds.length} из ${userIds.length}</span>
                 </div>
                 <div class="header-actions">
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-users-input" placeholder="Поиск по имени, username или ID..." value="${escapeHtml(state.searchUsers)}" oninput="state.searchUsers = this.value; renderUsers(); document.getElementById('search-users-input').focus();" />
               </div>
               <div class="table-container">
                 <table>
@@ -3600,6 +3763,11 @@
         : `<tr><td colspan="3" class="empty-state">Нет медиафайлов</td></tr>`;
 
       document.getElementById('app').innerHTML = `
+        <div class="crumbs">
+          <a onclick="closeProfile()">Пользователи</a>
+          <span class="separator">›</span>
+          <span class="current">${escapeHtml(user.first_name || userId)}</span>
+        </div>
         <div class="card">
           <div class="card-header">
             <button class="back-btn" onclick="closeProfile()">← Назад</button>
@@ -3639,7 +3807,13 @@
        РАЗДЕЛ 2: СООБЩЕНИЯ
        ========================================================= */
     function renderMessages() {
-      const list = (state.messages || []).slice(-200).reverse();
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+
+      if (q) {
+        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
+      }
+
       let rows = list.map((m, index) => {
         const text = m.text || '';
         const parsed = parseMediaFromText(text);
@@ -3666,11 +3840,14 @@
               <div class="card-header">
                 <div>
                   <span class="card-title">Сообщения</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.messages || []).length}</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
                 </div>
                 <div class="header-actions">
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-messages-input" placeholder="Поиск по имени, тексту или User ID..." value="${escapeHtml(state.searchMessages)}" oninput="state.searchMessages = this.value; renderMessages(); document.getElementById('search-messages-input').focus();" />
               </div>
               <div class="table-container">
                 <table>
@@ -3689,7 +3866,13 @@
        РАЗДЕЛ 3: МЕДИА
        ========================================================= */
     function renderMedia() {
-      const list = (state.media || []).slice().reverse();
+      const q = (state.searchMedia || '').toLowerCase().trim();
+      let list = (state.media || []).slice().reverse();
+
+      if (q) {
+        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.file_name || '').toLowerCase().includes(q) || (m.media_type || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
+      }
+
       let rows = list.map(m => {
         const rawUrl = m.url || `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${m.file_name}`;
         return `
@@ -3723,6 +3906,9 @@
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
               </div>
+              <div class="search-bar">
+                <input type="text" id="search-media-input" placeholder="Поиск по имени, файлу, типу или User ID..." value="${escapeHtml(state.searchMedia)}" oninput="state.searchMedia = this.value; renderMedia(); document.getElementById('search-media-input').focus();" />
+              </div>
               <div class="table-container">
                 <table>
                   <thead><tr><th>ID</th><th>Отправитель</th><th>User ID</th><th>Тип</th><th>Время</th><th>Действия</th></tr></thead>
@@ -3740,11 +3926,16 @@
        РАЗДЕЛ 4: ЗАМЕТКИ
        ========================================================= */
     function renderNotes() {
-      const sortedNotes = [...(state.notes || [])].sort((a, b) => {
+      const q = (state.searchNotes || '').toLowerCase().trim();
+      let sortedNotes = [...(state.notes || [])].sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
         return new Date(b.created_at || 0) - new Date(a.created_at || 0);
       });
+
+      if (q) {
+        sortedNotes = sortedNotes.filter(n => (n.title || '').toLowerCase().includes(q) || (n.text || '').toLowerCase().includes(q));
+      }
 
       let contentHtml = '';
       if (sortedNotes.length === 0) {
@@ -3782,6 +3973,9 @@
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                   <button class="btn-primary" onclick="openNoteEditor('new')">+ Создать заметку</button>
                 </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-notes-input" placeholder="Поиск заметок по заголовку и тексту..." value="${escapeHtml(state.searchNotes)}" oninput="state.searchNotes = this.value; renderNotes(); document.getElementById('search-notes-input').focus();" />
               </div>
               <div class="notes-grid">${contentHtml}</div>
             </div>
@@ -3841,7 +4035,7 @@
       const text = document.getElementById('note-text').value.trim();
 
       if (!title && !text) {
-        alert('Пустая заметка не сохраняется');
+        showToast('Пустая заметка не сохраняется', 'error');
         return;
       }
 
@@ -3872,7 +4066,7 @@
 
     async function togglePinNote(noteId) {
       if (noteId === 'new') {
-        alert('Сначала сохраните заметку');
+        showToast('Сначала сохраните заметку', 'info');
         return;
       }
       const note = state.notes.find(n => n.id === noteId);
@@ -3884,21 +4078,15 @@
     }
 
     function confirmDeleteNote(noteId) {
-      openModal(
-        'Удалить заметку?',
-        'Вы уверены, что хотите удалить эту заметку без возможности восстановления?',
-        `
-          <button class="btn-refresh" onclick="closeModal()">Нет</button>
-          <button class="btn-danger" onclick="deleteNote(${noteId})">Да, удалить</button>
-        `
-      );
+      confirmAction("Вы уверены, что хотите удалить эту заметку без возможности восстановления?", () => {
+        deleteNote(noteId);
+      });
     }
 
     async function deleteNote(noteId) {
       state.notes = state.notes.filter(n => n.id !== noteId);
-      closeModal();
-      await saveDataToGitHub();
       closeNoteEditor();
+      await saveDataToGitHub();
     }
 
     /* =========================================================
@@ -3939,6 +4127,7 @@
       const subjects = state.gdzSubjects;
       let cardHeaderHtml = '';
       let cardBodyHtml = '';
+      let crumbsHtml = '';
 
       if (state.gdzSelectedSubject === null) {
         cardHeaderHtml = `
@@ -3988,6 +4177,14 @@
         const chapterLabel = subj && subj.chapter_label ? ` → ${escapeHtml(subj.chapter_label)}` : '';
         const chapters = subj ? (subj.chapters || subj.sections || []) : [];
 
+        crumbsHtml = `
+          <div class="crumbs">
+            <a onclick="backToGdzSubjects()">ГДЗ</a>
+            <span class="separator">›</span>
+            <span class="current">${escapeHtml(subjName)}</span>
+          </div>
+        `;
+
         cardHeaderHtml = `
           <div style="display: flex; align-items: center; gap: 10px;">
             <button class="back-btn" onclick="backToGdzSubjects()">← Назад к предметам</button>
@@ -4020,6 +4217,26 @@
 
         const backBtnAction = hasChapters ? 'backToGdzChapters()' : 'backToGdzSubjects()';
         const backBtnText = hasChapters ? '← Назад к разделам' : '← Назад к предметам';
+
+        if (hasChapters) {
+          crumbsHtml = `
+            <div class="crumbs">
+              <a onclick="backToGdzSubjects()">ГДЗ</a>
+              <span class="separator">›</span>
+              <a onclick="backToGdzChapters()">${escapeHtml(subjName)}</a>
+              <span class="separator">›</span>
+              <span class="current">${escapeHtml(chapterTitle)}</span>
+            </div>
+          `;
+        } else {
+          crumbsHtml = `
+            <div class="crumbs">
+              <a onclick="backToGdzSubjects()">ГДЗ</a>
+              <span class="separator">›</span>
+              <span class="current">${escapeHtml(subjName)}</span>
+            </div>
+          `;
+        }
 
         cardHeaderHtml = `
           <div style="display: flex; align-items: center; gap: 10px;">
@@ -4078,6 +4295,7 @@
         <div class="layout-3col">
           <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
           <div class="main-col">
+            ${crumbsHtml}
             <div class="card">
               <div class="card-header">${cardHeaderHtml}</div>
               ${cardBodyHtml}
@@ -4166,7 +4384,18 @@
        РАЗДЕЛ 5: АДМИНЫ
        ========================================================= */
     function renderAdmins() {
-      let rows = (state.admins || []).map(admin => {
+      const q = (state.searchAdmins || '').toLowerCase().trim();
+      let list = state.admins || [];
+
+      if (q) {
+        list = list.filter(admin => {
+          const user = state.users[String(admin.id)];
+          const name = user ? user.first_name : '';
+          return String(admin.id).includes(q) || name.toLowerCase().includes(q);
+        });
+      }
+
+      let rows = list.map(admin => {
         const user = state.users[String(admin.id)];
         const name = user ? user.first_name : '—';
         return `
@@ -4186,11 +4415,14 @@
               <div class="card-header">
                 <div>
                   <span class="card-title">Админы</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.admins || []).length}</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
                 </div>
                 <div class="header-actions">
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-admins-input" placeholder="Поиск админов по имени или ID..." value="${escapeHtml(state.searchAdmins)}" oninput="state.searchAdmins = this.value; renderAdmins(); document.getElementById('search-admins-input').focus();" />
               </div>
               <div class="table-container">
                 <table>
@@ -4218,7 +4450,20 @@
         'del_user_media': 'удалил все медиа'
       };
 
-      const rows = (state.audit || []).slice().reverse().map(item => {
+      const q = (state.searchAudit || '').toLowerCase().trim();
+      let list = (state.audit || []).slice().reverse();
+
+      if (q) {
+        list = list.filter(item => {
+          const act = actionText[item.action] || item.action;
+          return (item.admin_name || '').toLowerCase().includes(q) ||
+                 (item.target_name || '').toLowerCase().includes(q) ||
+                 act.toLowerCase().includes(q) ||
+                 String(item.target_id).includes(q);
+        });
+      }
+
+      const rows = list.map(item => {
         return `
           <div class="audit-row">
             <span style="color: var(--text-secondary);">[${formatDate(item.time)}]</span> 
@@ -4238,11 +4483,14 @@
               <div class="card-header">
                 <div>
                   <span class="card-title">Журнал аудита</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${(state.audit || []).length}</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
                 </div>
                 <div class="header-actions">
                   <button class="btn-refresh" onclick="loadData()">Обновить</button>
                 </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-audit-input" placeholder="Поиск по администратору, объекту, действию..." value="${escapeHtml(state.searchAudit)}" oninput="state.searchAudit = this.value; renderAudit(); document.getElementById('search-audit-input').focus();" />
               </div>
               ${rows || '<div class="empty-state">Записей аудита нет</div>'}
             </div>
@@ -4292,14 +4540,13 @@
                   <span class="sub-text">Всего: ${filtered.length} из ${VALENCIES.length}</span>
                 </div>
               </div>
-              <div style="padding: 16px; border-bottom: 1px solid var(--border-color);">
+              <div class="search-bar">
                 <input 
                   type="text" 
                   id="valencies-search-input" 
-                  class="form-input" 
-                  style="margin-bottom: 0;" 
                   placeholder="Поиск по символу (например, Fe, Na) или названию (Железо, Хлор)..." 
                   value="${escapeHtml(state.valenciesSearch)}"
+                  oninput="state.valenciesSearch = this.value; renderValencies(); document.getElementById('valencies-search-input').focus();"
                 />
               </div>
               <div class="table-container">
@@ -4320,16 +4567,6 @@
           <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
         </div>
       `;
-
-      const searchInput = document.getElementById('valencies-search-input');
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
-        searchInput.addEventListener('input', (e) => {
-          state.valenciesSearch = e.target.value;
-          renderValencies();
-        });
-      }
     }
 
     /* =========================================================
@@ -4437,7 +4674,7 @@
         `;
       } else {
         solubilityHtml = `
-          <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 4px; color: var(--text-secondary); font-size: 13px;">
+          <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-secondary); font-size: 13px;">
             Данные о растворимости недоступны для этого элемента
           </div>
         `;
@@ -4485,7 +4722,12 @@
     });
 
     function openMessageModal(index) {
-      const list = (state.messages || []).slice(-200).reverse();
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+      if (q) {
+        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
+      }
+
       const msg = list[index];
       if (!msg) return;
 
