@@ -3048,7 +3048,7 @@ function runPendingConfirm() {
           if (!isTabAllowed(state.currentTab)) {
             state.currentTab = 'useful';
             document.querySelectorAll('.nav-btn').forEach(b => {
-              b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+              b.classList.toggle('active', b.getAttribute('data-tab') === 'useful');
             });
           }
 
@@ -3074,9 +3074,9 @@ function runPendingConfirm() {
       applyAdminVisibility();
 
       if (!isTabAllowed(state.currentTab)) {
-        state.currentTab = 'notes';
+        state.currentTab = 'useful';
         document.querySelectorAll('.nav-btn').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+          b.classList.toggle('active', b.getAttribute('data-tab') === 'useful');
         });
       }
 
