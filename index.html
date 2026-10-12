@@ -1606,7 +1606,6 @@
           <button class="nav-btn" data-tab="useful">Полезное</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
-          <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
@@ -4232,69 +4231,8 @@ function runPendingConfirm() {
         </div>
       `;
     }
-
     /* =========================================================
-       РАЗДЕЛ 3: МЕДИА
-       ========================================================= */
-    function renderMedia() {
-      const q = (state.searchMedia || '').toLowerCase().trim();
-      let list = (state.media || []).slice().reverse();
-
-      if (q) {
-        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.file_name || '').toLowerCase().includes(q) || (m.media_type || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
-      }
-
-      let rows = list.map(m => {
-        const rawUrl = m.url || `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${m.file_name}`;
-        return `
-          <tr>
-            <td class="col-id">#${m.id || '—'}</td>
-            <td>${escapeHtml(m.first_name || '—')}</td>
-            <td><code>${m.user_id}</code></td>
-            <td>${getMediaBadgeHtml(m.media_type)}</td>
-            <td>${formatDate(m.time)}</td>
-            <td>
-              <div style="display: flex; gap: 6px;">
-                <a href="${rawUrl}" target="_blank" class="btn-action">Открыть</a>
-                <button class="btn-action btn-action-danger" onclick="deleteMediaFromGitHub('${escapeHtml(m.file_name)}', ${m.id})">Удалить</button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Медиа</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-media-input" placeholder="Поиск по имени, файлу, типу или User ID..." value="${escapeHtml(state.searchMedia)}" oninput="state.searchMedia = this.value; renderMedia(); document.getElementById('search-media-input').focus();" />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>ID</th><th>Отправитель</th><th>User ID</th><th>Тип</th><th>Время</th><th>Действия</th></tr></thead>
-                  <tbody>${rows || '<tr><td colspan="6" class="empty-state">Медиа не найдено</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 4: ЗАМЕТКИ
+       РАЗДЕЛ 3: ЗАМЕТКИ
        ========================================================= */
     function renderNotes() {
       const q = (state.searchNotes || '').toLowerCase().trim();
@@ -4461,7 +4399,7 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       РАЗДЕЛ: ГДЗ
+       РАЗДЕЛ 4: ГДЗ
        ========================================================= */
     function renderGdz() {
       if (state.gdzSearchLoading) {
@@ -4752,7 +4690,7 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       РАЗДЕЛ 5: АДМИНЫ
+       РАЗДЕЛ 6: АДМИНЫ
        ========================================================= */
     function renderAdmins() {
       const q = (state.searchAdmins || '').toLowerCase().trim();
@@ -4809,7 +4747,7 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       РАЗДЕЛ 6: ЖУРНАЛ АУДИТА
+       РАЗДЕЛ 7: ЖУРНАЛ АУДИТА
        ========================================================= */
     function renderAudit() {
       const actionText = {
@@ -4872,7 +4810,7 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       РАЗДЕЛ 7: ВАЛЕНТНОСТИ
+       РАЗДЕЛ 8: ВАЛЕНТНОСТИ
        ========================================================= */
     function getValencyTypeBadge(type) {
       if (type === 'const') return '<span class="badge badge-val-const">постоянная</span>';
