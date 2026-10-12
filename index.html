@@ -1894,7 +1894,7 @@
     /* =========================================================
        ПУБЛИЧНЫЙ РЕЖИМ: НАСТРОЙКИ И ВИДИМОСТЬ ВКЛАДОК
        ========================================================= */
-    const DEFAULT_PUBLIC_TABS = ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+    const DEFAULT_PUBLIC_TABS = ['gdz', 'useful', 'valencies', 'periodic'];
 
     async function loadSettings() {
       try {
@@ -3046,7 +3046,7 @@ function runPendingConfirm() {
           applyAdminVisibility();
 
           if (!isTabAllowed(state.currentTab)) {
-            state.currentTab = 'notes';
+            state.currentTab = 'useful';
             document.querySelectorAll('.nav-btn').forEach(b => {
               b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
             });
