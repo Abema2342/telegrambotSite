@@ -2850,7 +2850,26 @@ function runPendingConfirm() {
       loadData();
       loadUpdates();
     }
-
+    
+    /* =========================================================
+       КНОПКА ОБНОВЛЕНИЙ
+       ========================================================= */
+    const updatesBtn = document.getElementById('updates-btn');
+    if (updatesBtn) {
+      updatesBtn.addEventListener('click', async () => {
+        if (!state.isAdmin) {
+          showToast('Обновления доступны только администратору', 'info');
+          return;
+        }
+        state.showUpdates = true;
+        state.editingUpdateId = null;
+        if (!state.updatesLoaded) {
+          await loadUpdates();
+        }
+        render();
+      });
+    }
+    
     /* =========================================================
        НАВИГАЦИЯ И РОУТИНГ
        ========================================================= */
