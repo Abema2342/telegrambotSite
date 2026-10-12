@@ -156,31 +156,6 @@
       border-color: var(--accent-color);
     }
 
-    /* ЭКРАН АВТОРИЗАЦИИ */
-    #login-screen {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 16px;
-    }
-
-    .login-box {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-      padding: 32px 24px;
-      width: 100%;
-      max-width: 360px;
-      text-align: center;
-    }
-
-    .login-box h2 {
-      margin-bottom: 20px;
-      font-size: 18px;
-    }
-
     .form-input {
       width: 100%;
       background: #111;
@@ -197,18 +172,6 @@
 
     .form-input:focus {
       border-color: var(--accent-color);
-    }
-
-    .login-error {
-      color: var(--status-banned);
-      font-size: 13px;
-      margin-top: 12px;
-      display: none;
-    }
-
-    /* ОСНОВНАЯ ПАНЕЛЬ */
-    #dashboard-screen {
-      display: none;
     }
 
     /* Навигация */
@@ -284,8 +247,8 @@
 
     .btn-logout:hover {
       background: var(--card-hover);
-      color: var(--status-banned);
-      border-color: var(--status-banned);
+      color: var(--text-main);
+      border-color: var(--accent-color);
     }
 
     .btn-updates {
@@ -1564,37 +1527,25 @@
   <!-- КОНТЕЙНЕР ДЛЯ TOAST-УВЕДОМЛЕНИЙ -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- ЭКРАН 1: ЛОГИН -->
-  <div id="login-screen">
-    <div class="login-box">
-      <h2>Админ-панель</h2>
-      <form id="login-form">
-        <input type="password" id="password-input" class="form-input" placeholder="Введите пароль" autocomplete="current-password" autofocus required />
-        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">Войти</button>
-      </form>
-      <div id="login-error" class="login-error">Неверный пароль</div>
-    </div>
-  </div>
-
-  <!-- ЭКРАН 2: ОСНОВНАЯ ПАНЕЛЬ -->
+  <!-- ОСНОВНАЯ ПАНЕЛЬ -->
   <div id="dashboard-screen">
     <header id="main-header">
       <div class="nav-container">
         <div class="nav-tabs">
-          <button class="nav-btn active" data-tab="users">Пользователи</button>
-          <button class="nav-btn" data-tab="messages">Сообщения</button>
-          <button class="nav-btn" data-tab="media">Медиа</button>
-          <button class="nav-btn" data-tab="notes">Заметки</button>
+          <button class="nav-btn active" data-tab="notes">Заметки</button>
           <button class="nav-btn" data-tab="gdz">ГДЗ</button>
           <button class="nav-btn" data-tab="useful">Полезное</button>
-          <button class="nav-btn" data-tab="admins">Админы</button>
-          <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="users">Пользователи</button>
+          <button class="nav-btn" data-tab="messages">Сообщения</button>
+          <button class="nav-btn" data-tab="media">Медиа</button>
+          <button class="nav-btn" data-tab="admins">Админы</button>
+          <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
         <div class="header-right">
-          <button id="logout-btn" class="btn-logout">Выйти</button>
+          <button id="auth-btn" class="btn-logout">Вход</button>
           <button id="updates-btn" class="btn-updates" data-count="0" title="Обновления">
             <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
           </button>
@@ -1703,8 +1654,8 @@
       {symbol: "Ba", name: "Барий", val: "II", type: "const"},
       {symbol: "La", name: "Лантан", val: "III", type: "const"},
       {symbol: "Ce", name: "Церий", val: "III, IV", type: "var"},
-      {symbol: "Hf", name: "Гафний", val: "IV", type: "const"},
-      {symbol: "Ta", name: "Тантал", val: "V", type: "const"},
+      {symbol: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
+      {symbol: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
       {symbol: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
       {symbol: "Re", name: "Рений", val: "IV, VII", type: "var"},
       {symbol: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
@@ -1824,6 +1775,9 @@
     ];
 
     let state = {
+      isAdmin: false,
+      publicTabs: null,
+      settingsSha: null,
       last_updated: null,
       users: {},
       messages: [],
@@ -1831,7 +1785,7 @@
       notes: [],
       admins: [],
       audit: [],
-      currentTab: 'users',
+      currentTab: 'notes',
       selectedUserId: null,
       editingNoteId: null,
       dataSha: null,
@@ -1870,6 +1824,53 @@
       searchAudit: ''
     };
 
+    /* НАСТРОЙКИ И ПУБЛИЧНЫЕ ВКЛАДКИ */
+    async function loadSettings() {
+      try {
+        const response = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/settings.json?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!response.ok) {
+          state.publicTabs = ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+          return state.publicTabs;
+        }
+        const jsonMeta = await response.json();
+        state.settingsSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+        const data = JSON.parse(utf8Content);
+        state.publicTabs = Array.isArray(data.public_tabs) ? data.public_tabs : ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+        return state.publicTabs;
+      } catch (err) {
+        console.warn('Ошибка загрузки settings.json:', err);
+        state.publicTabs = ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+        return state.publicTabs;
+      }
+    }
+
+    function applyAdminVisibility() {
+      const publicTabs = state.publicTabs || ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const tab = btn.getAttribute('data-tab');
+        const isPublic = publicTabs.includes(tab);
+        if (isPublic) {
+          btn.style.display = '';
+        } else {
+          btn.style.display = state.isAdmin ? '' : 'none';
+        }
+      });
+    }
+
+    function isTabAllowed(tab) {
+      const publicTabs = state.publicTabs || ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+      if (publicTabs.includes(tab)) return true;
+      return state.isAdmin;
+    }
+
     /* TOAST & CONFIRM */
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
@@ -1885,28 +1886,105 @@
       }, 3000);
     }
 
-    let pendingConfirmAction = null;
-
     function confirmAction(message, onConfirm) {
-    pendingConfirmAction = onConfirm;
-    openModal(
-      'Подтверждение действия',
-      `<p>${escapeHtml(message)}</p>`,
-      `
-        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
-        <button class="btn-primary" onclick="runPendingConfirm()">Да</button>
-      `
-    );
-  }
+      openModal(
+        'Подтверждение действия',
+        `<p>${escapeHtml(message)}</p>`,
+        `
+          <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+          <button class="btn-primary" onclick="closeModal(); (${onConfirm})();">Да</button>
+        `
+      );
+    }
 
-function runPendingConfirm() {
-  closeModal();
-  if (pendingConfirmAction) {
-    const action = pendingConfirmAction;
-    pendingConfirmAction = null;
-    action();
-  }
-}
+    /* АВТОРИЗАЦИЯ И МОДАЛКА ВХОДА */
+    const authBtn = document.getElementById('auth-btn');
+    authBtn.addEventListener('click', () => {
+      if (state.isAdmin) {
+        state.isAdmin = false;
+        localStorage.removeItem('admin_auth');
+        authBtn.textContent = 'Вход';
+        applyAdminVisibility();
+
+        if (!isTabAllowed(state.currentTab)) {
+          state.currentTab = 'notes';
+          document.querySelectorAll('.nav-btn').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+          });
+        }
+        render();
+        showToast('Вы вышли', 'info');
+      } else {
+        openLoginModal();
+      }
+    });
+
+    function openLoginModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p class="sub-text">Введите пароль администратора</p>
+          <input type="password" id="login-modal-password" class="form-input" placeholder="Пароль" style="margin-bottom: 0;" autofocus />
+          <div id="login-modal-error" style="color: var(--status-banned); font-size: 13px; display: none;">Неверный пароль</div>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="submitLoginModal()">Войти</button>
+      `;
+      openModal('Вход', content, actions);
+
+      setTimeout(() => {
+        const input = document.getElementById('login-modal-password');
+        if (input) {
+          input.focus();
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitLoginModal();
+          });
+        }
+      }, 50);
+    }
+
+    function submitLoginModal() {
+      const input = document.getElementById('login-modal-password');
+      const errEl = document.getElementById('login-modal-error');
+      if (!input) return;
+
+      if (input.value.trim() === ADMIN_PASSWORD) {
+        state.isAdmin = true;
+        localStorage.setItem('admin_auth', 'true');
+        authBtn.textContent = 'Выйти';
+        closeModal();
+        applyAdminVisibility();
+        render();
+        showToast('Вы вошли как администратор', 'success');
+      } else {
+        if (errEl) errEl.style.display = 'block';
+      }
+    }
+
+    async function checkAuth() {
+      await loadSettings();
+
+      const savedAuth = localStorage.getItem('admin_auth') === 'true';
+      state.isAdmin = savedAuth;
+
+      const authBtnEl = document.getElementById('auth-btn');
+      if (authBtnEl) {
+        authBtnEl.textContent = state.isAdmin ? 'Выйти' : 'Вход';
+      }
+
+      applyAdminVisibility();
+
+      if (!isTabAllowed(state.currentTab)) {
+        state.currentTab = 'notes';
+        document.querySelectorAll('.nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+        });
+      }
+
+      loadData();
+      loadUpdates();
+    }
 
     function initThemeColor() {
       const savedTheme = localStorage.getItem('theme_accent') || '#5865F2';
@@ -2391,110 +2469,6 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       ЗАГРУЗКА И СОХРАНЕНИЕ USEFUL.JSON
-       ========================================================= */
-    async function loadUseful() {
-      if (state.usefulLoaded) return state.usefulSubjects;
-
-      try {
-        const response = await fetch(
-          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`,
-          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-        );
-
-        if (response.status === 404) {
-          state.usefulSubjects = [];
-          state.usefulSha = null;
-          state.usefulLoaded = true;
-          return state.usefulSubjects;
-        }
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const jsonMeta = await response.json();
-        state.usefulSha = jsonMeta.sha;
-        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
-        const utf8Content = decodeURIComponent(
-          Array.prototype.map.call(rawContent, c =>
-            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-          ).join('')
-        );
-
-        const data = JSON.parse(utf8Content);
-        state.usefulSubjects = Array.isArray(data.subjects) ? data.subjects : (Array.isArray(data) ? data : []);
-        state.usefulLoaded = true;
-        return state.usefulSubjects;
-      } catch (err) {
-        console.warn("Ошибка загрузки useful.json:", err);
-        state.usefulSubjects = [];
-        state.usefulLoaded = true;
-        return state.usefulSubjects;
-      }
-    }
-
-    async function saveUseful() {
-      const maxRetries = 3;
-      let attempt = 0;
-
-      while (attempt < maxRetries) {
-        try {
-          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`, {
-            headers: { 'Accept': 'application/vnd.github.v3+json' }
-          });
-
-          let sha = state.usefulSha;
-          if (getRes.ok) {
-            const jsonMeta = await getRes.json();
-            sha = jsonMeta.sha;
-            state.usefulSha = sha;
-          }
-
-          const exportData = {
-            subjects: state.usefulSubjects || []
-          };
-
-          const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
-
-          const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json`, {
-            method: 'PUT',
-            headers: {
-              'Accept': 'application/vnd.github.v3+json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              message: `Update useful.json via dashboard [skip ci]`,
-              content: contentBase64,
-              sha: sha
-            })
-          });
-
-          if (putRes.status === 409 && attempt < maxRetries - 1) {
-            attempt++;
-            await new Promise(r => setTimeout(r, 500));
-            continue;
-          }
-
-          if (!putRes.ok) {
-            const errData = await putRes.json();
-            throw new Error(errData.message || 'Ошибка сохранения useful.json');
-          }
-
-          const putSuccess = await putRes.json();
-          state.usefulSha = putSuccess.content.sha;
-          showToast("Сохранено", "success");
-          return;
-        } catch (err) {
-          if (attempt >= maxRetries - 1) {
-            showToast(`Ошибка сохранения: ${err.message}`, "error");
-            return;
-          }
-          attempt++;
-          await new Promise(r => setTimeout(r, 500));
-        }
-      }
-    }
-
-    /* =========================================================
        РЕДАКТОР СТРУКТУРЫ ДАННЫХ (DATA STRUCTURE)
        ========================================================= */
     async function dsLoadFile(fileName) {
@@ -2601,6 +2575,10 @@ function runPendingConfirm() {
         } else if (fileName === 'chemistry.json') {
           state.chemistryData = null;
           await loadChemistry();
+        } else if (fileName === 'settings.json') {
+          state.publicTabs = null;
+          await loadSettings();
+          applyAdminVisibility();
         }
       } catch (err) {
         showToast(`Ошибка при сохранении: ${err.message}`, "error");
@@ -2642,7 +2620,7 @@ function runPendingConfirm() {
     }
 
     function renderDataStructure() {
-      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json'];
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json'];
       const selectHtml = `
         <select class="ds-header-select" onchange="dsChangeFile(this.value)">
           ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
@@ -2696,48 +2674,6 @@ function runPendingConfirm() {
       dsLoadFile(val);
     }
 
-    /* =========================================================
-       АВТОРИЗАЦИЯ
-       ========================================================= */
-    const loginScreen = document.getElementById('login-screen');
-    const dashboardScreen = document.getElementById('dashboard-screen');
-    const loginForm = document.getElementById('login-form');
-    const passwordInput = document.getElementById('password-input');
-    const loginError = document.getElementById('login-error');
-    const logoutBtn = document.getElementById('logout-btn');
-
-    function checkAuth() {
-      if (localStorage.getItem('admin_auth') === 'true') {
-        loginScreen.style.display = 'none';
-        dashboardScreen.style.display = 'block';
-        loadData();
-        loadUpdates();
-      } else {
-        loginScreen.style.display = 'flex';
-        dashboardScreen.style.display = 'none';
-        passwordInput.value = '';
-        loginError.style.display = 'none';
-      }
-    }
-
-    loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (passwordInput.value.trim() === ADMIN_PASSWORD) {
-        localStorage.setItem('admin_auth', 'true');
-        loginError.style.display = 'none';
-        checkAuth();
-      } else {
-        loginError.style.display = 'block';
-      }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('admin_auth');
-      state.showUpdates = false;
-      state.editingUpdateId = null;
-      checkAuth();
-    });
-
     const updatesBtn = document.getElementById('updates-btn');
     updatesBtn.addEventListener('click', async () => {
       state.showUpdates = true;
@@ -2753,9 +2689,15 @@ function runPendingConfirm() {
        ========================================================= */
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        const targetTab = btn.getAttribute('data-tab');
+        if (!isTabAllowed(targetTab)) {
+          showToast('Эта вкладка доступна только администратору', 'error');
+          return;
+        }
+
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        state.currentTab = btn.getAttribute('data-tab');
+        state.currentTab = targetTab;
         state.selectedUserId = null;
         state.editingNoteId = null;
         state.showUpdates = false;
@@ -2918,6 +2860,7 @@ function runPendingConfirm() {
     function render() {
       const header = document.getElementById('main-header');
 
+      // Экран обновлений
       if (state.showUpdates) {
         if (state.editingUpdateId !== null) {
           header.style.display = 'none';
@@ -2962,1750 +2905,6 @@ function runPendingConfirm() {
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
       }
-    }
-
-    /* =========================================================
-       РАЗДЕЛ: ПОЛЕЗНОЕ
-       ========================================================= */
-    function renderUseful() {
-      const subjects = state.usefulSubjects || [];
-      let cardHeaderHtml = '';
-      let cardBodyHtml = '';
-
-      if (state.usefulSelectedSubjectId === null) {
-        cardHeaderHtml = `
-          <div>
-            <span class="card-title">Полезное</span>
-            <span class="sub-text" style="margin-left: 8px;">Полезные материалы по предметам</span>
-          </div>
-          <div class="header-actions">
-            <button class="btn-primary" onclick="openNewSubjectModal()">+ Создать предмет</button>
-          </div>
-        `;
-
-        if (subjects.length === 0) {
-          cardBodyHtml = '<div class="empty-state">Нет предметов</div>';
-        } else {
-          const cardsHtml = subjects.map(s => {
-            const subtitle = s.is_chemistry ? 'Химия' : `Разделов: ${(s.sections || []).length}`;
-            return `
-              <div class="note-card" onclick="selectUsefulSubject(${s.id})">
-                <div class="note-card-header">
-                  <span class="note-card-title">${escapeHtml(s.name || 'Без названия')}</span>
-                </div>
-                <div class="note-card-preview" style="margin-bottom: 0;">${escapeHtml(subtitle)}</div>
-              </div>
-            `;
-          }).join('');
-
-          cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
-        }
-      } else {
-        const subj = subjects.find(s => s.id === state.usefulSelectedSubjectId);
-        if (!subj) {
-          state.usefulSelectedSubjectId = null;
-          state.usefulSelectedSectionId = null;
-          state.usefulEditingSectionId = null;
-          renderUseful();
-          return;
-        }
-
-        if (subj.is_chemistry) {
-          cardHeaderHtml = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
-              <span class="card-title">${escapeHtml(subj.name || 'Химия')}</span>
-            </div>
-          `;
-          cardBodyHtml = `
-            <div style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
-              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('valencies')">
-                Валентности
-              </button>
-              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('periodic')">
-                Таблица Менделеева
-              </button>
-            </div>
-          `;
-        } else if (state.usefulEditingSectionId !== null) {
-          const sec = (subj.sections || []).find(s => s.id === state.usefulEditingSectionId);
-          if (!sec) {
-            state.usefulEditingSectionId = null;
-            renderUseful();
-            return;
-          }
-
-          cardHeaderHtml = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button class="back-btn" onclick="cancelEditSection()">← Отмена</button>
-              <span class="card-title">Редактирование параграфа</span>
-            </div>
-          `;
-
-          cardBodyHtml = `
-            <div class="useful-edit-form">
-              <input type="text" id="edit-section-title" class="note-input-title" placeholder="Название параграфа..." value="${escapeHtml(sec.title || '')}">
-              <div class="useful-toolbar">
-                <button type="button" class="btn-refresh" onclick="insertFormula()">+ Формула</button>
-                <button type="button" class="btn-refresh" onclick="insertDivider()">+ Разделитель</button>
-              </div>
-              <textarea id="useful-edit-content" class="note-input-text"
-                        placeholder="Пиши текст. Формулы в $долларах$, разделитель — три дефиса ---."
-                        oninput="updateSectionContent(${sec.id}, this.value)">${escapeHtml(sec.content || '')}</textarea>
-              <div class="note-editor-toolbar">
-                <div style="display: flex; gap: 8px;">
-                  <button class="btn-primary" onclick="saveSectionEdit(${sec.id})">Сохранить</button>
-                  <button class="btn-refresh" onclick="cancelEditSection()">Отмена</button>
-                </div>
-              </div>
-            </div>
-          `;
-        } else if (state.usefulSelectedSectionId !== null) {
-          const sec = (subj.sections || []).find(s => s.id === state.usefulSelectedSectionId);
-          if (!sec) {
-            state.usefulSelectedSectionId = null;
-            renderUseful();
-            return;
-          }
-
-          const dateText = sec.last_modified && sec.last_modified !== sec.created_at
-            ? `Изменено: ${formatDate(sec.last_modified)}`
-            : (sec.created_at ? `Создано: ${formatDate(sec.created_at)}` : '');
-
-          cardHeaderHtml = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button class="back-btn" onclick="backToSectionsList()">← Назад к параграфам</button>
-              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
-            </div>
-          `;
-
-          cardBodyHtml = `
-            <div class="useful-view-header">
-              <div class="useful-view-title">${escapeHtml(sec.title || 'Без названия')}</div>
-              ${dateText ? `<div class="useful-view-dates">${dateText}</div>` : ''}
-            </div>
-            <div class="useful-section-content-view">
-              ${renderSectionContentView(sec.content)}
-            </div>
-            <div class="useful-view-actions">
-              <button class="btn-primary" onclick="startEditSection(${sec.id})">Редактировать</button>
-              <button class="btn-danger" onclick="confirmDeleteSection(${sec.id})">Удалить</button>
-            </div>
-          `;
-        } else {
-          cardHeaderHtml = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
-              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
-            </div>
-            <div class="header-actions">
-              <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
-            </div>
-          `;
-
-          const sections = subj.sections || [];
-          if (sections.length === 0) {
-            cardBodyHtml = '<div class="empty-state">Нет параграфов. Нажмите «+ Добавить параграф», чтобы создать первый.</div>';
-          } else {
-            const cardsHtml = sections.map(sec => {
-              const previewText = sec.content ? escapeHtml(sec.content.replace(/\$([^$]+)\$/g, '$1')) : 'Пустой параграф...';
-              const dateText = sec.last_modified || sec.created_at ? formatDate(sec.last_modified || sec.created_at) : '';
-
-              return `
-                <div class="useful-card" onclick="viewSection(${sec.id})">
-                  <div>
-                    <div class="useful-card-title">${escapeHtml(sec.title || 'Без названия')}</div>
-                    <div class="useful-card-preview">${previewText}</div>
-                  </div>
-                  <div class="useful-card-date">${dateText}</div>
-                </div>
-              `;
-            }).join('');
-
-            cardBodyHtml = `<div class="useful-grid">${cardsHtml}</div>`;
-          }
-        }
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">${cardHeaderHtml}</div>
-              ${cardBodyHtml}
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    function selectUsefulSubject(id) {
-      state.usefulSelectedSubjectId = id;
-      state.usefulSelectedSectionId = null;
-      state.usefulEditingSectionId = null;
-      renderUseful();
-    }
-
-    function backToUsefulSubjects() {
-      state.usefulSelectedSubjectId = null;
-      state.usefulSelectedSectionId = null;
-      state.usefulEditingSectionId = null;
-      renderUseful();
-    }
-
-    function viewSection(id) {
-      state.usefulSelectedSectionId = id;
-      state.usefulEditingSectionId = null;
-      renderUseful();
-    }
-
-    function backToSectionsList() {
-      state.usefulSelectedSectionId = null;
-      state.usefulEditingSectionId = null;
-      renderUseful();
-    }
-
-    function startEditSection(id) {
-      state.usefulEditingSectionId = id;
-      renderUseful();
-    }
-
-    function cancelEditSection() {
-      state.usefulEditingSectionId = null;
-      renderUseful();
-    }
-
-    function createSection() {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
-      if (!subj) return;
-      subj.sections = subj.sections || [];
-      const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(s => s.id || 0)) + 1 : 1;
-      const now = new Date().toISOString();
-      const newSec = {
-        id: nextId,
-        title: "",
-        content: "",
-        created_at: now,
-        last_modified: now
-      };
-      subj.sections.push(newSec);
-      state.usefulSelectedSectionId = nextId;
-      state.usefulEditingSectionId = nextId;
-      renderUseful();
-    }
-
-    async function saveSectionEdit(id) {
-      const titleInput = document.getElementById('edit-section-title');
-      const contentInput = document.getElementById('useful-edit-content');
-      if (!titleInput || !contentInput) return;
-
-      const title = titleInput.value.trim();
-      const content = contentInput.value.trim();
-
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
-      if (!subj || !subj.sections) return;
-
-      const sec = subj.sections.find(s => s.id === id);
-      if (!sec) return;
-
-      sec.title = title || "Без названия";
-      sec.content = content;
-      sec.last_modified = new Date().toISOString();
-
-      state.usefulEditingSectionId = null;
-      state.usefulSelectedSectionId = id;
-
-      await saveUseful();
-      renderUseful();
-    }
-
-    function confirmDeleteSection(sectionId) {
-      confirmAction("Вы уверены, что хотите удалить этот параграф без возможности восстановления?", () => {
-        deleteSection(sectionId);
-      });
-    }
-
-    async function deleteSection(sectionId) {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
-      if (!subj || !subj.sections) return;
-      subj.sections = subj.sections.filter(s => s.id !== sectionId);
-      state.usefulEditingSectionId = null;
-      state.usefulSelectedSectionId = null;
-      await saveUseful();
-      renderUseful();
-    }
-
-    function switchToTab(tabName) {
-      const targetBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
-      if (targetBtn) {
-        targetBtn.click();
-      }
-    }
-
-    function openNewSubjectModal() {
-      const content = `
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <div>
-            <label class="sub-text" style="display: block; margin-bottom: 6px;">Название предмета</label>
-            <input type="text" id="new-subject-name" class="form-input" placeholder="Например, Физика" style="margin-bottom: 0;" />
-          </div>
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-            <input type="checkbox" id="new-subject-is-chemistry" style="width: 16px; height: 16px; cursor: pointer;" />
-            <span>Это химия?</span>
-          </label>
-        </div>
-      `;
-      const actions = `
-        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
-        <button class="btn-primary" onclick="createNewSubject()">Создать</button>
-      `;
-      openModal("Новый предмет", content, actions);
-    }
-
-    async function createNewSubject() {
-      const nameInput = document.getElementById('new-subject-name');
-      const chemInput = document.getElementById('new-subject-is-chemistry');
-      if (!nameInput) return;
-
-      const name = nameInput.value.trim();
-      if (!name) {
-        showToast("Введите название предмета", "error");
-        return;
-      }
-
-      const isChemistry = chemInput ? chemInput.checked : false;
-      state.usefulSubjects = state.usefulSubjects || [];
-      const nextId = state.usefulSubjects.length > 0 ? Math.max(...state.usefulSubjects.map(s => s.id || 0)) + 1 : 1;
-
-      state.usefulSubjects.push({
-        id: nextId,
-        name: name,
-        is_chemistry: isChemistry,
-        sections: []
-      });
-
-      closeModal();
-      await saveUseful();
-      renderUseful();
-    }
-
-    /* =========================================================
-       РАЗДЕЛ: ОБНОВЛЕНИЯ
-       ========================================================= */
-    const UPDATE_STATUS_NAMES = {
-      done: 'Сделано',
-      in_progress: 'В процессе',
-      not_done: 'Не сделано'
-    };
-
-    function renderUpdatesScreen() {
-      const rawUpdates = state.updates || [];
-      const getCategory = (u) => (u && u.category) ? u.category : 'other';
-
-      const byCategory = (state.updateCategoryFilter === 'all')
-        ? rawUpdates
-        : rawUpdates.filter(u => getCategory(u) === state.updateCategoryFilter);
-
-      const statusCounts = {
-        all: byCategory.length,
-        done: byCategory.filter(u => u.status === 'done').length,
-        in_progress: byCategory.filter(u => u.status === 'in_progress').length,
-        not_done: byCategory.filter(u => u.status === 'not_done').length
-      };
-
-      const byStatus = (state.updateStatusFilter === 'all')
-        ? rawUpdates
-        : rawUpdates.filter(u => u.status === state.updateStatusFilter);
-
-      const categoryCounts = {
-        all: byStatus.length,
-        bot: byStatus.filter(u => getCategory(u) === 'bot').length,
-        site: byStatus.filter(u => getCategory(u) === 'site').length,
-        other: byStatus.filter(u => getCategory(u) === 'other').length
-      };
-
-      let filtered = rawUpdates;
-      if (state.updateStatusFilter !== 'all') {
-        filtered = filtered.filter(u => u.status === state.updateStatusFilter);
-      }
-      if (state.updateCategoryFilter !== 'all') {
-        filtered = filtered.filter(u => getCategory(u) === state.updateCategoryFilter);
-      }
-
-      const q = (state.searchUpdates || '').toLowerCase().trim();
-      if (q) {
-        filtered = filtered.filter(u => (u.title || '').toLowerCase().includes(q) || (u.text || '').toLowerCase().includes(q));
-      }
-
-      filtered = [...filtered].sort((a, b) => {
-        const aDone = a.status === 'done';
-        const bDone = b.status === 'done';
-
-        if (aDone && !bDone) return 1;
-        if (!aDone && bDone) return -1;
-
-        if (aDone && bDone) {
-          const aTime = a.completed_at ? new Date(a.completed_at).getTime() : 0;
-          const bTime = b.completed_at ? new Date(b.completed_at).getTime() : 0;
-          return bTime - aTime;
-        }
-
-        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return bCreated - aCreated;
-      });
-
-      let contentHtml = '';
-      if (filtered.length === 0) {
-        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет записей об обновлениях</div>`;
-      } else {
-        contentHtml = filtered.map(u => {
-          const statusKey = u.status || 'not_done';
-          const statusText = UPDATE_STATUS_NAMES[statusKey] || 'Не сделано';
-
-          let dateText = '';
-          if (statusKey === 'done' && u.completed_at) {
-            dateText = `Выполнено: ${formatDate(u.completed_at)}`;
-          } else if (u.last_modified && u.last_modified !== u.created_at) {
-            dateText = `Изм: ${formatDate(u.last_modified)}`;
-          } else {
-            dateText = `Созд: ${formatDate(u.created_at)}`;
-          }
-
-          return `
-            <div class="upd-card status-${statusKey}" onclick="openUpdateEditor(${u.id})">
-              <div>
-                <div class="upd-card-title">${escapeHtml(u.title || 'Без названия')}</div>
-                <div class="upd-card-preview">${escapeHtml(u.text || '')}</div>
-              </div>
-              <div class="upd-card-footer">
-                <span 
-                  class="badge badge-upd-${statusKey}" 
-                  onclick="event.stopPropagation(); cycleUpdateStatus(${u.id})" 
-                  title="Нажмите, чтобы изменить статус">
-                  ${statusText} ⟳
-                </span>
-                <span class="sub-text" style="font-size: 11px;">${dateText}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button class="back-btn" onclick="closeUpdatesScreen()">← Назад</button>
-              <span class="card-title">Обновления</span>
-            </div>
-            <div class="header-actions">
-              <button class="btn-primary" onclick="openUpdateEditor('new')">+ Добавить обновление</button>
-            </div>
-          </div>
-
-          <div class="upd-filters">
-            <div class="upd-filter-row">
-              <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateStatusFilter('all')">
-                Все (${statusCounts.all})
-              </button>
-              <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateStatusFilter('done')">
-                Сделано (${statusCounts.done})
-              </button>
-              <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateStatusFilter('in_progress')">
-                В процессе (${statusCounts.in_progress})
-              </button>
-              <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateStatusFilter('not_done')">
-                Не сделано (${statusCounts.not_done})
-              </button>
-            </div>
-
-            <div class="upd-filter-row">
-              <button class="upd-filter-btn ${state.updateCategoryFilter === 'all' ? 'active' : ''}" onclick="setUpdateCategoryFilter('all')">
-                Все (${categoryCounts.all})
-              </button>
-              <button class="upd-filter-btn ${state.updateCategoryFilter === 'bot' ? 'active' : ''}" onclick="setUpdateCategoryFilter('bot')">
-                Бот (${categoryCounts.bot})
-              </button>
-              <button class="upd-filter-btn ${state.updateCategoryFilter === 'site' ? 'active' : ''}" onclick="setUpdateCategoryFilter('site')">
-                Сайт (${categoryCounts.site})
-              </button>
-              <button class="upd-filter-btn ${state.updateCategoryFilter === 'other' ? 'active' : ''}" onclick="setUpdateCategoryFilter('other')">
-                Прочее (${categoryCounts.other})
-              </button>
-            </div>
-          </div>
-
-          <div class="search-bar">
-            <input type="text" id="search-updates-input" placeholder="Поиск обновлений по заголовку и описанию..." value="${escapeHtml(state.searchUpdates)}" oninput="state.searchUpdates = this.value; renderUpdatesScreen(); document.getElementById('search-updates-input').focus();" />
-          </div>
-
-          <div class="upd-grid">${contentHtml}</div>
-        </div>
-      `;
-    }
-
-    function closeUpdatesScreen() {
-      state.showUpdates = false;
-      state.editingUpdateId = null;
-      render();
-    }
-
-    function setUpdateStatusFilter(filterKey) {
-      state.updateStatusFilter = filterKey;
-      renderUpdatesScreen();
-    }
-
-    function setUpdateCategoryFilter(filterKey) {
-      state.updateCategoryFilter = filterKey;
-      renderUpdatesScreen();
-    }
-
-    async function cycleUpdateStatus(updateId) {
-      const upd = (state.updates || []).find(u => u.id === updateId);
-      if (!upd) return;
-
-      const order = ['not_done', 'in_progress', 'done'];
-      const currentIdx = order.indexOf(upd.status || 'not_done');
-      const nextStatus = order[(currentIdx + 1) % order.length];
-
-      upd.status = nextStatus;
-      upd.last_modified = new Date().toISOString();
-      upd.completed_at = (nextStatus === 'done') ? new Date().toISOString() : null;
-
-      renderUpdatesScreen();
-      await saveUpdatesToGitHub();
-    }
-
-    function openUpdateEditor(updateId) {
-      state.editingUpdateId = updateId;
-      render();
-    }
-
-    function closeUpdateEditor() {
-      state.editingUpdateId = null;
-      render();
-    }
-
-    let tempEditorStatus = 'not_done';
-    let tempEditorCategory = 'other';
-
-    function renderUpdateEditor(updateId) {
-      const isNew = updateId === 'new';
-      const upd = isNew
-        ? { title: '', text: '', status: 'not_done', category: 'other' }
-        : state.updates.find(u => u.id === updateId);
-
-      if (!isNew && !upd) {
-        closeUpdateEditor();
-        return;
-      }
-
-      tempEditorStatus = upd.status || 'not_done';
-      tempEditorCategory = upd.category || 'other';
-
-      document.getElementById('app').innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <button class="back-btn" onclick="closeUpdateEditor()">← Назад</button>
-            <span class="sub-text">${isNew ? 'Новое обновление' : 'Редактирование обновления'}</span>
-          </div>
-          <div class="note-editor">
-            <input type="text" id="upd-title" class="note-input-title" placeholder="Заголовок обновления..." value="${escapeHtml(upd.title || '')}">
-            
-            <div class="upd-status-switch">
-              <button 
-                type="button" 
-                class="upd-status-btn ${tempEditorStatus === 'not_done' ? 'selected-not_done' : ''}" 
-                onclick="setEditorStatus('not_done')">
-                Не сделано
-              </button>
-              <button 
-                type="button" 
-                class="upd-status-btn ${tempEditorStatus === 'in_progress' ? 'selected-in_progress' : ''}" 
-                onclick="setEditorStatus('in_progress')">
-                В процессе
-              </button>
-              <button 
-                type="button" 
-                class="upd-status-btn ${tempEditorStatus === 'done' ? 'selected-done' : ''}" 
-                onclick="setEditorStatus('done')">
-                Сделано
-              </button>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span class="sub-text" style="font-weight: 500;">Категория:</span>
-              <button 
-                type="button" 
-                class="btn-cat ${tempEditorCategory === 'bot' ? 'active' : ''}" 
-                onclick="setEditorCategory('bot')">
-                Бот
-              </button>
-              <button 
-                type="button" 
-                class="btn-cat ${tempEditorCategory === 'site' ? 'active' : ''}" 
-                onclick="setEditorCategory('site')">
-                Сайт
-              </button>
-              <button 
-                type="button" 
-                class="btn-cat ${tempEditorCategory === 'other' ? 'active' : ''}" 
-                onclick="setEditorCategory('other')">
-                Прочее
-              </button>
-            </div>
-
-            <textarea id="upd-text" class="note-input-text" placeholder="Описание задачи или обновления...">${escapeHtml(upd.text || '')}</textarea>
-            
-            <div class="note-editor-toolbar">
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-primary" onclick="saveUpdate(${isNew ? "'new'" : upd.id})">Сохранить</button>
-                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteUpdate(${upd.id})">Удалить</button>` : ''}
-              </div>
-              <div class="sub-text">
-                ${!isNew ? `Создано: ${formatDate(upd.created_at)} ${upd.last_modified ? ' | Изменено: ' + formatDate(upd.last_modified) : ''}` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function setEditorStatus(newStatus) {
-      tempEditorStatus = newStatus;
-      document.querySelectorAll('.upd-status-btn').forEach(btn => {
-        btn.classList.remove('selected-not_done', 'selected-in_progress', 'selected-done');
-      });
-      const selectedBtn = Array.from(document.querySelectorAll('.upd-status-btn')).find(b => b.textContent.trim() === (
-        newStatus === 'done' ? 'Сделано' : (newStatus === 'in_progress' ? 'В процессе' : 'Не сделано')
-      ));
-      if (selectedBtn) {
-        selectedBtn.classList.add(`selected-${newStatus}`);
-      }
-    }
-
-    function setEditorCategory(newCat) {
-      tempEditorCategory = newCat;
-      document.querySelectorAll('.btn-cat').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      const targetLabel = newCat === 'bot' ? 'Бот' : (newCat === 'site' ? 'Сайт' : 'Прочее');
-      const selectedBtn = Array.from(document.querySelectorAll('.btn-cat')).find(b => b.textContent.trim() === targetLabel);
-      if (selectedBtn) {
-        selectedBtn.classList.add('active');
-      }
-    }
-
-    async function saveUpdate(updateId) {
-      const title = document.getElementById('upd-title').value.trim();
-      const text = document.getElementById('upd-text').value.trim();
-
-      if (!title && !text) {
-        showToast('Пустая запись не сохраняется', 'error');
-        return;
-      }
-
-      const now = new Date().toISOString();
-      const isDone = tempEditorStatus === 'done';
-
-      if (updateId === 'new') {
-        const nextId = (state.updates || []).length > 0 ? Math.max(...state.updates.map(u => u.id || 0)) + 1 : 1;
-        state.updates.push({
-          id: nextId,
-          title: title,
-          text: text,
-          status: tempEditorStatus,
-          category: tempEditorCategory || 'other',
-          created_at: now,
-          last_modified: now,
-          completed_at: isDone ? now : null
-        });
-      } else {
-        const upd = state.updates.find(u => u.id === updateId);
-        if (upd) {
-          const prevStatus = upd.status;
-          upd.title = title;
-          upd.text = text;
-          upd.status = tempEditorStatus;
-          upd.category = tempEditorCategory || 'other';
-          upd.last_modified = now;
-
-          if (isDone) {
-            upd.completed_at = (prevStatus === 'done' && upd.completed_at) ? upd.completed_at : now;
-          } else {
-            upd.completed_at = null;
-          }
-        }
-      }
-
-      closeUpdateEditor();
-      await saveUpdatesToGitHub();
-    }
-
-    function confirmDeleteUpdate(updateId) {
-      confirmAction("Вы уверены, что хотите удалить эту запись без возможности восстановления?", () => {
-        deleteUpdate(updateId);
-      });
-    }
-
-    async function deleteUpdate(updateId) {
-      state.updates = state.updates.filter(u => u.id !== updateId);
-      closeUpdateEditor();
-      await saveUpdatesToGitHub();
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 1: ПОЛЬЗОВАТЕЛИ
-       ========================================================= */
-    function renderUsers() {
-      const userIds = Object.keys(state.users);
-      const q = (state.searchUsers || '').toLowerCase().trim();
-
-      let filteredIds = userIds;
-      if (q) {
-        filteredIds = userIds.filter(id => {
-          const u = state.users[id];
-          return id.includes(q) ||
-            (u.first_name || '').toLowerCase().includes(q) ||
-            (u.username || '').toLowerCase().includes(q);
-        });
-      }
-
-      let rows = filteredIds.map(id => {
-        const u = state.users[id];
-        return `
-          <tr class="clickable" onclick="openProfile('${id}')">
-            <td>${escapeHtml(u.first_name || '—')}</td>
-            <td><code>${id}</code></td>
-            <td>${formatDate(u.last_message)}</td>
-            <td>${u.requests ?? 0}</td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Пользователи</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${filteredIds.length} из ${userIds.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-users-input" placeholder="Поиск по имени, username или ID..." value="${escapeHtml(state.searchUsers)}" oninput="state.searchUsers = this.value; renderUsers(); document.getElementById('search-users-input').focus();" />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr><th>Ник</th><th>ID</th><th>Последнее сообщение</th><th>Запросов</th></tr>
-                  </thead>
-                  <tbody>${rows || '<tr><td colspan="4" class="empty-state">Нет пользователей</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    function openProfile(userId) {
-      state.selectedUserId = String(userId);
-      render();
-    }
-
-    function closeProfile() {
-      state.selectedUserId = null;
-      render();
-    }
-
-    function renderUserProfile(userId) {
-      const user = state.users[userId];
-      if (!user) {
-        document.getElementById('app').innerHTML = `
-          <div class="card">
-            <div class="card-header"><button class="back-btn" onclick="closeProfile()">← Назад</button></div>
-            <div class="empty-state">Пользователь с ID ${escapeHtml(userId)} не найден.</div>
-          </div>`;
-        return;
-      }
-
-      const avatarHtml = user.avatar_url 
-        ? `<img src="${escapeHtml(user.avatar_url)}" alt="Avatar" class="profile-avatar">`
-        : `<div class="profile-avatar">${escapeHtml((user.first_name || '?')[0].toUpperCase())}</div>`;
-
-      const userMessages = (state.messages || [])
-        .filter(m => String(m.user_id) === String(userId))
-        .slice(-50)
-        .reverse();
-
-      const messagesRows = userMessages.length > 0 
-        ? userMessages.map(m => {
-            const parsed = parseMediaFromText(m.text);
-            const contentHtml = parsed 
-              ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
-              : escapeHtml(m.text || '');
-
-            return `<tr><td style="width: 170px;">${formatDate(m.time)}</td><td>${contentHtml}</td></tr>`;
-          }).join('')
-        : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
-
-      const userMedia = (state.media || [])
-        .filter(m => String(m.user_id) === String(userId))
-        .slice(-20)
-        .reverse();
-
-      const mediaRows = userMedia.length > 0
-        ? userMedia.map(m => `
-            <tr>
-              <td style="width: 130px;">${getMediaBadgeHtml(m.media_type)}</td>
-              <td class="truncate-media"><code>${escapeHtml(m.file_name || '—')}</code></td>
-              <td style="width: 170px;">${formatDate(m.time)}</td>
-            </tr>
-          `).join('')
-        : `<tr><td colspan="3" class="empty-state">Нет медиафайлов</td></tr>`;
-
-      document.getElementById('app').innerHTML = `
-        <div class="crumbs">
-          <a onclick="closeProfile()">Пользователи</a>
-          <span class="separator">›</span>
-          <span class="current">${escapeHtml(user.first_name || userId)}</span>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <button class="back-btn" onclick="closeProfile()">← Назад</button>
-            <span class="sub-text">Профиль пользователя</span>
-          </div>
-          
-          <div class="profile-hero">
-            ${avatarHtml}
-            <div>
-              <div style="font-size: 20px; font-weight: 700;">${escapeHtml(user.first_name || 'Без имени')}</div>
-              <div class="sub-text">@${escapeHtml(user.username || '—')}</div>
-            </div>
-          </div>
-
-          <div class="profile-details-grid">
-            <div class="detail-item"><div class="label">ID</div><div class="value"><code>${userId}</code></div></div>
-            <div class="detail-item"><div class="label">Статус</div><div class="value">${user.banned ? '<span class="badge badge-banned">Забанен</span>' : '<span class="badge badge-active">Активен</span>'}</div></div>
-            <div class="detail-item"><div class="label">Запросов</div><div class="value">${user.requests ?? 0}</div></div>
-            <div class="detail-item"><div class="label">Первый вход</div><div class="value">${formatDate(user.first_seen)}</div></div>
-            <div class="detail-item"><div class="label">Посл. сообщение</div><div class="value">${formatDate(user.last_message)}</div></div>
-          </div>
-
-          <div class="card-header"><span class="card-title">Медиафайлы (до 20)</span></div>
-          <div class="table-container">
-            <table><thead><tr><th>Тип</th><th>Файл</th><th>Время</th></tr></thead><tbody>${mediaRows}</tbody></table>
-          </div>
-
-          <div class="card-header" style="border-top: 1px solid var(--border-color);"><span class="card-title">Последние сообщения (до 50)</span></div>
-          <div class="table-container">
-            <table><thead><tr><th>Время</th><th>Текст</th></tr></thead><tbody>${messagesRows}</tbody></table>
-          </div>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 2: СООБЩЕНИЯ
-       ========================================================= */
-    function renderMessages() {
-      const q = (state.searchMessages || '').toLowerCase().trim();
-      let list = (state.messages || []).slice(-200).reverse();
-
-      if (q) {
-        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
-      }
-
-      let rows = list.map((m, index) => {
-        const text = m.text || '';
-        const parsed = parseMediaFromText(text);
-        let cellContent = parsed 
-          ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
-          : escapeHtml(text.length > 100 ? text.substring(0, 100) + '...' : text);
-
-        return `
-          <tr class="clickable" onclick="openMessageModal(${index})">
-            <td class="col-id">${m.id !== undefined ? `#${m.id}` : '—'}</td>
-            <td>${escapeHtml(m.first_name || '—')}</td>
-            <td><code>${m.user_id}</code></td>
-            <td class="truncate">${cellContent}</td>
-            <td>${formatDate(m.time)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Сообщения</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-messages-input" placeholder="Поиск по имени, тексту или User ID..." value="${escapeHtml(state.searchMessages)}" oninput="state.searchMessages = this.value; renderMessages(); document.getElementById('search-messages-input').focus();" />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>ID</th><th>Ник</th><th>User ID</th><th>Текст</th><th>Время</th></tr></thead>
-                  <tbody>${rows || '<tr><td colspan="5" class="empty-state">Нет сообщений</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 3: МЕДИА
-       ========================================================= */
-    function renderMedia() {
-      const q = (state.searchMedia || '').toLowerCase().trim();
-      let list = (state.media || []).slice().reverse();
-
-      if (q) {
-        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.file_name || '').toLowerCase().includes(q) || (m.media_type || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
-      }
-
-      let rows = list.map(m => {
-        const rawUrl = m.url || `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${m.file_name}`;
-        return `
-          <tr>
-            <td class="col-id">#${m.id || '—'}</td>
-            <td>${escapeHtml(m.first_name || '—')}</td>
-            <td><code>${m.user_id}</code></td>
-            <td>${getMediaBadgeHtml(m.media_type)}</td>
-            <td>${formatDate(m.time)}</td>
-            <td>
-              <div style="display: flex; gap: 6px;">
-                <a href="${rawUrl}" target="_blank" class="btn-action">Открыть</a>
-                <button class="btn-action btn-action-danger" onclick="deleteMediaFromGitHub('${escapeHtml(m.file_name)}', ${m.id})">Удалить</button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Медиа</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-media-input" placeholder="Поиск по имени, файлу, типу или User ID..." value="${escapeHtml(state.searchMedia)}" oninput="state.searchMedia = this.value; renderMedia(); document.getElementById('search-media-input').focus();" />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>ID</th><th>Отправитель</th><th>User ID</th><th>Тип</th><th>Время</th><th>Действия</th></tr></thead>
-                  <tbody>${rows || '<tr><td colspan="6" class="empty-state">Медиа не найдено</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 4: ЗАМЕТКИ
-       ========================================================= */
-    function renderNotes() {
-      const q = (state.searchNotes || '').toLowerCase().trim();
-      let sortedNotes = [...(state.notes || [])].sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-      });
-
-      if (q) {
-        sortedNotes = sortedNotes.filter(n => (n.title || '').toLowerCase().includes(q) || (n.text || '').toLowerCase().includes(q));
-      }
-
-      let contentHtml = '';
-      if (sortedNotes.length === 0) {
-        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет заметок</div>`;
-      } else {
-        contentHtml = sortedNotes.map(n => `
-          <div class="note-card" onclick="openNoteEditor(${n.id})">
-            <div>
-              <div class="note-card-header">
-                <span class="note-card-title">${escapeHtml(n.title || 'Без названия')}</span>
-                ${n.pinned ? '<span class="note-pin-badge" title="Закреплено">Закреплено</span>' : ''}
-              </div>
-              <div class="note-card-preview">${escapeHtml(n.text || '')}</div>
-            </div>
-            <div class="note-card-date">
-              ${n.last_modified && n.last_modified !== n.created_at 
-                ? `Изменено: ${formatDate(n.last_modified)}` 
-                : `Создано: ${formatDate(n.created_at)}`}
-            </div>
-          </div>
-        `).join('');
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Заметки</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${sortedNotes.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                  <button class="btn-primary" onclick="openNoteEditor('new')">+ Создать заметку</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-notes-input" placeholder="Поиск заметок по заголовку и тексту..." value="${escapeHtml(state.searchNotes)}" oninput="state.searchNotes = this.value; renderNotes(); document.getElementById('search-notes-input').focus();" />
-              </div>
-              <div class="notes-grid">${contentHtml}</div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    function openNoteEditor(noteId) {
-      state.editingNoteId = noteId;
-      render();
-    }
-
-    function closeNoteEditor() {
-      state.editingNoteId = null;
-      render();
-    }
-
-    function renderNoteEditor(noteId) {
-      const isNew = noteId === 'new';
-      const note = isNew ? { title: '', text: '', pinned: false } : state.notes.find(n => n.id === noteId);
-
-      if (!isNew && !note) {
-        closeNoteEditor();
-        return;
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <button class="back-btn" onclick="closeNoteEditor()">← Назад</button>
-            <span class="sub-text">${isNew ? 'Новая заметка' : 'Редактирование заметки'}</span>
-          </div>
-          <div class="note-editor">
-            <input type="text" id="note-title" class="note-input-title" placeholder="Заголовок..." value="${escapeHtml(note.title || '')}">
-            <textarea id="note-text" class="note-input-text" placeholder="Текст заметки...">${escapeHtml(note.text || '')}</textarea>
-            <div class="note-editor-toolbar">
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-primary" onclick="saveNote(${isNew ? "'new'" : note.id})">Сохранить</button>
-                <button class="btn-refresh" onclick="togglePinNote(${isNew ? "'new'" : note.id})">
-                  ${note.pinned ? 'Открепить' : 'Закрепить'}
-                </button>
-                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteNote(${note.id})">Удалить</button>` : ''}
-              </div>
-              <div class="sub-text">
-                ${!isNew ? `Создано: ${formatDate(note.created_at)} ${note.last_modified ? ' | Изменено: ' + formatDate(note.last_modified) : ''}` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    async function saveNote(noteId) {
-      const title = document.getElementById('note-title').value.trim();
-      const text = document.getElementById('note-text').value.trim();
-
-      if (!title && !text) {
-        showToast('Пустая заметка не сохраняется', 'error');
-        return;
-      }
-
-      const now = new Date().toISOString();
-
-      if (noteId === 'new') {
-        const nextId = state.notes.length > 0 ? Math.max(...state.notes.map(n => n.id || 0)) + 1 : 1;
-        state.notes.push({
-          id: nextId,
-          title: title,
-          text: text,
-          pinned: false,
-          created_at: now,
-          last_modified: now
-        });
-      } else {
-        const note = state.notes.find(n => n.id === noteId);
-        if (note) {
-          note.title = title;
-          note.text = text;
-          note.last_modified = now;
-        }
-      }
-
-      await saveDataToGitHub();
-      closeNoteEditor();
-    }
-
-    async function togglePinNote(noteId) {
-      if (noteId === 'new') {
-        showToast('Сначала сохраните заметку', 'info');
-        return;
-      }
-      const note = state.notes.find(n => n.id === noteId);
-      if (note) {
-        note.pinned = !note.pinned;
-        await saveDataToGitHub();
-        renderNoteEditor(noteId);
-      }
-    }
-
-    function confirmDeleteNote(noteId) {
-      confirmAction("Вы уверены, что хотите удалить эту заметку без возможности восстановления?", () => {
-        deleteNote(noteId);
-      });
-    }
-
-    async function deleteNote(noteId) {
-      state.notes = state.notes.filter(n => n.id !== noteId);
-      closeNoteEditor();
-      await saveDataToGitHub();
-    }
-
-    /* =========================================================
-       РАЗДЕЛ: ГДЗ
-       ========================================================= */
-    function renderGdz() {
-      if (state.gdzSearchLoading) {
-        document.getElementById('app').innerHTML = `
-          <div class="layout-3col">
-            <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-            <div class="main-col">
-              <div class="card"><div class="empty-state">Загрузка каталога ГДЗ...</div></div>
-            </div>
-            <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-          </div>
-        `;
-        return;
-      }
-
-      if (!state.gdzSubjects) {
-        document.getElementById('app').innerHTML = `
-          <div class="layout-3col">
-            <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-            <div class="main-col">
-              <div class="card">
-                <div class="empty-state" style="color: var(--status-banned);">
-                  <p style="margin-bottom: 12px;">Не удалось загрузить каталог предметов (subjects.json).</p>
-                  <button class="btn-refresh" onclick="retryLoadGdz()">Повторить</button>
-                </div>
-              </div>
-            </div>
-            <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-          </div>
-        `;
-        return;
-      }
-
-      const subjects = state.gdzSubjects;
-      let cardHeaderHtml = '';
-      let cardBodyHtml = '';
-      let crumbsHtml = '';
-
-      if (state.gdzSelectedSubject === null) {
-        cardHeaderHtml = `
-          <div>
-            <span class="card-title">ГДЗ</span>
-            <span class="sub-text" style="margin-left: 8px;">Выбери предмет</span>
-          </div>
-        `;
-
-        const subjectKeys = Object.keys(subjects);
-        if (subjectKeys.length === 0) {
-          cardBodyHtml = '<div class="empty-state">Предметы не найдены</div>';
-        } else {
-          const cardsHtml = subjectKeys.map(key => {
-            const subj = subjects[key];
-            const name = subj.name || key;
-            const chapters = subj.chapters || subj.sections || [];
-            let subtitle = '';
-
-            if (subj.has_chapters === false || chapters.length === 1) {
-              const ch = chapters[0];
-              if (ch && ch.numbers) {
-                const parsedNums = parseChapterNumbers(ch.numbers);
-                subtitle = `Заданий: ${parsedNums.length}`;
-              } else {
-                subtitle = 'Задания';
-              }
-            } else if (Array.isArray(chapters) && chapters.length > 1) {
-              subtitle = `Разделов: ${chapters.length}`;
-            } else {
-              subtitle = subj.description || 'Учебные материалы';
-            }
-
-            return `
-              <div class="gdz-card" onclick="selectGdzSubject('${escapeHtml(key)}')">
-                <div class="gdz-card-title">${escapeHtml(name)}</div>
-                <div class="gdz-card-sub">${escapeHtml(subtitle)}</div>
-              </div>
-            `;
-          }).join('');
-
-          cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
-        }
-      } else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
-        const subj = subjects[state.gdzSelectedSubject];
-        const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
-        const chapterLabel = subj && subj.chapter_label ? ` → ${escapeHtml(subj.chapter_label)}` : '';
-        const chapters = subj ? (subj.chapters || subj.sections || []) : [];
-
-        crumbsHtml = `
-          <div class="crumbs">
-            <a onclick="backToGdzSubjects()">ГДЗ</a>
-            <span class="separator">›</span>
-            <span class="current">${escapeHtml(subjName)}</span>
-          </div>
-        `;
-
-        cardHeaderHtml = `
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="back-btn" onclick="backToGdzSubjects()">← Назад к предметам</button>
-            <span class="card-title">${escapeHtml(subjName)}${chapterLabel}</span>
-          </div>
-        `;
-
-        if (!Array.isArray(chapters) || chapters.length === 0) {
-          cardBodyHtml = '<div class="empty-state">Разделы не найдены</div>';
-        } else {
-          const cardsHtml = chapters.map((ch, idx) => {
-            const title = ch.text || ch.title || ch.name || `Раздел ${idx + 1}`;
-            const nums = ch.numbers || ch.range || '';
-            return `
-              <div class="gdz-card" onclick="selectGdzChapter(${idx})">
-                <div class="gdz-card-title">${escapeHtml(title)}</div>
-                <div class="gdz-card-sub">Задания: ${escapeHtml(nums)}</div>
-              </div>
-            `;
-          }).join('');
-
-          cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
-        }
-      } else {
-        const subj = subjects[state.gdzSelectedSubject];
-        const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
-        const chapter = state.gdzSelectedChapter;
-        const chapterTitle = chapter ? (chapter.text || chapter.title || chapter.name || 'Задания') : 'Задания';
-        const hasChapters = subj && subj.has_chapters !== false;
-
-        const backBtnAction = hasChapters ? 'backToGdzChapters()' : 'backToGdzSubjects()';
-        const backBtnText = hasChapters ? '← Назад к разделам' : '← Назад к предметам';
-
-        if (hasChapters) {
-          crumbsHtml = `
-            <div class="crumbs">
-              <a onclick="backToGdzSubjects()">ГДЗ</a>
-              <span class="separator">›</span>
-              <a onclick="backToGdzChapters()">${escapeHtml(subjName)}</a>
-              <span class="separator">›</span>
-              <span class="current">${escapeHtml(chapterTitle)}</span>
-            </div>
-          `;
-        } else {
-          crumbsHtml = `
-            <div class="crumbs">
-              <a onclick="backToGdzSubjects()">ГДЗ</a>
-              <span class="separator">›</span>
-              <span class="current">${escapeHtml(subjName)}</span>
-            </div>
-          `;
-        }
-
-        cardHeaderHtml = `
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="back-btn" onclick="${backBtnAction}">${backBtnText}</button>
-            <div>
-              <div class="card-title">${escapeHtml(subjName)} → ${escapeHtml(chapterTitle)}</div>
-              <div class="sub-text">Выбери номер задания</div>
-            </div>
-          </div>
-        `;
-
-        const numbersList = chapter ? parseChapterNumbers(chapter.numbers) : [];
-        if (numbersList.length === 0) {
-          cardBodyHtml = '<div class="empty-state">Нет доступных номеров заданий</div>';
-        } else {
-          const buttonsHtml = numbersList.map(num => `
-            <button 
-              class="num-btn ${state.gdzSelectedNum === num ? 'active' : ''}" 
-              onclick="selectGdzNumber(${num})">
-              ${num}
-            </button>
-          `).join('');
-
-          let imageSectionHtml = '';
-          if (state.gdzSelectedNum !== null) {
-            const base = subj.base || state.gdzSelectedSubject;
-            const folder = chapter.folder || '1';
-            const imgUrl = `https://resheba.top/${base}/${folder}/${state.gdzSelectedNum}.png`;
-
-            imageSectionHtml = `
-              <div class="gdz-img-wrap" id="gdz-img-container">
-                <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(state.gdzSelectedNum))}</div>
-                <img 
-                  src="${escapeHtml(imgUrl)}" 
-                  alt="Задание ${escapeHtml(String(state.gdzSelectedNum))}" 
-                  onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
-                />
-              </div>
-            `;
-          } else {
-            imageSectionHtml = `
-              <div class="gdz-img-wrap" id="gdz-img-container">
-                <div class="sub-text" style="color: var(--text-secondary);">Выберите номер задания для показа решения</div>
-              </div>
-            `;
-          }
-
-          cardBodyHtml = `
-            <div class="nums-grid">${buttonsHtml}</div>
-            ${imageSectionHtml}
-          `;
-        }
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            ${crumbsHtml}
-            <div class="card">
-              <div class="card-header">${cardHeaderHtml}</div>
-              ${cardBodyHtml}
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    async function retryLoadGdz() {
-      state.gdzSearchLoading = true;
-      render();
-      await loadSubjects();
-      state.gdzSearchLoading = false;
-      render();
-    }
-
-    function selectGdzSubject(key) {
-      state.gdzSelectedSubject = key;
-      state.gdzSelectedNum = null;
-      const subj = state.gdzSubjects ? state.gdzSubjects[key] : null;
-
-      if (subj && subj.has_chapters === false) {
-        const chapters = subj.chapters || subj.sections || [];
-        state.gdzSelectedChapter = chapters[0] || null;
-      } else {
-        state.gdzSelectedChapter = null;
-      }
-      render();
-    }
-
-    function backToGdzSubjects() {
-      state.gdzSelectedSubject = null;
-      state.gdzSelectedChapter = null;
-      state.gdzSelectedNum = null;
-      render();
-    }
-
-    function selectGdzChapter(idx) {
-      const subj = state.gdzSubjects[state.gdzSelectedSubject];
-      const chapters = subj ? (subj.chapters || subj.sections || []) : [];
-      state.gdzSelectedChapter = chapters[idx] || null;
-      state.gdzSelectedNum = null;
-      render();
-    }
-
-    function backToGdzChapters() {
-      state.gdzSelectedChapter = null;
-      state.gdzSelectedNum = null;
-      render();
-    }
-
-    function selectGdzNumber(num) {
-      state.gdzSelectedNum = num;
-      const subj = state.gdzSubjects[state.gdzSelectedSubject];
-      const chapter = state.gdzSelectedChapter;
-      if (!subj || !chapter) return;
-
-      document.querySelectorAll('.num-btn').forEach(btn => {
-        if (parseInt(btn.textContent.trim(), 10) === num) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-
-      const container = document.getElementById('gdz-img-container');
-      if (container) {
-        const base = subj.base || state.gdzSelectedSubject;
-        const folder = chapter.folder || '1';
-        const imgUrl = `https://resheba.top/${base}/${folder}/${num}.png`;
-
-        container.innerHTML = `
-          <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(num))}</div>
-          <img 
-            src="${escapeHtml(imgUrl)}" 
-            alt="Задание ${escapeHtml(String(num))}" 
-            onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
-          />
-        `;
-      }
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 5: АДМИНЫ
-       ========================================================= */
-    function renderAdmins() {
-      const q = (state.searchAdmins || '').toLowerCase().trim();
-      let list = state.admins || [];
-
-      if (q) {
-        list = list.filter(admin => {
-          const user = state.users[String(admin.id)];
-          const name = user ? user.first_name : '';
-          return String(admin.id).includes(q) || name.toLowerCase().includes(q);
-        });
-      }
-
-      let rows = list.map(admin => {
-        const user = state.users[String(admin.id)];
-        const name = user ? user.first_name : '—';
-        return `
-          <tr class="${user ? 'clickable' : ''}" ${user ? `onclick="openProfile('${admin.id}')"` : ''}>
-            <td>${escapeHtml(name)}</td>
-            <td><code>${admin.id}</code></td>
-            <td>${formatDate(admin.appointed_at)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Админы</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-admins-input" placeholder="Поиск админов по имени или ID..." value="${escapeHtml(state.searchAdmins)}" oninput="state.searchAdmins = this.value; renderAdmins(); document.getElementById('search-admins-input').focus();" />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Ник</th><th>ID</th><th>Назначен</th></tr></thead>
-                  <tbody>${rows || '<tr><td colspan="3" class="empty-state">Список админов пуст</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 6: ЖУРНАЛ АУДИТА
-       ========================================================= */
-    function renderAudit() {
-      const actionText = {
-        'ban': 'забанил',
-        'unban': 'разбанил',
-        'add_admin': 'назначил админом',
-        'del_admin': 'снял с админа',
-        'del_media': 'удалил медиа',
-        'del_user_media': 'удалил все медиа'
-      };
-
-      const q = (state.searchAudit || '').toLowerCase().trim();
-      let list = (state.audit || []).slice().reverse();
-
-      if (q) {
-        list = list.filter(item => {
-          const act = actionText[item.action] || item.action;
-          return (item.admin_name || '').toLowerCase().includes(q) ||
-                 (item.target_name || '').toLowerCase().includes(q) ||
-                 act.toLowerCase().includes(q) ||
-                 String(item.target_id).includes(q);
-        });
-      }
-
-      const rows = list.map(item => {
-        return `
-          <div class="audit-row">
-            <span style="color: var(--text-secondary);">[${formatDate(item.time)}]</span> 
-            <strong>${escapeHtml(item.admin_name || 'Admin')}</strong> 
-            <span>${actionText[item.action] || item.action}</span> 
-            <strong>${escapeHtml(item.target_name || 'Объект')}</strong> 
-            <span class="sub-text">(ID: ${item.target_id})</span>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Журнал аудита</span>
-                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
-                </div>
-                <div class="header-actions">
-                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input type="text" id="search-audit-input" placeholder="Поиск по администратору, объекту, действию..." value="${escapeHtml(state.searchAudit)}" oninput="state.searchAudit = this.value; renderAudit(); document.getElementById('search-audit-input').focus();" />
-              </div>
-              ${rows || '<div class="empty-state">Записей аудита нет</div>'}
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 7: ВАЛЕНТНОСТИ
-       ========================================================= */
-    function getValencyTypeBadge(type) {
-      if (type === 'const') return '<span class="badge badge-val-const">постоянная</span>';
-      if (type === 'var') return '<span class="badge badge-val-var">переменная</span>';
-      if (type === 'inert') return '<span class="badge badge-val-inert">инертный газ</span>';
-      return `<span class="badge">${escapeHtml(type)}</span>`;
-    }
-
-    function renderValencies() {
-      const q = (state.valenciesSearch || '').toLowerCase().trim();
-      const filtered = VALENCIES.filter(item => {
-        if (!q) return true;
-        return item.symbol.toLowerCase().includes(q) || item.name.toLowerCase().includes(q);
-      });
-
-      let rows = filtered.map(el => `
-        <tr>
-          <td><strong style="font-family: monospace; font-size: 15px;">${escapeHtml(el.symbol)}</strong></td>
-          <td>${escapeHtml(el.name)}</td>
-          <td><strong>${escapeHtml(el.val)}</strong></td>
-          <td>${getValencyTypeBadge(el.type)}</td>
-        </tr>
-      `).join('');
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Валентности</span>
-                  <span class="sub-text" style="margin-left: 8px;">Введи символ химического элемента или название</span>
-                </div>
-                <div class="header-actions">
-                  <span class="sub-text">Всего: ${filtered.length} из ${VALENCIES.length}</span>
-                </div>
-              </div>
-              <div class="search-bar">
-                <input 
-                  type="text" 
-                  id="valencies-search-input" 
-                  placeholder="Поиск по символу (например, Fe, Na) или названию (Железо, Хлор)..." 
-                  value="${escapeHtml(state.valenciesSearch)}"
-                  oninput="state.valenciesSearch = this.value; renderValencies(); document.getElementById('valencies-search-input').focus();"
-                />
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width: 120px;">Символ</th>
-                      <th>Название</th>
-                      <th style="width: 180px;">Валентность</th>
-                      <th style="width: 180px;">Тип</th>
-                    </tr>
-                  </thead>
-                  <tbody>${rows || '<tr><td colspan="4" class="empty-state">Элементы не найдены</td></tr>'}</tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    /* =========================================================
-       РАЗДЕЛ 8: ТАБЛИЦА МЕНДЕЛЕЕВА
-       ========================================================= */
-    function renderPeriodic() {
-      let gridCellsHtml = '';
-      for (let p = 1; p <= 6; p++) {
-        for (let g = 1; g <= 18; g++) {
-          const el = ELEMENTS.find(e => e.period === p && e.group === g);
-          if (el) {
-            gridCellsHtml += `
-              <div class="pt-cell type-${el.type}" onclick="openElementModal('${el.sym}')" title="${escapeHtml(el.name)}">
-                <span class="num">${el.num}</span>
-                <span class="sym">${escapeHtml(el.sym)}</span>
-                <span class="nm">${escapeHtml(el.name)}</span>
-              </div>
-            `;
-          } else {
-            gridCellsHtml += `<div></div>`;
-          }
-        }
-      }
-
-      document.getElementById('app').innerHTML = `
-        <div class="layout-3col">
-          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
-          <div class="main-col">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <span class="card-title">Таблица Менделеева</span>
-                  <span class="sub-text" style="margin-left: 8px;">Нажми на элемент, чтобы узнать подробнее</span>
-                </div>
-              </div>
-              <div class="pt-grid">
-                ${gridCellsHtml}
-              </div>
-              <div class="pt-legend">
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #f39c12;"></span><span>Щелочные</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e67e22;"></span><span>Щёлочноземельные</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #95a5a6;"></span><span>Переходные</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #7f8c8d;"></span><span>Постпереходные</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #16a085;"></span><span>Полуметаллы</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #3498db;"></span><span>Неметаллы</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #9b59b6;"></span><span>Галогены</span></div>
-                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e74c3c;"></span><span>Благородные газы</span></div>
-              </div>
-            </div>
-          </div>
-          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
-        </div>
-      `;
-    }
-
-    async function openElementModal(symbol) {
-      const el = ELEMENTS.find(e => e.sym.toLowerCase() === symbol.toLowerCase());
-      if (!el) return;
-
-      const valObj = VALENCIES.find(v => v.symbol.toLowerCase() === el.sym.toLowerCase());
-      const valText = valObj ? valObj.val : '—';
-      const typeText = ELEMENT_TYPE_NAMES[el.type] || el.type;
-
-      const chem = await loadChemistry();
-      let solubilityHtml = '';
-
-      if (chem && chem.solubility && chem.solubility[el.sym]) {
-        const elSol = chem.solubility[el.sym];
-        const rows = ACID_RESIDUES.map(ar => {
-          const val = elSol[ar.key] || elSol[ar.key.toLowerCase()] || '-';
-          let badgeHtml = '';
-          if (val === 'Р' || val === 'р' || val === 'R') {
-            badgeHtml = '<span class="badge badge-sol-r">растворим</span>';
-          } else if (val === 'М' || val === 'м' || val === 'M') {
-            badgeHtml = '<span class="badge badge-sol-m">малорастворим</span>';
-          } else if (val === 'Н' || val === 'н' || val === 'N') {
-            badgeHtml = '<span class="badge badge-sol-n">нерастворим</span>';
-          } else {
-            badgeHtml = '<span class="sub-text">—</span>';
-          }
-
-          return `
-            <tr>
-              <td>${escapeHtml(ar.name)}</td>
-              <td><code>${escapeHtml(ar.formula)}</code></td>
-              <td>${badgeHtml}</td>
-            </tr>
-          `;
-        }).join('');
-
-        solubilityHtml = `
-          <h4 style="margin: 16px 0 8px; font-size: 14px; font-weight: 600;">Растворимость с кислотными остатками</h4>
-          <div class="table-container" style="max-height: 240px; overflow-y: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Остаток</th>
-                  <th>Формула</th>
-                  <th>Растворимость</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        `;
-      } else {
-        solubilityHtml = `
-          <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-secondary); font-size: 13px;">
-            Данные о растворимости недоступны для этого элемента
-          </div>
-        `;
-      }
-
-      const title = `${el.sym} — ${el.name}`;
-      const content = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-          <div><span class="sub-text">Атомный номер:</span> <strong>${el.num}</strong></div>
-          <div><span class="sub-text">Период:</span> <strong>${el.period}</strong></div>
-          <div><span class="sub-text">Группа:</span> <strong>${el.group}</strong></div>
-          <div><span class="sub-text">Валентность:</span> <strong>${escapeHtml(valText)}</strong></div>
-          <div style="grid-column: 1 / -1;"><span class="sub-text">Тип:</span> <strong>${escapeHtml(typeText)}</strong></div>
-        </div>
-        ${solubilityHtml}
-      `;
-
-      const actions = `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`;
-      openModal(title, content, actions);
     }
 
     /* =========================================================
