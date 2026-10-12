@@ -156,6 +156,36 @@
       border-color: var(--accent-color);
     }
 
+    /* ПОДВКЛАДКИ "БОТ" */
+    .bot-subtabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .bot-subtab {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border-bottom: 2px solid transparent;
+      font-family: inherit;
+    }
+
+    .bot-subtab:hover {
+      color: var(--text-main);
+      background: var(--card-hover);
+    }
+
+    .bot-subtab.active {
+      color: var(--accent-color);
+      border-bottom-color: var(--accent-color);
+    }
+
     /* ЭКРАН АВТОРИЗАЦИИ */
     #login-screen {
       display: flex;
@@ -1569,10 +1599,9 @@
   <div id="dashboard-screen">
     <header id="main-header">
       <div class="nav-container">
-        <div class="nav-tabs">
-          <button class="nav-btn" data-tab="messages">Сообщения</button>
-          <button class="nav-btn" data-tab="admins">Админы</button>
-          <button class="nav-btn" data-tab="users">Пользователи</button>
+        <div class="nav-tabs">          
+          <button class="nav-btn" data-tab="bot">Бот</button>
+          <button class="nav-btn" data-tab="media">Медиа</button>
           <button class="nav-btn active" data-tab="notes">Заметки</button>
           <button class="nav-btn" data-tab="gdz">ГДЗ</button>
           <button class="nav-btn" data-tab="useful">Полезное</button>
@@ -1859,7 +1888,9 @@
       searchNotes: '',
       searchUpdates: '',
       searchAdmins: '',
-      searchAudit: ''
+      searchAudit: '',
+      botSubtab: 'users',
+      _botSearchFocused: false
     };
 
     /* =========================================================
@@ -2753,6 +2784,210 @@ function runPendingConfirm() {
       dsLoadFile(val);
     }
 
+        /* =========================================================
+       ВКЛАДКА "БОТ" (объединяет Пользователей, Сообщений, Админов)
+       ========================================================= */
+    function renderBot() {
+      const subtab = state.botSubtab || 'users';
+
+      const tabsHtml = `
+        <div class="bot-subtabs">
+          <button class="bot-subtab ${subtab === 'users' ? 'active' : ''}" onclick="setBotSubtab('users')">
+            Пользователи
+          </button>
+          <button class="bot-subtab ${subtab === 'messages' ? 'active' : ''}" onclick="setBotSubtab('messages')">
+            Сообщения
+          </button>
+          <button class="bot-subtab ${subtab === 'admins' ? 'active' : ''}" onclick="setBotSubtab('admins')">
+            Админы
+          </button>
+        </div>
+      `;
+
+      const placeholders = {
+        users: 'Поиск по имени, username или ID...',
+        messages: 'Поиск по имени, тексту или User ID...',
+        admins: 'Поиск админов по имени или ID...'
+      };
+
+      const searchValues = {
+        users: state.searchUsers || '',
+        messages: state.searchMessages || '',
+        admins: state.searchAdmins || ''
+      };
+
+      const searchHtml = `
+        <div class="search-bar">
+          <input type="text" id="bot-search-input"
+            placeholder="${placeholders[subtab]}"
+            value="${escapeHtml(searchValues[subtab])}"
+            oninput="onBotSearchInput(this.value)" />
+        </div>
+      `;
+
+      let bodyHtml = '';
+      if (subtab === 'users') bodyHtml = buildUsersTable();
+      else if (subtab === 'messages') bodyHtml = buildMessagesTable();
+      else if (subtab === 'admins') bodyHtml = buildAdminsTable();
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Бот</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              ${tabsHtml}
+              ${searchHtml}
+              ${bodyHtml}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+
+      const input = document.getElementById('bot-search-input');
+      if (input && state._botSearchFocused) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+
+    function setBotSubtab(tab) {
+      state.botSubtab = tab;
+      state._botSearchFocused = false;
+      renderBot();
+    }
+
+    function onBotSearchInput(value) {
+      state._botSearchFocused = true;
+      if (state.botSubtab === 'users') state.searchUsers = value;
+      else if (state.botSubtab === 'messages') state.searchMessages = value;
+      else if (state.botSubtab === 'admins') state.searchAdmins = value;
+      renderBot();
+    }
+
+    function buildUsersTable() {
+      const userIds = Object.keys(state.users);
+      const q = (state.searchUsers || '').toLowerCase().trim();
+
+      let filteredIds = userIds;
+      if (q) {
+        filteredIds = userIds.filter(id => {
+          const u = state.users[id];
+          return id.includes(q) ||
+            (u.first_name || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q);
+        });
+      }
+
+      let rows = filteredIds.map(id => {
+        const u = state.users[id];
+        return `
+          <tr class="clickable" onclick="openProfile('${id}')">
+            <td>${escapeHtml(u.first_name || '—')}</td>
+            <td><code>${id}</code></td>
+            <td>${formatDate(u.last_message)}</td>
+            <td>${u.requests ?? 0}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${filteredIds.length} из ${userIds.length}</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Ник</th><th>ID</th><th>Последнее сообщение</th><th>Запросов</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="4" class="empty-state">Нет пользователей</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildMessagesTable() {
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+
+      if (q) {
+        list = list.filter(m =>
+          (m.first_name || '').toLowerCase().includes(q) ||
+          (m.text || '').toLowerCase().includes(q) ||
+          String(m.user_id).includes(q)
+        );
+      }
+
+      let rows = list.map((m, index) => {
+        const text = m.text || '';
+        const parsed = parseMediaFromText(text);
+        let cellContent = parsed
+          ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+          : escapeHtml(text.length > 100 ? text.substring(0, 100) + '...' : text);
+
+        return `
+          <tr class="clickable" onclick="openMessageModal(${index})">
+            <td class="col-id">${m.id !== undefined ? `#${m.id}` : '—'}</td>
+            <td>${escapeHtml(m.first_name || '—')}</td>
+            <td><code>${m.user_id}</code></td>
+            <td class="truncate">${cellContent}</td>
+            <td>${formatDate(m.time)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${list.length}</div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Ник</th><th>User ID</th><th>Текст</th><th>Время</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5" class="empty-state">Нет сообщений</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildAdminsTable() {
+      const q = (state.searchAdmins || '').toLowerCase().trim();
+      let list = state.admins || [];
+
+      if (q) {
+        list = list.filter(admin => {
+          const user = state.users[String(admin.id)];
+          const name = user ? user.first_name : '';
+          return String(admin.id).includes(q) || name.toLowerCase().includes(q);
+        });
+      }
+
+      let rows = list.map(admin => {
+        const user = state.users[String(admin.id)];
+        const name = user ? user.first_name : '—';
+        return `
+          <tr class="${user ? 'clickable' : ''}" ${user ? `onclick="openProfile('${admin.id}')"` : ''}>
+            <td>${escapeHtml(name)}</td>
+            <td><code>${admin.id}</code></td>
+            <td>${formatDate(admin.appointed_at)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${list.length}</div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Ник</th><th>ID</th><th>Назначен</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="3" class="empty-state">Список админов пуст</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+    
     /* =========================================================
        АВТОРИЗАЦИЯ
        ========================================================= */
@@ -3071,9 +3306,7 @@ function runPendingConfirm() {
       }
 
       switch (state.currentTab) {
-        case 'users': renderUsers(); break;
-        case 'messages': renderMessages(); break;
-        case 'media': renderMedia(); break;
+        case 'bot': renderBot(); break;
         case 'notes': renderNotes(); break;
         case 'gdz': renderGdz(); break;
         case 'useful':
@@ -3084,7 +3317,6 @@ function runPendingConfirm() {
             renderUseful();
           }
           break;
-        case 'admins': renderAdmins(); break;
         case 'audit': renderAudit(); break;
         case 'valencies': renderValencies(); break;
         case 'periodic': renderPeriodic(); break;
