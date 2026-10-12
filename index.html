@@ -1564,37 +1564,26 @@
   <!-- КОНТЕЙНЕР ДЛЯ TOAST-УВЕДОМЛЕНИЙ -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- ЭКРАН 1: ЛОГИН -->
-  <div id="login-screen">
-    <div class="login-box">
-      <h2>Админ-панель</h2>
-      <form id="login-form">
-        <input type="password" id="password-input" class="form-input" placeholder="Введите пароль" autocomplete="current-password" autofocus required />
-        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">Войти</button>
-      </form>
-      <div id="login-error" class="login-error">Неверный пароль</div>
-    </div>
-  </div>
 
   <!-- ЭКРАН 2: ОСНОВНАЯ ПАНЕЛЬ -->
   <div id="dashboard-screen">
     <header id="main-header">
       <div class="nav-container">
         <div class="nav-tabs">
-          <button class="nav-btn active" data-tab="users">Пользователи</button>
-          <button class="nav-btn" data-tab="messages">Сообщения</button>
-          <button class="nav-btn" data-tab="media">Медиа</button>
-          <button class="nav-btn" data-tab="notes">Заметки</button>
+          <button class="nav-btn active" data-tab="notes">Заметки</button>
           <button class="nav-btn" data-tab="gdz">ГДЗ</button>
           <button class="nav-btn" data-tab="useful">Полезное</button>
-          <button class="nav-btn" data-tab="admins">Админы</button>
-          <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="users">Пользователи</button>
+          <button class="nav-btn" data-tab="messages">Сообщения</button>
+          <button class="nav-btn" data-tab="media">Медиа</button>
+          <button class="nav-btn" data-tab="admins">Админы</button>
+          <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
         <div class="header-right">
-          <button id="logout-btn" class="btn-logout">Выйти</button>
+          <button id="auth-btn" class="btn-logout">Вход</button>
           <button id="updates-btn" class="btn-updates" data-count="0" title="Обновления">
             <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
           </button>
@@ -1826,12 +1815,15 @@
     let state = {
       last_updated: null,
       users: {},
+      isAdmin: false,
+      publicTabs: null,
+      settingsSha: null,
       messages: [],
       media: [],
       notes: [],
       admins: [],
       audit: [],
-      currentTab: 'users',
+      currentTab: 'notes',
       selectedUserId: null,
       editingNoteId: null,
       dataSha: null,
@@ -1869,6 +1861,67 @@
       searchAdmins: '',
       searchAudit: ''
     };
+
+    /* =========================================================
+       ПУБЛИЧНЫЙ РЕЖИМ: НАСТРОЙКИ И ВИДИМОСТЬ ВКЛАДОК
+       ========================================================= */
+    const DEFAULT_PUBLIC_TABS = ['notes', 'gdz', 'useful', 'valencies', 'periodic'];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/settings.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) {
+          state.publicTabs = DEFAULT_PUBLIC_TABS;
+          return state.publicTabs;
+        }
+
+        const jsonMeta = await response.json();
+        state.settingsSha = jsonMeta.sha;
+
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.publicTabs = Array.isArray(data.public_tabs)
+          ? data.public_tabs
+          : DEFAULT_PUBLIC_TABS;
+
+        return state.publicTabs;
+      } catch (err) {
+        console.warn('Ошибка загрузки settings.json:', err);
+        state.publicTabs = DEFAULT_PUBLIC_TABS;
+        return state.publicTabs;
+      }
+    }
+
+    function applyAdminVisibility() {
+      const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const tab = btn.getAttribute('data-tab');
+        const isPublic = publicTabs.includes(tab);
+
+        if (isPublic) {
+          btn.style.display = '';
+        } else {
+          btn.style.display = state.isAdmin ? '' : 'none';
+        }
+      });
+    }
+
+    function isTabAllowed(tab) {
+      const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
+      if (publicTabs.includes(tab)) return true;
+      return state.isAdmin;
+    }
 
     /* TOAST & CONFIRM */
     function showToast(message, type = 'info') {
@@ -2601,6 +2654,10 @@ function runPendingConfirm() {
         } else if (fileName === 'chemistry.json') {
           state.chemistryData = null;
           await loadChemistry();
+        } else if (fileName === 'settings.json') {
+          state.publicTabs = null;
+          await loadSettings();
+          applyAdminVisibility();
         }
       } catch (err) {
         showToast(`Ошибка при сохранении: ${err.message}`, "error");
@@ -2642,7 +2699,7 @@ function runPendingConfirm() {
     }
 
     function renderDataStructure() {
-      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json'];
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json'];
       const selectHtml = `
         <select class="ds-header-select" onchange="dsChangeFile(this.value)">
           ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
@@ -2699,60 +2756,110 @@ function runPendingConfirm() {
     /* =========================================================
        АВТОРИЗАЦИЯ
        ========================================================= */
-    const loginScreen = document.getElementById('login-screen');
-    const dashboardScreen = document.getElementById('dashboard-screen');
-    const loginForm = document.getElementById('login-form');
-    const passwordInput = document.getElementById('password-input');
-    const loginError = document.getElementById('login-error');
-    const logoutBtn = document.getElementById('logout-btn');
+        /* =========================================================
+       АВТОРИЗАЦИЯ И МОДАЛКА ВХОДА
+       ========================================================= */
+    function openLoginModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p class="sub-text">Введите пароль администратора</p>
+          <input type="password" id="login-modal-password" class="form-input" placeholder="Пароль" style="margin-bottom: 0;" autofocus />
+          <div id="login-modal-error" style="color: var(--status-banned); font-size: 13px; display: none;">Неверный пароль</div>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="submitLoginModal()">Войти</button>
+      `;
+      openModal('Вход', content, actions);
 
-    function checkAuth() {
-      if (localStorage.getItem('admin_auth') === 'true') {
-        loginScreen.style.display = 'none';
-        dashboardScreen.style.display = 'block';
-        loadData();
-        loadUpdates();
+      setTimeout(() => {
+        const input = document.getElementById('login-modal-password');
+        if (input) {
+          input.focus();
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitLoginModal();
+          });
+        }
+      }, 50);
+    }
+
+    function submitLoginModal() {
+      const input = document.getElementById('login-modal-password');
+      const errEl = document.getElementById('login-modal-error');
+      if (!input) return;
+
+      if (input.value.trim() === ADMIN_PASSWORD) {
+        state.isAdmin = true;
+        localStorage.setItem('admin_auth', 'true');
+        const authBtnEl = document.getElementById('auth-btn');
+        if (authBtnEl) authBtnEl.textContent = 'Выйти';
+        closeModal();
+        applyAdminVisibility();
+        render();
+        showToast('Вы вошли как администратор', 'success');
       } else {
-        loginScreen.style.display = 'flex';
-        dashboardScreen.style.display = 'none';
-        passwordInput.value = '';
-        loginError.style.display = 'none';
+        if (errEl) errEl.style.display = 'block';
       }
     }
 
-    loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (passwordInput.value.trim() === ADMIN_PASSWORD) {
-        localStorage.setItem('admin_auth', 'true');
-        loginError.style.display = 'none';
-        checkAuth();
-      } else {
-        loginError.style.display = 'block';
-      }
-    });
+    const authBtn = document.getElementById('auth-btn');
+    if (authBtn) {
+      authBtn.addEventListener('click', () => {
+        if (state.isAdmin) {
+          state.isAdmin = false;
+          localStorage.removeItem('admin_auth');
+          authBtn.textContent = 'Вход';
+          applyAdminVisibility();
 
-    logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('admin_auth');
-      state.showUpdates = false;
-      state.editingUpdateId = null;
-      checkAuth();
-    });
+          if (!isTabAllowed(state.currentTab)) {
+            state.currentTab = 'notes';
+            document.querySelectorAll('.nav-btn').forEach(b => {
+              b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+            });
+          }
 
-    const updatesBtn = document.getElementById('updates-btn');
-    updatesBtn.addEventListener('click', async () => {
-      state.showUpdates = true;
-      state.editingUpdateId = null;
-      if (!state.updatesLoaded) {
-        await loadUpdates();
+          render();
+          showToast('Вы вышли', 'info');
+        } else {
+          openLoginModal();
+        }
+      });
+    }
+
+    async function checkAuth() {
+      await loadSettings();
+
+      const savedAuth = localStorage.getItem('admin_auth') === 'true';
+      state.isAdmin = savedAuth;
+
+      const authBtnEl = document.getElementById('auth-btn');
+      if (authBtnEl) {
+        authBtnEl.textContent = state.isAdmin ? 'Выйти' : 'Вход';
       }
-      render();
-    });
+
+      applyAdminVisibility();
+
+      if (!isTabAllowed(state.currentTab)) {
+        state.currentTab = 'notes';
+        document.querySelectorAll('.nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === 'notes');
+        });
+      }
+
+      loadData();
+      loadUpdates();
+    }
 
     /* =========================================================
        НАВИГАЦИЯ И РОУТИНГ
        ========================================================= */
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        if (!isTabAllowed(btn.getAttribute('data-tab'))) {
+          showToast('Эта вкладка доступна только администратору', 'error');
+          return;
+        }
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentTab = btn.getAttribute('data-tab');
