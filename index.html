@@ -2889,6 +2889,7 @@ function runPendingConfirm() {
        БОКОВЫЕ ВИДЖЕТЫ
        ========================================================= */
     function renderLeftWidgets() {
+      if (!state.isAdmin) return '';
       const msgCountByUser = {};
       (state.messages || []).forEach(m => {
         const uid = String(m.user_id);
@@ -2967,6 +2968,7 @@ function runPendingConfirm() {
     }
 
     function renderRightWidgets() {
+      if (!state.isAdmin) return '';
       const last10Messages = (state.messages || []).slice(-10).reverse();
       let lastMessagesHtml = '';
       if (last10Messages.length === 0) {
