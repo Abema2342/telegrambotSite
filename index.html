@@ -3192,7 +3192,7 @@ function runPendingConfirm() {
       renderAI();
     }
 
-    async function sendAiMessage() {
+      async function sendAiMessage() {
       const input = document.getElementById('ai-input');
       if (!input || state.aiSending) return;
 
@@ -3240,11 +3240,10 @@ function runPendingConfirm() {
           })
         });
 
-          if (!response.ok) {
+        if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           const errMsg = errData.error || `HTTP ${response.status}`;
 
-          // Перевод популярных ошибок Gemini
           if (errMsg.includes('high demand') || errMsg.includes('Spikes in demand')) {
             throw new Error('Сервер временно перегружен. Попробуйте ещё раз через минуту или попробуйте позже.');
           }
@@ -3284,6 +3283,7 @@ function runPendingConfirm() {
         render();
         await saveChats();
       }
+    }
 
     function renderAI() {
       const chat = getCurrentChat();
