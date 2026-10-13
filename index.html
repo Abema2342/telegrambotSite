@@ -2078,29 +2078,13 @@
       chatsSha: null,
       currentChatId: null,
       aiMode: 'spelling',
-      aiSending: false
+      aiSending: false,
+      aiModes: null,
+      aiModesLoaded: false,
+      aiModesSha: null
     };
 
     const GEMINI_WORKER = "https://gemini-proxy.kmaxim242.workers.dev";
-
-    const AI_MODES = {
-      spelling: {
-        name: 'Орфография',
-        prompt: 'Ты учитель русского языка. Проверь текст на орфографические, пунктуационные и грамматические ошибки. Выведи: 1) Исправленный текст. 2) Список ошибок с объяснением правил. Отвечай кратко и по делу, без лишних вступлений. Не используй LaTeX (без $...$), Markdown (без ** и *) и любые спецсимволы разметки. Пиши обычным текстом с переносами строк. Стрелки пиши как →, степени как ², индексы как ₂.'
-      },
-      parsing: {
-        name: 'Разбор',
-        prompt: 'Ты учитель русского языка. Сделай разбор слова или предложения. Определи тип разбора по запросу (фонетический, морфемный, морфологический, синтаксический). Выведи разбор по пунктам. Отвечай кратко. Не используй LaTeX (без $...$), Markdown (без ** и *) и любые спецсимволы разметки. Пиши обычным текстом с переносами строк. Стрелки пиши как →, степени как ², индексы как ₂.'
-      },
-      chemistry: {
-        name: 'Химия',
-        prompt: 'Ты учитель химии. Проверь уравнение реакции, расставь коэффициенты, определи тип реакции. Если это задача — проверь решение. Отвечай кратко, покажи уравнение целиком. Не используй LaTeX (без $...$), Markdown (без ** и *) и любые спецсимволы разметки. Пиши обычным текстом с переносами строк. Стрелки пиши как →, степени как ², индексы как ₂.'
-      },
-      math: {
-        name: 'Математика',
-        prompt: 'Ты учитель математики. Проверь решение уравнения или примера. Если верно — подтверди и покажи короткое решение. Если нет — укажи ошибку и покажи правильное решение. Отвечай кратко. Не используй LaTeX (без $...$), Markdown (без ** и *) и любые спецсимволы разметки. Пиши обычным текстом с переносами строк. Стрелки пиши как →, степени как ², индексы как ₂.'
-      }
-    };
 
     /* =========================================================
        ПУБЛИЧНЫЙ РЕЖИМ: НАСТРОЙКИ И ВИДИМОСТЬ ВКЛАДОК
@@ -2902,6 +2886,10 @@ function runPendingConfirm() {
           state.chatsLoaded = false;
           await loadChats();
           renderAI();
+        } else if (fileName === 'ai_modes.json') {
+          state.aiModesLoaded = false;
+          await loadAiModes();
+          if (state.currentTab === 'ai') renderAI();
         }
       } catch (err) {
         showToast(`Ошибка при сохранении: ${err.message}`, "error");
@@ -2943,7 +2931,7 @@ function runPendingConfirm() {
     }
 
     function renderDataStructure() {
-      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json', 'chats.json'];
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json', 'chats.json', 'ai_modes.json'];
       const selectHtml = `
         <select class="ds-header-select" onchange="dsChangeFile(this.value)">
           ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
@@ -2996,7 +2984,68 @@ function runPendingConfirm() {
     function dsChangeFile(val) {
       dsLoadFile(val);
     }
+    
+    /* =========================================================
+       ЗАГРУЗКА РЕЖИМОВ ИИ
+       ========================================================= */
+    const DEFAULT_AI_MODES = [
+      {
+        id: 'spelling',
+        name: 'Орфография',
+        prompt: 'Ты учитель русского языка. Проверь текст на орфографические, пунктуационные и грамматические ошибки. Выведи: 1) Исправленный текст. 2) Список ошибок. Отвечай кратко. Не используй Markdown и LaTeX.'
+      },
+      {
+        id: 'parsing',
+        name: 'Разбор',
+        prompt: 'Ты учитель русского языка. Сделай разбор слова или предложения. Отвечай кратко. Не используй Markdown и LaTeX.'
+      }
+    ];
 
+    async function loadAiModes() {
+      if (state.aiModesLoaded) return state.aiModes;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/ai_modes.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.aiModes = DEFAULT_AI_MODES;
+          state.aiModesSha = null;
+          state.aiModesLoaded = true;
+          return state.aiModes;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.aiModesSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        const modes = Array.isArray(data.modes) ? data.modes : DEFAULT_AI_MODES;
+        state.aiModes = modes.length > 0 ? modes : DEFAULT_AI_MODES;
+        state.aiModesLoaded = true;
+        return state.aiModes;
+      } catch (err) {
+        console.warn('Ошибка загрузки ai_modes.json:', err);
+        state.aiModes = DEFAULT_AI_MODES;
+        state.aiModesLoaded = true;
+        return state.aiModes;
+      }
+    }
+
+    function getAiMode(modeId) {
+      const modes = state.aiModes || DEFAULT_AI_MODES;
+      return modes.find(m => m.id === modeId) || modes[0];
+    }
+    
         /* =========================================================
        AI ПОМОЩНИК
        ========================================================= */
@@ -3175,7 +3224,7 @@ function runPendingConfirm() {
       state.aiSending = true;
       renderAI();
 
-      const modeConfig = AI_MODES[state.aiMode] || AI_MODES.spelling;
+      const modeConfig = getAiMode(state.aiMode);
 
       try {
         const response = await fetch(GEMINI_WORKER, {
@@ -3221,9 +3270,10 @@ function runPendingConfirm() {
     function renderAI() {
       const chat = getCurrentChat();
 
-      const modesHtml = Object.keys(AI_MODES).map(key => `
-        <button class="ai-mode-btn ${state.aiMode === key ? 'active' : ''}" onclick="setAiMode('${key}')">
-          ${escapeHtml(AI_MODES[key].name)}
+      const modes = state.aiModes || DEFAULT_AI_MODES;
+      const modesHtml = modes.map(m => `
+        <button class="ai-mode-btn ${state.aiMode === m.id ? 'active' : ''}" onclick="setAiMode('${escapeHtml(m.id)}')">
+          ${escapeHtml(m.name)}
         </button>
       `).join('');
 
@@ -3252,7 +3302,7 @@ function runPendingConfirm() {
       const chatsListHtml = sortedChats.length === 0
         ? '<div class="empty-state">Нет чатов</div>'
         : sortedChats.map(c => {
-            const modeName = (AI_MODES[c.mode] || AI_MODES.spelling).name;
+            const modeName = getAiMode(c.mode).name;
             return `
               <div class="ai-chat-item ${state.currentChatId === c.id ? 'active' : ''}" onclick="selectChat(${c.id})">
                 <div style="flex: 1; min-width: 0;">
@@ -3855,9 +3905,9 @@ function runPendingConfirm() {
         case 'audit': renderAudit(); break;
         case 'valencies': renderValencies(); break;
         case 'ai':
-          if (!state.chatsLoaded) {
-            document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка чатов...</div>';
-            loadChats().then(() => renderAI());
+          if (!state.chatsLoaded || !state.aiModesLoaded) {
+            document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
+            Promise.all([loadChats(), loadAiModes()]).then(() => renderAI());
           } else {
             renderAI();
           }
