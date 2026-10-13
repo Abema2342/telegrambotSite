@@ -3281,10 +3281,9 @@ function runPendingConfirm() {
         });
       } finally {
         state.aiSending = false;
-        renderAI();
+        render();
         await saveChats();
       }
-    }
 
     function renderAI() {
       const chat = getCurrentChat();
@@ -3932,9 +3931,9 @@ function runPendingConfirm() {
         case 'ai':
           if (!state.chatsLoaded || !state.aiModesLoaded) {
             document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
-            Promise.all([loadChats(), loadAiModes()]).then(() => renderAI());
+            Promise.all([loadChats(), loadAiModes()]).then(() => render());
           } else {
-            renderAI();
+            render();
           }
           break;
         case 'periodic': renderPeriodic(); break;
