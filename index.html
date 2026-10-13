@@ -3050,18 +3050,12 @@ function runPendingConfirm() {
         /* =========================================================
        AI ПОМОЩНИК
        ========================================================= */
-      function getChatsFileName() {
-      return state.isAdmin ? 'chats_admin.json' : 'chats_user.json';
-    }
-
-      async function loadChats() {
+    async function loadChats() {
       if (state.chatsLoaded) return state.chats;
-
-      const fileName = getChatsFileName();
 
       try {
         const response = await fetch(
-          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`,
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`,
           { headers: { 'Accept': 'application/vnd.github.v3+json' } }
         );
 
@@ -3088,17 +3082,15 @@ function runPendingConfirm() {
         state.chatsLoaded = true;
         return state.chats;
       } catch (err) {
-        console.warn(`Ошибка загрузки ${fileName}:`, err);
+        console.warn('Ошибка загрузки chats.json:', err);
         state.chats = [];
         state.chatsLoaded = true;
         return state.chats;
       }
     }
     async function saveChats() {
-      const fileName = getChatsFileName();
-
       try {
-        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`, {
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`, {
 
         let sha = state.chatsSha;
         if (getRes.ok) {
@@ -3110,7 +3102,7 @@ function runPendingConfirm() {
         const exportData = { chats: state.chats };
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
         
-        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}`, {
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json`, {
           method: 'PUT',
           headers: {
             'Accept': 'application/vnd.github.v3+json',
