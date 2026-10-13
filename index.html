@@ -3090,6 +3090,8 @@ function runPendingConfirm() {
     async function saveChats() {
       try {
         const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
 
         let sha = state.chatsSha;
         if (getRes.ok) {
@@ -3100,7 +3102,7 @@ function runPendingConfirm() {
 
         const exportData = { chats: state.chats };
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
-        
+
         const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json`, {
           method: 'PUT',
           headers: {
@@ -3115,7 +3117,6 @@ function runPendingConfirm() {
         });
 
         if (putRes.status === 409) {
-          // Конфликт SHA, повторная попытка через 500мс
           await new Promise(r => setTimeout(r, 500));
           return saveChats();
         }
