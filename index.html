@@ -3931,9 +3931,15 @@ function runPendingConfirm() {
         case 'ai':
           if (!state.chatsLoaded || !state.aiModesLoaded) {
             document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
-            Promise.all([loadChats(), loadAiModes()]).then(() => render());
+            Promise.all([loadChats(), loadAiModes()]).then(() => {
+              if (state.currentTab === 'ai' && !state.showUpdates) {
+                renderAI();
+              } else {
+                render();
+              }
+            });
           } else {
-            render();
+            renderAI();
           }
           break;
         case 'periodic': renderPeriodic(); break;
