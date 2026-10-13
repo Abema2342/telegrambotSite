@@ -2076,6 +2076,7 @@
       chats: [],
       chatsLoaded: false,
       chatsSha: null,
+      userName: null,
       currentChatId: null,
       aiMode: 'spelling',
       aiSending: false,
@@ -3049,6 +3050,43 @@ function runPendingConfirm() {
         /* =========================================================
        AI ПОМОЩНИК
        ========================================================= */
+      function getAiUserName() {
+      let name = localStorage.getItem('ai_user_name');
+      if (name) return name;
+
+      name = prompt('Как тебя зовут? (одно слово, латиницей или кириллицей, для разделения чатов)');
+      if (!name || !name.trim()) {
+        name = 'guest_' + Math.random().toString(36).slice(2, 8);
+      } else {
+        name = name.trim().toLowerCase().replace(/[^a-zа-я0-9_]/gi, '_');
+      }
+
+      localStorage.setItem('ai_user_name', name);
+      return name;
+    }
+
+    function getChatsFileName() {
+      const name = state.userName || getAiUserName();
+      return `chats_${name}.json`;
+    }
+    function changeAiUserName() {
+      const current = state.userName || localStorage.getItem('ai_user_name') || '';
+      const newName = prompt('Новое имя (одно слово):', current);
+      if (!newName || !newName.trim()) return;
+
+      const clean = newName.trim().toLowerCase().replace(/[^a-zа-я0-9_]/gi, '_');
+
+      if (clean === current) return;
+      if (!confirm(`Сменить имя на "${clean}"? Чаты старого имени останутся на сервере, но в интерфейсе их больше не будет.`)) return;
+
+      localStorage.setItem('ai_user_name', clean);
+      state.userName = clean;
+      state.chatsLoaded = false;
+      state.chatsSha = null;
+      state.chats = [];
+      state.currentChatId = null;
+      loadChats().then(() => renderAI());
+    }
     async function loadChats() {
       if (state.chatsLoaded) return state.chats;
 
@@ -3089,8 +3127,10 @@ function runPendingConfirm() {
     }
 
     async function saveChats() {
+      const fileName = getChatsFileName();
+
       try {
-        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`, {
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
 
@@ -3103,8 +3143,8 @@ function runPendingConfirm() {
 
         const exportData = { chats: state.chats };
         const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
-
-        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json`, {
+        
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}`, {
           method: 'PUT',
           headers: {
             'Accept': 'application/vnd.github.v3+json',
@@ -3332,12 +3372,15 @@ function runPendingConfirm() {
             `;
           }).join('');
 
+      const userName = state.userName || localStorage.getItem('ai_user_name') || '—';
+
       document.getElementById('app').innerHTML = `
         <div class="ai-layout">
           <div class="ai-left">
             <div class="card">
               <div class="card-header">
                 <span class="card-title">Режим</span>
+                <button onclick="changeAiUserName()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 11px; cursor: pointer; text-decoration: underline;">${escapeHtml(userName)}</button>
               </div>
               <div style="padding: 12px;">
                 <div class="ai-mode-buttons">${modesHtml}</div>
