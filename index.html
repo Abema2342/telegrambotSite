@@ -3099,8 +3099,6 @@ function runPendingConfirm() {
 
       try {
         const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
 
         let sha = state.chatsSha;
         if (getRes.ok) {
