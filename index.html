@@ -3240,9 +3240,28 @@ function runPendingConfirm() {
           })
         });
 
-        if (!response.ok) {
+          if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          const errMsg = errData.error || `HTTP ${response.status}`;
+
+          // Перевод популярных ошибок Gemini
+          if (errMsg.includes('high demand') || errMsg.includes('Spikes in demand')) {
+            throw new Error('Сервер временно перегружен. Попробуйте ещё раз через минуту или попробуйте позже.');
+          }
+          if (errMsg.includes('API key not valid') || errMsg.includes('API_KEY_INVALID')) {
+            throw new Error('Неверный API-ключ. Проверьте ключ в секретах Cloudflare.');
+          }
+          if (errMsg.includes('quota') || errMsg.includes('rate limit') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+            throw new Error('Лимит запросов исчерпан. Попробуйте позже.');
+          }
+          if (errMsg.includes('no longer available')) {
+            throw new Error('Модель больше недоступна. Обновите код Worker\'а.');
+          }
+          if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+            throw new Error('Нет соединения с сервером. Проверьте интернет.');
+          }
+
+          throw new Error(errMsg);
         }
 
         const data = await response.json();
@@ -3366,6 +3385,12 @@ function runPendingConfirm() {
             sendAiMessage();
           }
         });
+      }
+
+      // Автоскролл чата вниз
+      const chatBox = document.querySelector('.ai-chat-box');
+      if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
       }
     }
 
