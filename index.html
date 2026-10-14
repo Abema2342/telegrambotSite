@@ -3988,6 +3988,15 @@ function runPendingConfirm() {
         app.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
       }
 
+      const fadeInApp = () => {
+        if (app) {
+          requestAnimationFrame(() => {
+            app.style.opacity = '1';
+            app.style.transform = 'translateY(0)';
+          });
+        }
+      };
+
       if (state.showUpdates) {
         if (state.editingUpdateId !== null) {
           header.style.display = 'none';
@@ -3996,12 +4005,14 @@ function runPendingConfirm() {
           header.style.display = 'none';
           renderUpdatesScreen();
         }
+        fadeInApp();
         return;
       }
 
       if (state.editingNoteId !== null) {
         header.style.display = 'none';
         renderNoteEditor(state.editingNoteId);
+        fadeInApp();
         return;
       } else {
         header.style.display = 'block';
@@ -4009,9 +4020,10 @@ function runPendingConfirm() {
 
       if (state.selectedUserId) {
         renderUserProfile(state.selectedUserId);
+        fadeInApp();
         return;
       }
-
+      
       switch (state.currentTab) {
         case 'bot': renderBot(); break;
         case 'notes': renderNotes(); break;
@@ -4043,12 +4055,7 @@ function runPendingConfirm() {
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
       }
-    if (app) {
-        requestAnimationFrame(() => {
-          app.style.opacity = '1';
-          app.style.transform = 'translateY(0)';
-        });
-      }
+      fadeInApp();
     }
 
     /* =========================================================
