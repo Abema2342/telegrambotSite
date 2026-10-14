@@ -59,6 +59,54 @@
       to { opacity: 0; transform: translateX(40px); }
     }
 
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-16px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(16px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { opacity: 1; transform: scale(1.05); }
+      70% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes rotate360 {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
     /* TOAST-УВЕДОМЛЕНИЯ */
     .toast-container {
       position: fixed;
@@ -291,6 +339,7 @@
       background-color: var(--accent-color);
       color: #ffffff;
       box-shadow: 0 2px 8px rgba(88,101,242,0.3);
+      animation: popIn 0.2s ease;
     }
 
     .header-right {
@@ -398,7 +447,7 @@
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       overflow: hidden;
-      animation: fadeInUp 0.3s ease;
+      animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .card-header {
@@ -606,6 +655,25 @@
       box-shadow: 0 4px 10px rgba(88,101,242,0.4);
     }
 
+    .btn-primary:active {
+      transform: scale(0.97);
+      transition: transform 0.08s ease;
+    }
+
+    .btn-refresh:active,
+    .btn-danger:active,
+    .btn-logout:active,
+    .btn-action:active,
+    .nav-btn:active,
+    .back-btn:active,
+    .num-btn:active,
+    .gdz-card:active,
+    .useful-card:active,
+    .upd-card:active {
+      transform: scale(0.96);
+      transition: transform 0.08s ease;
+    }
+
     .btn-refresh {
       background: transparent;
       border: 1px solid var(--border-color);
@@ -767,14 +835,15 @@
       flex-direction: column;
       justify-content: space-between;
       min-height: 140px;
-      transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
-      animation: fadeInUp 0.3s ease;
+      transition: background-color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
-
+    
     .note-card:hover {
       background-color: var(--card-hover);
       border-color: #383838;
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
     }
 
     .note-card-header {
@@ -1375,6 +1444,16 @@
       margin-top: auto;
     }
 
+    @keyframes tabPulse {
+      0% { box-shadow: 0 2px 8px rgba(88,101,242,0.3), 0 0 0 0 rgba(88,101,242,0.4); }
+      70% { box-shadow: 0 2px 8px rgba(88,101,242,0.3), 0 0 0 8px rgba(88,101,242,0); }
+      100% { box-shadow: 0 2px 8px rgba(88,101,242,0.3), 0 0 0 0 rgba(88,101,242,0); }
+    }
+
+    .nav-btn.active {
+      animation: popIn 0.2s ease, tabPulse 2s ease-in-out infinite;
+    }
+
     .badge-upd-done { background: rgba(67, 181, 129, 0.15); color: #43b581; }
     .badge-upd-in_progress { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
     .badge-upd-not_done { background: rgba(106, 106, 106, 0.2); color: #a0a0a0; }
@@ -1502,12 +1581,15 @@
       z-index: 1000;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.25s ease;
+      backdrop-filter: blur(0px);
     }
 
     .modal-overlay.active {
       opacity: 1;
       pointer-events: auto;
+      backdrop-filter: blur(4px);
+      transition: opacity 0.25s ease, backdrop-filter 0.25s ease;
     }
 
     .modal-window {
@@ -1582,10 +1664,18 @@
       background-color: var(--card-hover);
     }
 
-        .empty-state {
+    .empty-state {
       padding: 48px 16px;
       text-align: center;
       color: var(--text-secondary);
+    }
+
+    .loading-shimmer {
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      color: transparent;
     }
 
     /* AI ПОМОЩНИК */
@@ -3886,9 +3976,17 @@ function runPendingConfirm() {
         </div>
       `;
     }
-
+    
     function render() {
       const header = document.getElementById('main-header');
+      const app = document.getElementById('app');
+
+      // Плавное исчезновение перед сменой контента
+      if (app) {
+        app.style.opacity = '0';
+        app.style.transform = 'translateY(4px)';
+        app.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+      }
 
       if (state.showUpdates) {
         if (state.editingUpdateId !== null) {
@@ -3944,6 +4042,13 @@ function runPendingConfirm() {
           break;
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
+      }
+    }
+    if (app) {
+        requestAnimationFrame(() => {
+          app.style.opacity = '1';
+          app.style.transform = 'translateY(0)';
+        });
       }
     }
 
