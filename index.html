@@ -4245,7 +4245,7 @@ function runPendingConfirm() {
         case 'gdz': renderGdz(); break;
         case 'useful':
           if (!state.usefulLoaded) {
-            document.getElementById('app').innerHTML = ''<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>'';
+            document.getElementById('app').innerHTML = '<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>';
             loadUseful().then(() => renderUseful());
           } else {
             renderUseful();
@@ -4255,7 +4255,7 @@ function runPendingConfirm() {
         case 'valencies': renderValencies(); break;
         case 'ai':
           if (!state.chatsLoaded || !state.aiModesLoaded) {
-            document.getElementById('app').innerHTML = ''<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>'';
+            document.getElementById('app').innerHTML = '<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>';
             Promise.all([loadChats(), loadAiModes()]).then(() => {
               if (state.currentTab === 'ai' && !state.showUpdates) {
                 renderAI();
