@@ -31,11 +31,125 @@
 
     body {
       background-color: var(--bg-color);
+      background-image:
+        radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 55%),
+        radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--accent-color) 5%, transparent), transparent 55%);
+      background-attachment: fixed;
+      background-size: 200% 200%, 200% 200%;
+      animation: bgShift 60s ease-in-out infinite;
       color: var(--text-main);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       font-size: 14px;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%, 100% 50%; }
+      50%  { background-position: 100% 50%, 0% 50%; }
+      100% { background-position: 0% 50%, 100% 50%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body { animation: none; }
+    }
+
+    /* CANVAS ЧАСТИЦ */
+    #bg-particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    #dashboard-screen {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* СВЕЧЕНИЕ ПРИ НАВЕДЕНИИ */
+    .note-card:hover,
+    .useful-card:hover,
+    .upd-card:hover,
+    .gdz-card:hover {
+      box-shadow:
+        0 0 0 1px var(--accent-color),
+        0 0 20px -2px var(--accent-color),
+        0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .btn-primary:hover,
+    .btn-refresh:hover,
+    .btn-danger:hover {
+      box-shadow:
+        0 0 0 1px var(--accent-color),
+        0 0 14px -2px var(--accent-color);
+    }
+
+    .nav-btn.active {
+      box-shadow:
+        0 2px 8px rgba(88,101,242,0.3),
+        0 0 16px -2px var(--accent-color);
+    }
+
+    /* КАСКАД ПОЯВЛЕНИЯ КАРТОЧЕК */
+    @keyframes cardStagger {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .notes-grid > *,
+    .useful-grid > *,
+    .upd-grid > *,
+    .gdz-grid > * {
+      animation: cardStagger 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .notes-grid > *:nth-child(1),
+    .useful-grid > *:nth-child(1),
+    .upd-grid > *:nth-child(1),
+    .gdz-grid > *:nth-child(1)  { animation-delay: 0.00s; }
+    .notes-grid > *:nth-child(2),
+    .useful-grid > *:nth-child(2),
+    .upd-grid > *:nth-child(2),
+    .gdz-grid > *:nth-child(2)  { animation-delay: 0.05s; }
+    .notes-grid > *:nth-child(3),
+    .useful-grid > *:nth-child(3),
+    .upd-grid > *:nth-child(3),
+    .gdz-grid > *:nth-child(3)  { animation-delay: 0.10s; }
+    .notes-grid > *:nth-child(4),
+    .useful-grid > *:nth-child(4),
+    .upd-grid > *:nth-child(4),
+    .gdz-grid > *:nth-child(4)  { animation-delay: 0.15s; }
+    .notes-grid > *:nth-child(5),
+    .useful-grid > *:nth-child(5),
+    .upd-grid > *:nth-child(5),
+    .gdz-grid > *:nth-child(5)  { animation-delay: 0.20s; }
+    .notes-grid > *:nth-child(6),
+    .useful-grid > *:nth-child(6),
+    .upd-grid > *:nth-child(6),
+    .gdz-grid > *:nth-child(6)  { animation-delay: 0.25s; }
+    .notes-grid > *:nth-child(7),
+    .useful-grid > *:nth-child(7),
+    .upd-grid > *:nth-child(7),
+    .gdz-grid > *:nth-child(7)  { animation-delay: 0.30s; }
+    .notes-grid > *:nth-child(8),
+    .useful-grid > *:nth-child(8),
+    .upd-grid > *:nth-child(8),
+    .gdz-grid > *:nth-child(8)  { animation-delay: 0.35s; }
+    .notes-grid > *:nth-child(n+9),
+    .useful-grid > *:nth-child(n+9),
+    .upd-grid > *:nth-child(n+9),
+    .gdz-grid > *:nth-child(n+9) { animation-delay: 0.40s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .notes-grid > *, .useful-grid > *, .upd-grid > *, .gdz-grid > * {
+        animation: none;
+      }
     }
 
     /* АНИМАЦИИ */
@@ -1866,6 +1980,8 @@
 
   <!-- КОНТЕЙНЕР ДЛЯ TOAST-УВЕДОМЛЕНИЙ -->
   <div class="toast-container" id="toast-container"></div>
+    <!-- КАНВАС ДЛЯ ЧАСТИЦ НА ФОНЕ -->
+  <canvas id="bg-particles"></canvas>
 
 
   <!-- ЭКРАН 2: ОСНОВНАЯ ПАНЕЛЬ -->
@@ -5792,6 +5908,136 @@ function runPendingConfirm() {
     
     // Инициализация при старте
     localStorage.removeItem('ai_user_name');
+    /* =========================================================
+       ФОН ПО ВРЕМЕНИ СУТОК
+       ========================================================= */
+    function updateTimeOfDayBackground() {
+      const h = new Date().getHours();
+      let bg = '#0d0d0d';
+      if (h >= 5 && h < 11)       bg = '#0f0d0a';   // утро
+      else if (h >= 11 && h < 17) bg = '#0d0d0d';   // день
+      else if (h >= 17 && h < 22) bg = '#0e0a10';   // вечер
+      else                        bg = '#08080f';   // ночь
+
+      document.documentElement.style.setProperty('--bg-color', bg);
+    }
+    updateTimeOfDayBackground();
+    setInterval(updateTimeOfDayBackground, 10 * 60 * 1000);
+
+    /* =========================================================
+       КОНФЕТТИ
+       ========================================================= */
+    function showConfetti() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const colors = ['#5865F2', '#43b581', '#f1c40f', '#e67e22', '#eb459e', '#1abc9c', '#9b59b6'];
+      const count = 28;
+
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = 6 + Math.random() * 6;
+        const startX = Math.random() * window.innerWidth;
+        const dx = (Math.random() - 0.5) * 260;
+        const duration = 1600 + Math.random() * 1200;
+        const rotate = Math.random() * 720 - 360;
+
+        el.style.cssText = `
+          position: fixed;
+          top: -20px;
+          left: ${startX}px;
+          width: ${size}px;
+          height: ${size * 1.6}px;
+          background: ${color};
+          border-radius: 2px;
+          pointer-events: none;
+          z-index: 9999;
+          will-change: transform, opacity;
+        `;
+        document.body.appendChild(el);
+
+        el.animate([
+          { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+          { transform: `translate(${dx}px, ${window.innerHeight + 60}px) rotate(${rotate}deg)`, opacity: 0 }
+        ], { duration, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' });
+
+        setTimeout(() => el.remove(), duration + 100);
+      }
+    }
+
+    /* =========================================================
+       ЧАСТИЦЫ НА ФОНЕ
+       ========================================================= */
+    (function initParticles() {
+      const canvas = document.getElementById('bg-particles');
+      if (!canvas) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const ctx = canvas.getContext('2d');
+      let W, H;
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function hexToRgb(hex) {
+        const m = hex.replace('#', '').match(/.{2}/g);
+        if (!m || m.length < 3) return { r: 88, g: 101, b: 242 };
+        return {
+          r: parseInt(m[0], 16),
+          g: parseInt(m[1], 16),
+          b: parseInt(m[2], 16)
+        };
+      }
+
+      let accentRgb = hexToRgb(
+        getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#5865F2'
+      );
+
+      setInterval(() => {
+        const c = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+        if (c) accentRgb = hexToRgb(c);
+      }, 1000);
+
+      const PARTICLE_COUNT = Math.min(50, Math.floor(window.innerWidth / 30));
+      const particles = [];
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
+          r: Math.random() * 1.5 + 0.6,
+          alpha: Math.random() * 0.35 + 0.08
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < 0) { p.x = 0; p.vx *= -1; }
+          if (p.x > W) { p.x = W; p.vx *= -1; }
+          if (p.y < 0) { p.y = 0; p.vy *= -1; }
+          if (p.y > H) { p.y = H; p.vy *= -1; }
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, ${p.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    // Инициализация при старте
     initThemeColor();
     checkAuth();
   </script>
