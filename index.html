@@ -158,11 +158,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes softPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.08); }
-    }
-
     @keyframes toastIn {
       from { opacity: 0; transform: translateX(40px); }
       to { opacity: 1; transform: translateX(0); }
@@ -186,6 +181,21 @@
     @keyframes popIn {
       0% { opacity: 0; transform: scale(0.9); }
       100% { opacity: 1; transform: scale(1); }
+    }
+    
+    @keyframes msgSlide {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .ai-msg {
+      animation: msgSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     @keyframes shimmer {
@@ -866,6 +876,17 @@
       align-items: center;
       padding: 24px;
       border-bottom: 1px solid var(--border-color);
+    }
+
+    .btn-primary {
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.97);
+      box-shadow:
+        0 0 0 1px var(--accent-color),
+        0 0 24px 0px var(--accent-color);
     }
 
     .profile-avatar {
@@ -1987,6 +2008,70 @@
       padding: 16px;
       color: var(--text-secondary);
       font-size: 13px;
+    }    
+    
+    .ripple-host {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      transform: scale(0);
+      animation: rippleAnim 0.6s ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes rippleAnim {
+      to {
+        transform: scale(4);
+        opacity: 0;
+    }
+      
+    @keyframes shimmerAnim {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .loading-shimmer {
+      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+      background-size: 200% 100%;
+      animation: shimmerAnim 1.5s infinite;
+      border-radius: 8px;
+      color: transparent;
+    }
+    
+    @keyframes tabGlow {
+      0%, 100% {
+        box-shadow:
+          0 2px 8px rgba(88,101,242,0.3),
+          0 0 16px -2px var(--accent-color);
+      }
+      50% {
+        box-shadow:
+          0 2px 8px rgba(88,101,242,0.3),
+          0 0 24px 0px var(--accent-color);
+      }
+    }    
+    
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    .btn-updates[data-count]:not([data-count="0"])::after {
+      animation: badgePulse 1.8s ease-in-out infinite;
+    }
+
+    .nav-btn.active {
+      animation: tabGlow 2.5s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nav-btn.active { animation: none; }
+    }
     }
   </style>
 </head>
@@ -4160,7 +4245,7 @@ function runPendingConfirm() {
         case 'gdz': renderGdz(); break;
         case 'useful':
           if (!state.usefulLoaded) {
-            document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
+            document.getElementById('app').innerHTML = ''<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>'';
             loadUseful().then(() => renderUseful());
           } else {
             renderUseful();
@@ -4170,7 +4255,7 @@ function runPendingConfirm() {
         case 'valencies': renderValencies(); break;
         case 'ai':
           if (!state.chatsLoaded || !state.aiModesLoaded) {
-            document.getElementById('app').innerHTML = '<div class="empty-state">Загрузка...</div>';
+            document.getElementById('app').innerHTML = ''<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>'';
             Promise.all([loadChats(), loadAiModes()]).then(() => {
               if (state.currentTab === 'ai' && !state.showUpdates) {
                 renderAI();
@@ -5978,7 +6063,51 @@ function runPendingConfirm() {
         setTimeout(() => el.remove(), duration + 100);
       }
     }
+    
+    /* =========================================================
+       RIPPLE-ЭФФЕКТ
+       ========================================================= */
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, .nav-btn, .gdz-card, .num-btn, .btn-action');
+      if (!btn) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+      btn.classList.add('ripple-host');
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const circle = document.createElement('span');
+      circle.className = 'ripple-circle';
+      circle.style.width = circle.style.height = size + 'px';
+      circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      btn.appendChild(circle);
+
+      setTimeout(() => circle.remove(), 600);
+    });
+    
+        /* =========================================================
+       3D-НАКЛОН КАРТОЧЕК
+       ========================================================= */
+    function initCardTilt() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (window.matchMedia('(max-width: 900px)').matches) return; // только для десктопа
+
+      document.querySelectorAll('.note-card, .useful-card, .gdz-card, .upd-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width - 0.5;
+          const y = (e.clientY - rect.top) / rect.height - 0.5;
+          card.style.transform = `perspective(800px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) translateY(-3px)`;
+          card.style.transition = 'transform 0.08s ease';
+        });
+
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+          card.style.transition = 'transform 0.3s ease';
+        });
+      });
+    }
+    
     /* =========================================================
        ЧАСТИЦЫ НА ФОНЕ
        ========================================================= */
