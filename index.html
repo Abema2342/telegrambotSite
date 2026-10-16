@@ -1525,14 +1525,19 @@
     }
 
     .upd-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      display: block;
       padding: 16px;
     }
 
+    .upd-group-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding-bottom: 8px;
+    }
+
     @media (max-width: 700px) {
-      .upd-grid { grid-template-columns: 1fr; }
+      .upd-group-cards { grid-template-columns: 1fr; }
     }
 
     .upd-card {
