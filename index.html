@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2106,6 +2107,207 @@
       color: var(--status-banned);
     }
 
+        /* КАЛЬКУЛЯТОРЫ */
+    .calc-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .calc-layout { grid-template-columns: 1fr; }
+    }
+
+    .calc-sidebar {
+      position: sticky;
+      top: 80px;
+    }
+
+    @media (max-width: 900px) {
+      .calc-sidebar { position: static; }
+    }
+
+    .calc-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .calc-list-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background-color 0.15s, border-left 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    .calc-list-item:last-child { border-bottom: none; }
+
+    .calc-list-item:hover {
+      background: var(--card-hover);
+    }
+
+    .calc-list-item.active {
+      background: var(--card-hover);
+      border-left-color: var(--accent-color);
+    }
+
+    .calc-list-name {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .calc-list-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* НАУЧНЫЙ КАЛЬКУЛЯТОР */
+    .sci-display {
+      background: #0a0a0a;
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 24px;
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 24px;
+      color: var(--text-main);
+      text-align: right;
+      min-height: 70px;
+      word-break: break-all;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .sci-display:empty::before {
+      content: '0';
+      color: var(--text-secondary);
+      opacity: 0.4;
+    }
+
+    .sci-buttons {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      padding: 16px;
+    }
+
+    .calc-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 14px 8px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.12s, transform 0.08s, border-color 0.12s;
+      user-select: none;
+    }
+
+    .calc-btn:hover {
+      background: var(--card-hover);
+      border-color: #383838;
+    }
+
+    .calc-btn:active {
+      transform: scale(0.95);
+    }
+
+    .calc-btn-num { font-size: 16px; font-weight: 600; }
+    .calc-btn-op { color: var(--accent-color); font-weight: 700; }
+    .calc-btn-func { color: var(--text-secondary); font-size: 13px; }
+    .calc-btn-danger { color: var(--status-banned); font-weight: 700; }
+
+    .calc-btn-equal {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    .calc-btn-equal:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .calc-btn-span2 { grid-column: span 2; }
+
+    /* КАЛЬКУЛЯТОРЫ ВНУТРИ */
+    .calc-form {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .calc-form label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .calc-select {
+      width: 100%;
+      background: #111;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .calc-select:focus { border-color: var(--accent-color); }
+
+    .calc-result-box {
+      background: #0a0a0a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 4px;
+    }
+
+    .calc-result-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .calc-result-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent-color);
+      font-family: 'Courier New', Consolas, monospace;
+      word-break: break-all;
+    }
+
+    .calc-result-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .calc-row { grid-template-columns: 1fr; }
+    }
+
+    .calc-unit-arrow {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 20px;
+      padding: 8px 0;
+    }
+
     .ai-loading {
       text-align: center;
       padding: 16px;
@@ -2198,6 +2400,7 @@
           <button class="nav-btn active" data-tab="useful">Полезное</button>
           <button class="nav-btn" data-tab="ai">Помощник</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
+          <button class="nav-btn" data-tab="calc">Калькуляторы</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
@@ -2494,6 +2697,19 @@
       genLength: 'medium',
       genResult: '',
       genLoading: false,
+      calcActiveId: 'scientific',
+      calcDisplay: '',
+      calcMolarMetal: 0,
+      calcMolarAcid: 0,
+      calcQuadInput: '',
+      calcQuadResult: null,
+      calcUnitCategory: 'length',
+      calcUnitFrom: 'м',
+      calcUnitTo: 'см',
+      calcUnitValue: '1',
+      calcPercentMode: 'of',
+      calcPercentA: '',
+      calcPercentB: '',
       aiModes: null,
       aiModesLoaded: false,
       aiModesSha: null
@@ -3402,6 +3618,127 @@ function runPendingConfirm() {
     function dsChangeFile(val) {
       dsLoadFile(val);
     }
+
+        /* =========================================================
+       ДАННЫЕ КАЛЬКУЛЯТОРОВ
+       ========================================================= */
+    const CALCULATORS = [
+      { id: 'scientific', name: 'Научный калькулятор', desc: 'Тригонометрия, логарифмы, степени' },
+      { id: 'molar',      name: 'Молярная масса',      desc: 'Металл + кислотный остаток' },
+      { id: 'quadratic',  name: 'Квадратные уравнения', desc: 'ax² + bx + c = 0' },
+      { id: 'units',      name: 'Перевод единиц',      desc: 'Длина, время, скорость, масса' },
+      { id: 'percent',    name: 'Проценты',            desc: 'Расчёт процентов' }
+    ];
+
+    const MOLAR_METALS = [
+      { sym: 'Li', name: 'Литий',     charge: 1, mass: 6.94 },
+      { sym: 'Na', name: 'Натрий',    charge: 1, mass: 22.99 },
+      { sym: 'K',  name: 'Калий',     charge: 1, mass: 39.10 },
+      { sym: 'Ag', name: 'Серебро',   charge: 1, mass: 107.87 },
+      { sym: 'Mg', name: 'Магний',    charge: 2, mass: 24.31 },
+      { sym: 'Ca', name: 'Кальций',   charge: 2, mass: 40.08 },
+      { sym: 'Ba', name: 'Барий',     charge: 2, mass: 137.33 },
+      { sym: 'Zn', name: 'Цинк',      charge: 2, mass: 65.38 },
+      { sym: 'Fe', name: 'Железо (II)', charge: 2, mass: 55.85 },
+      { sym: 'Cu', name: 'Медь (II)', charge: 2, mass: 63.55 },
+      { sym: 'Al', name: 'Алюминий',  charge: 3, mass: 26.98 },
+      { sym: 'Fe', name: 'Железо (III)', charge: 3, mass: 55.85 }
+    ];
+
+    const MOLAR_ACIDS = [
+      { sym: 'Cl',  name: 'Хлорид',    charge: 1, mass: 35.45, poly: false },
+      { sym: 'Br',  name: 'Бромид',    charge: 1, mass: 79.90, poly: false },
+      { sym: 'I',   name: 'Йодид',     charge: 1, mass: 126.90, poly: false },
+      { sym: 'F',   name: 'Фторид',    charge: 1, mass: 19.00, poly: false },
+      { sym: 'NO3', name: 'Нитрат',    charge: 1, mass: 62.00, poly: true },
+      { sym: 'OH',  name: 'Гидроксид', charge: 1, mass: 17.01, poly: true },
+      { sym: 'SO4', name: 'Сульфат',   charge: 2, mass: 96.06, poly: true },
+      { sym: 'SO3', name: 'Сульфит',   charge: 2, mass: 80.06, poly: true },
+      { sym: 'CO3', name: 'Карбонат',  charge: 2, mass: 60.01, poly: true },
+      { sym: 'S',   name: 'Сульфид',   charge: 2, mass: 32.07, poly: false },
+      { sym: 'PO4', name: 'Фосфат',    charge: 3, mass: 94.97, poly: true }
+    ];
+
+    const UNIT_CATEGORIES = {
+      length: {
+        name: 'Длина',
+        units: {
+          'нм': 1e-9, 'мм': 0.001, 'см': 0.01, 'м': 1, 'км': 1000,
+          'дюйм': 0.0254, 'фут': 0.3048, 'ярд': 0.9144,
+          'миля': 1609.344, 'морск. миля': 1852
+        }
+      },
+      time: {
+        name: 'Время',
+        units: {
+          'мс': 0.001, 'с': 1, 'мин': 60, 'ч': 3600,
+          'сутки': 86400, 'неделя': 604800
+        }
+      },
+      speed: {
+        name: 'Скорость',
+        units: {
+          'м/с': 1, 'км/ч': 1 / 3.6, 'км/с': 1000,
+          'м/мин': 1 / 60, 'миля/ч': 1609.344 / 3600, 'узел': 1852 / 3600
+        }
+      },
+      mass: {
+        name: 'Масса',
+        units: {
+          'мг': 1e-6, 'г': 0.001, 'кг': 1, 'т': 1000,
+          'фунт': 0.45359237, 'унция': 0.0283495
+        }
+      },
+      volume: {
+        name: 'Объём',
+        units: {
+          'мл': 0.001, 'см³': 0.001, 'л': 1, 'м³': 1000
+        }
+      }
+    };
+
+    const SCI_BUTTONS = [
+      { t: 'sin', a: 'sin(', c: 'calc-btn-func' },
+      { t: 'cos', a: 'cos(', c: 'calc-btn-func' },
+      { t: 'tan', a: 'tan(', c: 'calc-btn-func' },
+      { t: 'ln',  a: 'log(',  c: 'calc-btn-func' },
+      { t: 'log', a: 'log10(', c: 'calc-btn-func' },
+
+      { t: 'x²', a: '^2', c: 'calc-btn-func' },
+      { t: 'x³', a: '^3', c: 'calc-btn-func' },
+      { t: '√',  a: 'sqrt(', c: 'calc-btn-func' },
+      { t: '^',  a: '^', c: 'calc-btn-func' },
+      { t: 'π',  a: 'pi', c: 'calc-btn-func' },
+
+      { t: 'C',  a: 'clear', c: 'calc-btn-danger' },
+      { t: '⌫',  a: 'back',  c: 'calc-btn-danger' },
+      { t: '(',  a: '(', c: 'calc-btn-func' },
+      { t: ')',  a: ')', c: 'calc-btn-func' },
+      { t: 'e',  a: 'e', c: 'calc-btn-func' },
+
+      { t: '7', a: '7', c: 'calc-btn-num' },
+      { t: '8', a: '8', c: 'calc-btn-num' },
+      { t: '9', a: '9', c: 'calc-btn-num' },
+      { t: '÷', a: '÷', c: 'calc-btn-op' },
+      { t: '×', a: '×', c: 'calc-btn-op' },
+
+      { t: '4', a: '4', c: 'calc-btn-num' },
+      { t: '5', a: '5', c: 'calc-btn-num' },
+      { t: '6', a: '6', c: 'calc-btn-num' },
+      { t: '−', a: '−', c: 'calc-btn-op' },
+      { t: '+', a: '+', c: 'calc-btn-op' },
+
+      { t: '1', a: '1', c: 'calc-btn-num' },
+      { t: '2', a: '2', c: 'calc-btn-num' },
+      { t: '3', a: '3', c: 'calc-btn-num' },
+      { t: 'x!', a: '!', c: 'calc-btn-func' },
+      { t: '1/x', a: '1/(', c: 'calc-btn-func' },
+
+      { t: '0', a: '0', c: 'calc-btn-num calc-btn-span2' },
+      { t: '.', a: '.', c: 'calc-btn-num' },
+      { t: '=', a: '=', c: 'calc-btn-equal calc-btn-span2' }
+    ];
+
     
         /* =========================================================
        ВСТРОЕННЫЕ ПРЕДМЕТЫ (НЕУДАЛЯЕМЫЕ)
@@ -4194,6 +4531,437 @@ function runPendingConfirm() {
       });
     });
 
+        /* =========================================================
+       ВКЛАДКА «КАЛЬКУЛЯТОРЫ»
+       ========================================================= */
+    function setCalcActive(id) {
+      state.calcActiveId = id;
+      renderCalc();
+    }
+
+    function renderCalc() {
+      document.getElementById('app').innerHTML = `
+        <div class="calc-layout">
+          <div class="calc-main">
+            ${renderActiveCalculator()}
+          </div>
+          <div class="calc-sidebar">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Инструменты</span>
+              </div>
+              <div class="calc-list">
+                ${CALCULATORS.map(c => `
+                  <div class="calc-list-item ${state.calcActiveId === c.id ? 'active' : ''}" onclick="setCalcActive('${c.id}')">
+                    <div class="calc-list-name">${escapeHtml(c.name)}</div>
+                    <div class="calc-list-desc">${escapeHtml(c.desc)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActiveCalculator() {
+      switch (state.calcActiveId) {
+        case 'scientific': return renderCalcScientific();
+        case 'molar':      return renderCalcMolar();
+        case 'quadratic':  return renderCalcQuadratic();
+        case 'units':      return renderCalcUnits();
+        case 'percent':    return renderCalcPercent();
+        default:           return renderCalcScientific();
+      }
+    }
+
+        function renderCalcScientific() {
+      const buttonsHtml = SCI_BUTTONS.map(b => `
+        <button class="calc-btn ${b.c}" onclick="calcPress('${b.a.replace(/'/g, "\\'")}')">${escapeHtml(b.t)}</button>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="sci-display">${escapeHtml(state.calcDisplay)}</div>
+          <div class="sci-buttons">${buttonsHtml}</div>
+        </div>
+      `;
+    }
+
+    function calcPress(action) {
+      if (action === 'clear') {
+        state.calcDisplay = '';
+      } else if (action === 'back') {
+        state.calcDisplay = state.calcDisplay.slice(0, -1);
+      } else if (action === '=') {
+        calcEvaluate();
+        return;
+      } else {
+        state.calcDisplay += action;
+      }
+      renderCalc();
+    }
+
+    function calcEvaluate() {
+      let expr = state.calcDisplay
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/π/g, 'pi');
+
+      if (!expr.trim()) return;
+
+      try {
+        const result = math.evaluate(expr);
+        state.calcDisplay = math.format(result, { precision: 12 });
+      } catch (err) {
+        showToast('Ошибка: ' + err.message, 'error');
+      }
+      renderCalc();
+    }
+
+
+        function renderCalcMolar() {
+      const metal = MOLAR_METALS[state.calcMolarMetal] || MOLAR_METALS[0];
+      const acid  = MOLAR_ACIDS[state.calcMolarAcid]   || MOLAR_ACIDS[0];
+
+      // LCM — наименьшее общее кратное
+      const gcd = (a, b) => b ? gcd(b, a % b) : a;
+      const lcm = (a, b) => a * b / gcd(a, b);
+
+      const total = lcm(metal.charge, acid.charge);
+      const metalCount = total / metal.charge;
+      const acidCount  = total / acid.charge;
+
+      let formula = '';
+      formula += metal.sym + (metalCount > 1 ? metalCount : '');
+      if (acidCount > 1 && acid.poly) {
+        formula += '(' + acid.sym + ')' + acidCount;
+      } else {
+        formula += acid.sym + (acidCount > 1 ? acidCount : '');
+      }
+
+      const metalMass = metal.mass * metalCount;
+      const acidMass  = acid.mass  * acidCount;
+      const totalMass = metalMass + acidMass;
+
+      const metalsHtml = MOLAR_METALS.map((m, i) => `
+        <option value="${i}" ${state.calcMolarMetal === i ? 'selected' : ''}>${escapeHtml(m.name)} (${m.sym})</option>
+      `).join('');
+
+      const acidsHtml = MOLAR_ACIDS.map((a, i) => `
+        <option value="${i}" ${state.calcMolarAcid === i ? 'selected' : ''}>${escapeHtml(a.name)} (${a.sym})</option>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Молярная масса</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Металл</label>
+              <select class="calc-select" onchange="state.calcMolarMetal = parseInt(this.value); renderCalc();">
+                ${metalsHtml}
+              </select>
+            </div>
+            <div>
+              <label>Кислотный остаток</label>
+              <select class="calc-select" onchange="state.calcMolarAcid = parseInt(this.value); renderCalc();">
+                ${acidsHtml}
+              </select>
+            </div>
+
+            <div class="calc-result-box">
+              <div class="calc-result-label">Формула соединения</div>
+              <div class="calc-result-value">${escapeHtml(formula)}</div>
+              <div class="calc-result-label" style="margin-top: 16px;">Молярная масса</div>
+              <div class="calc-result-value">${totalMass.toFixed(2)} г/моль</div>
+              <div class="calc-result-sub">${metal.sym}: ${metalMass.toFixed(2)} × ${metalCount} + ${acid.sym}: ${acid.mass.toFixed(2)} × ${acidCount}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCalcQuadratic() {
+      const input = state.calcQuadInput || '';
+      let resultHtml = '';
+
+      if (state.calcQuadResult !== null) {
+        const r = state.calcQuadResult;
+        if (r.error) {
+          resultHtml = `<div class="calc-result-box"><div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(r.error)}</div></div>`;
+        } else if (r.a === 0 && r.b === 0 && r.c === 0) {
+          resultHtml = `<div class="calc-result-box"><div class="calc-result-value">x — любое число</div></div>`;
+        } else if (r.a === 0) {
+          const x = -r.c / r.b;
+          resultHtml = `<div class="calc-result-box">
+            <div class="calc-result-label">Линейное уравнение, корень:</div>
+            <div class="calc-result-value">x = ${formatNum(x)}</div>
+          </div>`;
+        } else {
+          const D = r.b * r.b - 4 * r.a * r.c;
+          let solutionHtml = '';
+
+          if (D > 0) {
+            const x1 = (-r.b + Math.sqrt(D)) / (2 * r.a);
+            const x2 = (-r.b - Math.sqrt(D)) / (2 * r.a);
+            solutionHtml = `
+              <div class="calc-result-value">x₁ = ${formatNum(x1)}</div>
+              <div class="calc-result-value" style="margin-top: 4px;">x₂ = ${formatNum(x2)}</div>
+            `;
+          } else if (D === 0) {
+            const x = -r.b / (2 * r.a);
+            solutionHtml = `<div class="calc-result-value">x = ${formatNum(x)} (двойной)</div>`;
+          } else {
+            solutionHtml = `<div class="calc-result-value" style="font-size: 14px; color: var(--text-secondary);">Нет действительных корней</div>`;
+          }
+
+          resultHtml = `
+            <div class="calc-result-box">
+              <div class="calc-result-label">Коэффициенты: a = ${formatNum(r.a)}, b = ${formatNum(r.b)}, c = ${formatNum(r.c)}</div>
+              <div class="calc-result-label" style="margin-top: 8px;">Дискриминант</div>
+              <div class="calc-result-value">D = ${formatNum(D)}</div>
+              <div class="calc-result-label" style="margin-top: 12px;">Корни</div>
+              ${solutionHtml}
+            </div>
+          `;
+        }
+      }
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Квадратные уравнения</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Уравнение (например: x²-5x+6 или x²-9 или 2x²+3x-4)</label>
+              <input type="text" class="calc-select" placeholder="x²+5x+6" value="${escapeHtml(input)}"
+                     oninput="state.calcQuadInput = this.value">
+            </div>
+            <button class="btn-primary" onclick="solveQuadratic()" style="align-self: flex-start;">Решить</button>
+            ${resultHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function solveQuadratic() {
+      const raw = (state.calcQuadInput || '').trim();
+      if (!raw) {
+        state.calcQuadResult = { error: 'Введи уравнение' };
+        renderCalc();
+        return;
+      }
+
+      // Убираем =X
+      let s = raw.replace(/\s+/g, '');
+      const eqParts = s.split('=');
+      if (eqParts.length === 2) {
+        const left = eqParts[0];
+        const right = eqParts[1];
+        const rightNum = parseFloat(right);
+        if (!isNaN(rightNum) && rightNum !== 0) {
+          s = left + (rightNum > 0 ? '-' + rightNum : '+' + Math.abs(rightNum));
+        } else {
+          s = left;
+        }
+      }
+
+      // Нормализация
+      s = s.replace(/x²/g, 'x^2').replace(/x2/g, 'x^2').replace(/X/g, 'x');
+
+      let a = 0, b = 0, c = 0;
+
+      // a
+      let m = s.match(/([+-]?\d*\.?\d*)\*?x\^2/);
+      if (m) {
+        a = m[1] === '' || m[1] === '+' ? 1 : m[1] === '-' ? -1 : parseFloat(m[1]);
+      }
+
+      // убираем x^2 из строки
+      let rest = s.replace(/([+-]?\d*\.?\d*)\*?x\^2/, '');
+
+      // b
+      m = rest.match(/([+-]?\d*\.?\d*)\*?x(?!\^)/);
+      if (m) {
+        b = m[1] === '' || m[1] === '+' ? 1 : m[1] === '-' ? -1 : parseFloat(m[1]);
+        rest = rest.replace(/([+-]?\d*\.?\d*)\*?x(?!\^)/, '');
+      }
+
+      // c
+      m = rest.match(/[+-]?\d+\.?\d*/);
+      if (m) {
+        c = parseFloat(m[0]);
+      }
+
+      if (isNaN(a) || isNaN(b) || isNaN(c)) {
+        state.calcQuadResult = { error: 'Не удалось разобрать уравнение' };
+        renderCalc();
+        return;
+      }
+
+      state.calcQuadResult = { a, b, c };
+      renderCalc();
+    }
+
+    function formatNum(x) {
+      if (!isFinite(x)) return '∞';
+      const rounded = Math.round(x * 1e6) / 1e6;
+      return String(rounded);
+    }
+
+        function renderCalcUnits() {
+      const cat = UNIT_CATEGORIES[state.calcUnitCategory] || UNIT_CATEGORIES.length;
+      const unitKeys = Object.keys(cat.units);
+
+      // Если выбранные единицы не из этой категории — сбрасываем
+      if (!cat.units[state.calcUnitFrom]) state.calcUnitFrom = unitKeys[0];
+      if (!cat.units[state.calcUnitTo])   state.calcUnitTo   = unitKeys[1] || unitKeys[0];
+
+      const value = parseFloat(state.calcUnitValue) || 0;
+      const inBase = value * cat.units[state.calcUnitFrom];
+      const result = inBase / cat.units[state.calcUnitTo];
+
+      const catsHtml = Object.entries(UNIT_CATEGORIES).map(([k, v]) => `
+        <option value="${k}" ${state.calcUnitCategory === k ? 'selected' : ''}>${escapeHtml(v.name)}</option>
+      `).join('');
+
+      const unitsFromHtml = unitKeys.map(u => `
+        <option value="${u}" ${state.calcUnitFrom === u ? 'selected' : ''}>${escapeHtml(u)}</option>
+      `).join('');
+
+      const unitsToHtml = unitKeys.map(u => `
+        <option value="${u}" ${state.calcUnitTo === u ? 'selected' : ''}>${escapeHtml(u)}</option>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Перевод единиц</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Категория</label>
+              <select class="calc-select" onchange="state.calcUnitCategory = this.value; state.calcUnitFrom = ''; state.calcUnitTo = ''; renderCalc();">
+                ${catsHtml}
+              </select>
+            </div>
+
+            <div class="calc-row">
+              <div>
+                <label>Из</label>
+                <select class="calc-select" onchange="state.calcUnitFrom = this.value; renderCalc();" style="margin-bottom: 8px;">
+                  ${unitsFromHtml}
+                </select>
+                <input type="number" class="calc-select" placeholder="Значение"
+                       value="${escapeHtml(state.calcUnitValue)}"
+                       oninput="state.calcUnitValue = this.value; renderCalc();">
+              </div>
+              <div>
+                <label>В</label>
+                <select class="calc-select" onchange="state.calcUnitTo = this.value; renderCalc();">
+                  ${unitsToHtml}
+                </select>
+              </div>
+            </div>
+
+            <div class="calc-result-box">
+              <div class="calc-result-label">Результат</div>
+              <div class="calc-result-value">${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+              <div class="calc-result-sub">${formatNum(value)} ${escapeHtml(state.calcUnitFrom)} = ${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCalcPercent() {
+      const a = parseFloat(state.calcPercentA) || 0;
+      const b = parseFloat(state.calcPercentB) || 0;
+
+      const modes = [
+        { id: 'of',     name: 'X% от Y' },
+        { id: 'is',     name: 'X — это сколько % от Y' },
+        { id: 'add',    name: 'Увеличить X на Y%' },
+        { id: 'sub',    name: 'Уменьшить X на Y%' }
+      ];
+
+      const modeHtml = modes.map(m => `
+        <option value="${m.id}" ${state.calcPercentMode === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>
+      `).join('');
+
+      let labelA = 'Число X', labelB = 'Число Y';
+      if (state.calcPercentMode === 'of')    { labelA = 'Процент X'; labelB = 'Число Y'; }
+      if (state.calcPercentMode === 'is')    { labelA = 'Число X';  labelB = 'Число Y'; }
+      if (state.calcPercentMode === 'add')   { labelA = 'Число X';  labelB = 'Процент Y'; }
+      if (state.calcPercentMode === 'sub')   { labelA = 'Число X';  labelB = 'Процент Y'; }
+
+      let resultHtml = '';
+      let resultValue = '';
+
+      if (state.calcPercentMode === 'of') {
+        const res = a * b / 100;
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)}% от ${formatNum(b)} = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'is') {
+        if (b === 0) {
+          resultValue = '—';
+          resultHtml = `<div class="calc-result-sub">Нельзя делить на ноль</div>`;
+        } else {
+          const res = a / b * 100;
+          resultValue = formatNum(res) + '%';
+          resultHtml = `<div class="calc-result-sub">${formatNum(a)} — это ${formatNum(res)}% от ${formatNum(b)}</div>`;
+        }
+      } else if (state.calcPercentMode === 'add') {
+        const res = a * (1 + b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} + ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'sub') {
+        const res = a * (1 - b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} − ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      }
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Проценты</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Режим</label>
+              <select class="calc-select" onchange="state.calcPercentMode = this.value; renderCalc();">
+                ${modeHtml}
+              </select>
+            </div>
+
+            <div class="calc-row">
+              <div>
+                <label>${escapeHtml(labelA)}</label>
+                <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentA)}"
+                       oninput="state.calcPercentA = this.value; renderCalc();">
+              </div>
+              <div>
+                <label>${escapeHtml(labelB)}</label>
+                <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentB)}"
+                       oninput="state.calcPercentB = this.value; renderCalc();">
+              </div>
+            </div>
+
+            <div class="calc-result-box">
+              <div class="calc-result-label">Результат</div>
+              <div class="calc-result-value">${resultValue}</div>
+              ${resultHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+
     /* =========================================================
        БОКОВЫЕ ВИДЖЕТЫ
        ========================================================= */
@@ -4414,6 +5182,7 @@ function runPendingConfirm() {
             renderAI();
           }
           break;
+        case 'calc': renderCalc(); break;
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
       }
