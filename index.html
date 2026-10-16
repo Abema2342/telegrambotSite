@@ -4588,6 +4588,11 @@ function runPendingConfirm() {
       `;
     }
 
+    function updateSciDisplay() {
+      const el = document.querySelector('.sci-display');
+      if (el) el.textContent = state.calcDisplay;
+    }
+
     function calcPress(action) {
       if (action === 'clear') {
         state.calcDisplay = '';
@@ -4599,7 +4604,7 @@ function runPendingConfirm() {
       } else {
         state.calcDisplay += action;
       }
-      renderCalc();
+      updateSciDisplay();
     }
 
     function calcEvaluate() {
@@ -4617,7 +4622,7 @@ function runPendingConfirm() {
       } catch (err) {
         showToast('Ошибка: ' + err.message, 'error');
       }
-      renderCalc();
+      updateSciDisplay();
     }
 
 
@@ -4661,13 +4666,13 @@ function runPendingConfirm() {
           <div class="calc-form">
             <div>
               <label>Металл</label>
-              <select class="calc-select" onchange="state.calcMolarMetal = parseInt(this.value); renderCalc();">
+              <select class="calc-select" onchange="state.calcMolarMetal = parseInt(this.value); updateMolarResult();">
                 ${metalsHtml}
               </select>
             </div>
             <div>
               <label>Кислотный остаток</label>
-              <select class="calc-select" onchange="state.calcMolarAcid = parseInt(this.value); renderCalc();">
+              <select class="calc-select" onchange="state.calcMolarAcid = parseInt(this.value); updateMolarResult();">
                 ${acidsHtml}
               </select>
             </div>
@@ -4681,6 +4686,43 @@ function runPendingConfirm() {
             </div>
           </div>
         </div>
+      `;
+    }
+
+        function updateMolarResult() {
+      const box = document.getElementById('molar-result-box');
+      if (!box) return;
+
+      const metal = MOLAR_METALS[state.calcMolarMetal] || MOLAR_METALS[0];
+      const acid  = MOLAR_ACIDS[state.calcMolarAcid]   || MOLAR_ACIDS[0];
+
+      const gcd = (a, b) => b ? gcd(b, a % b) : a;
+      const lcm = (a, b) => a * b / gcd(a, b);
+
+      const total = lcm(metal.charge, acid.charge);
+      const metalCount = total / metal.charge;
+      const acidCount  = total / acid.charge;
+
+      let formula = '';
+      formula += metal.sym + (metalCount > 1 ? metalCount : '');
+      if (acidCount > 1 && acid.poly) {
+        formula += '(' + acid.sym + ')' + acidCount;
+      } else {
+        formula += acid.sym + (acidCount > 1 ? acidCount : '');
+      }
+
+      const metalMass = metal.mass * metalCount;
+      const acidMass  = acid.mass  * acidCount;
+      const totalMass = metalMass + acidMass;
+
+      box.innerHTML = `
+            <div class="calc-result-box" id="molar-result-box">
+              <div class="calc-result-label">Формула соединения</div>
+              <div class="calc-result-value">${escapeHtml(formula)}</div>
+              <div class="calc-result-label" style="margin-top: 16px;">Молярная масса</div>
+              <div class="calc-result-value">${totalMass.toFixed(2)} г/моль</div>
+              <div class="calc-result-sub">${metal.sym}: ${metalMass.toFixed(2)} × ${metalCount} + ${acid.sym}: ${acid.mass.toFixed(2)} × ${acidCount}</div>
+            </div>
       `;
     }
 
@@ -4730,6 +4772,7 @@ function runPendingConfirm() {
         }
       }
 
+      setTimeout(() => updateQuadResult(), 0);
       return `
         <div class="card">
           <div class="card-header">
@@ -4742,7 +4785,12 @@ function runPendingConfirm() {
                      oninput="state.calcQuadInput = this.value">
             </div>
             <button class="btn-primary" onclick="solveQuadratic()" style="align-self: flex-start;">Решить</button>
-            ${resultHtml}
+            <div class="calc-result-box" id="quad-result-box">
+              ${state.calcQuadResult !== null ? (state.calcQuadResult.error
+                ? `<div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(state.calcQuadResult.error)}</div>`
+                : ``
+              ) : ''}
+            </div>
           </div>
         </div>
       `;
@@ -4752,7 +4800,7 @@ function runPendingConfirm() {
       const raw = (state.calcQuadInput || '').trim();
       if (!raw) {
         state.calcQuadResult = { error: 'Введи уравнение' };
-        renderCalc();
+        updateQuadResult();
         return;
       }
 
@@ -4799,12 +4847,63 @@ function runPendingConfirm() {
 
       if (isNaN(a) || isNaN(b) || isNaN(c)) {
         state.calcQuadResult = { error: 'Не удалось разобрать уравнение' };
-        renderCalc();
+        updateQuadResult();
         return;
       }
 
       state.calcQuadResult = { a, b, c };
-      renderCalc();
+      updateQuadResult();
+    }
+
+        function updateQuadResult() {
+      const box = document.getElementById('quad-result-box');
+      if (!box || state.calcQuadResult === null) return;
+
+      const r = state.calcQuadResult;
+
+      if (r.error) {
+        box.innerHTML = `<div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(r.error)}</div>`;
+        return;
+      }
+
+      if (r.a === 0 && r.b === 0 && r.c === 0) {
+        box.innerHTML = `<div class="calc-result-value">x — любое число</div>`;
+        return;
+      }
+
+      if (r.a === 0) {
+        const x = -r.c / r.b;
+        box.innerHTML = `
+          <div class="calc-result-label">Линейное уравнение, корень:</div>
+          <div class="calc-result-value">x = ${formatNum(x)}</div>
+        `;
+        return;
+      }
+
+      const D = r.b * r.b - 4 * r.a * r.c;
+      let solutionHtml = '';
+
+      if (D > 0) {
+        const x1 = (-r.b + Math.sqrt(D)) / (2 * r.a);
+        const x2 = (-r.b - Math.sqrt(D)) / (2 * r.a);
+        solutionHtml = `
+          <div class="calc-result-value">x₁ = ${formatNum(x1)}</div>
+          <div class="calc-result-value" style="margin-top: 4px;">x₂ = ${formatNum(x2)}</div>
+        `;
+      } else if (D === 0) {
+        const x = -r.b / (2 * r.a);
+        solutionHtml = `<div class="calc-result-value">x = ${formatNum(x)} (двойной)</div>`;
+      } else {
+        solutionHtml = `<div class="calc-result-value" style="font-size: 14px; color: var(--text-secondary);">Нет действительных корней</div>`;
+      }
+
+      box.innerHTML = `
+        <div class="calc-result-label">Коэффициенты: a = ${formatNum(r.a)}, b = ${formatNum(r.b)}, c = ${formatNum(r.c)}</div>
+        <div class="calc-result-label" style="margin-top: 8px;">Дискриминант</div>
+        <div class="calc-result-value">D = ${formatNum(D)}</div>
+        <div class="calc-result-label" style="margin-top: 12px;">Корни</div>
+        ${solutionHtml}
+      `;
     }
 
     function formatNum(x) {
@@ -4853,28 +4952,46 @@ function runPendingConfirm() {
             <div class="calc-row">
               <div>
                 <label>Из</label>
-                <select class="calc-select" onchange="state.calcUnitFrom = this.value; renderCalc();" style="margin-bottom: 8px;">
+                <select class="calc-select" onchange="state.calcUnitFrom = this.value; updateUnitsResult();" style="margin-bottom: 8px;">
                   ${unitsFromHtml}
                 </select>
                 <input type="number" class="calc-select" placeholder="Значение"
                        value="${escapeHtml(state.calcUnitValue)}"
-                       oninput="state.calcUnitValue = this.value; renderCalc();">
+                       oninput="state.calcUnitValue = this.value; updateUnitsResult();">
               </div>
               <div>
                 <label>В</label>
-                <select class="calc-select" onchange="state.calcUnitTo = this.value; renderCalc();">
+                <select class="calc-select" onchange="state.calcUnitTo = this.value; updateUnitsResult();">
                   ${unitsToHtml}
                 </select>
               </div>
             </div>
 
-            <div class="calc-result-box">
+            <div class="calc-result-box" id="units-result-box">
               <div class="calc-result-label">Результат</div>
               <div class="calc-result-value">${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
               <div class="calc-result-sub">${formatNum(value)} ${escapeHtml(state.calcUnitFrom)} = ${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
             </div>
           </div>
         </div>
+      `;
+    }
+
+        function updateUnitsResult() {
+      const box = document.getElementById('units-result-box');
+      if (!box) return;
+
+      const cat = UNIT_CATEGORIES[state.calcUnitCategory] || UNIT_CATEGORIES.length;
+      if (!cat.units[state.calcUnitFrom] || !cat.units[state.calcUnitTo]) return;
+
+      const value = parseFloat(state.calcUnitValue) || 0;
+      const inBase = value * cat.units[state.calcUnitFrom];
+      const result = inBase / cat.units[state.calcUnitTo];
+
+      box.innerHTML = `
+        <div class="calc-result-label">Результат</div>
+        <div class="calc-result-value">${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+        <div class="calc-result-sub">${formatNum(value)} ${escapeHtml(state.calcUnitFrom)} = ${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
       `;
     }
 
@@ -4942,22 +5059,62 @@ function runPendingConfirm() {
               <div>
                 <label>${escapeHtml(labelA)}</label>
                 <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentA)}"
-                       oninput="state.calcPercentA = this.value; renderCalc();">
+                       oninput="state.calcPercentA = this.value; updatePercentResult();">
               </div>
               <div>
                 <label>${escapeHtml(labelB)}</label>
                 <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentB)}"
-                       oninput="state.calcPercentB = this.value; renderCalc();">
+                       oninput="state.calcPercentB = this.value; updatePercentResult();">
               </div>
             </div>
 
-            <div class="calc-result-box">
+            <div class="calc-result-box" id="percent-result-box">
               <div class="calc-result-label">Результат</div>
               <div class="calc-result-value">${resultValue}</div>
               ${resultHtml}
             </div>
           </div>
         </div>
+      `;
+    }
+
+        function updatePercentResult() {
+      const box = document.getElementById('percent-result-box');
+      if (!box) return;
+
+      const a = parseFloat(state.calcPercentA) || 0;
+      const b = parseFloat(state.calcPercentB) || 0;
+
+      let resultValue = '';
+      let resultHtml = '';
+
+      if (state.calcPercentMode === 'of') {
+        const res = a * b / 100;
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)}% от ${formatNum(b)} = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'is') {
+        if (b === 0) {
+          resultValue = '—';
+          resultHtml = `<div class="calc-result-sub">Нельзя делить на ноль</div>`;
+        } else {
+          const res = a / b * 100;
+          resultValue = formatNum(res) + '%';
+          resultHtml = `<div class="calc-result-sub">${formatNum(a)} — это ${formatNum(res)}% от ${formatNum(b)}</div>`;
+        }
+      } else if (state.calcPercentMode === 'add') {
+        const res = a * (1 + b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} + ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'sub') {
+        const res = a * (1 - b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} − ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      }
+
+      box.innerHTML = `
+        <div class="calc-result-label">Результат</div>
+        <div class="calc-result-value">${resultValue}</div>
+        ${resultHtml}
       `;
     }
 
