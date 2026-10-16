@@ -3415,8 +3415,16 @@ function runPendingConfirm() {
 
     function ensureBuiltinSubjects() {
       if (!Array.isArray(state.usefulSubjects)) state.usefulSubjects = [];
+
       for (const b of BUILTIN_SUBJECTS) {
-        if (!state.usefulSubjects.find(s => s.id === b.id)) {
+        // Проверяем по id И по имени — чтобы не было дубликата,
+        // если предмет с таким же именем уже создан вручную
+        const existsById = state.usefulSubjects.find(s => s.id === b.id);
+        const existsByName = state.usefulSubjects.find(
+          s => (s.name || '').trim().toLowerCase() === b.name.trim().toLowerCase()
+        );
+
+        if (!existsById && !existsByName) {
           state.usefulSubjects.unshift(JSON.parse(JSON.stringify(b)));
         }
       }
@@ -4465,7 +4473,7 @@ function runPendingConfirm() {
               <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
             </div>
             <div class="header-actions">
-              <button class="btn-refresh" onclick="startGenerate(${JSON.stringify(subj.id)})">Сгенерировать параграф</button>
+              <button class="btn-refresh" onclick="startGenerate('${subj.id}')">Сгенерировать параграф</button>
               <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
             </div>
           `;
@@ -4597,7 +4605,8 @@ function runPendingConfirm() {
        ГЕНЕРАЦИЯ ПАРАГРАФА ЧЕРЕЗ GEMINI
        ========================================================= */
     function startGenerate(subjectId) {
-      state.genSubjectId = subjectId;
+      // Приводим к строке — чтобы работало и с числами, и со строками
+      state.genSubjectId = String(subjectId);
       state.genTopic = '';
       state.genResult = '';
       state.genClass = '9';
@@ -4627,7 +4636,7 @@ function runPendingConfirm() {
     async function sendGeneratePrompt() {
       if (state.genLoading) return;
 
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
       if (!subj) return;
 
       const topic = (state.genTopic || '').trim();
@@ -4702,7 +4711,7 @@ function runPendingConfirm() {
     }
 
     async function saveGeneratedParagraph() {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
       if (!subj) return;
 
       const content = (state.genResult || '').trim();
@@ -4738,7 +4747,7 @@ function runPendingConfirm() {
     }
 
     function renderGenerateScreen() {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
       if (!subj) {
         state.genSubjectId = null;
         render();
