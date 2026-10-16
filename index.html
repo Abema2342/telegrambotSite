@@ -4445,7 +4445,7 @@ function runPendingConfirm() {
           const cardsHtml = subjects.map(s => {
             const subtitle = s.is_chemistry ? 'Химия' : `Разделов: ${(s.sections || []).length}`;
             return `
-              <div class="note-card" onclick="selectUsefulSubject(${s.id})">
+              <div class="note-card" onclick="selectUsefulSubject('${s.id}')">
                 <div class="note-card-header">
                   <span class="note-card-title">${escapeHtml(s.name || 'Без названия')}</span>
                 </div>
@@ -4457,7 +4457,7 @@ function runPendingConfirm() {
           cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
         }
       } else {
-        const subj = subjects.find(s => s.id === state.usefulSelectedSubjectId);
+        const subj = subjects.find(s => String(s.id) === String(state.usefulSelectedSubjectId));
         if (!subj) {
           state.usefulSelectedSubjectId = null;
           state.usefulSelectedSectionId = null;
@@ -4474,7 +4474,6 @@ function runPendingConfirm() {
             </div>
             <div class="header-actions">
               <button class="btn-refresh" onclick="startGenerate('${subj.id}')">Сгенерировать параграф</button>
-              <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
             </div>
           `;
           cardBodyHtml = `
@@ -4488,7 +4487,7 @@ function runPendingConfirm() {
             </div>
           `;
         } else if (state.usefulEditingSectionId !== null) {
-          const sec = (subj.sections || []).find(s => s.id === state.usefulEditingSectionId);
+          const sec = (subj.sections || []).find(s => String(s.id) === String(state.usefulEditingSectionId));
           if (!sec) {
             state.usefulEditingSectionId = null;
             renderUseful();
@@ -4511,17 +4510,17 @@ function runPendingConfirm() {
               </div>
               <textarea id="useful-edit-content" class="note-input-text"
                         placeholder="Пиши текст. Формулы в $долларах$, разделитель — три дефиса ---."
-                        oninput="updateSectionContent(${sec.id}, this.value)">${escapeHtml(sec.content || '')}</textarea>
+                        oninput="updateSectionContent('${sec.id}', this.value)">${escapeHtml(sec.content || '')}</textarea>
               <div class="note-editor-toolbar">
                 <div style="display: flex; gap: 8px;">
-                  <button class="btn-primary" onclick="saveSectionEdit(${sec.id})">Сохранить</button>
+                  <button class="btn-primary" onclick="saveSectionEdit('${sec.id}')">Сохранить</button>
                   <button class="btn-refresh" onclick="cancelEditSection()">Отмена</button>
                 </div>
               </div>
             </div>
           `;
         } else if (state.usefulSelectedSectionId !== null) {
-          const sec = (subj.sections || []).find(s => s.id === state.usefulSelectedSectionId);
+          const sec = (subj.sections || []).find(s => String(s.id) === String(state.usefulSelectedSectionId));
           if (!sec) {
             state.usefulSelectedSectionId = null;
             renderUseful();
@@ -4548,8 +4547,8 @@ function runPendingConfirm() {
               ${renderSectionContentView(sec.content)}
             </div>
             <div class="useful-view-actions">
-              <button class="btn-primary" onclick="startEditSection(${sec.id})">Редактировать</button>
-              <button class="btn-danger" onclick="confirmDeleteSection(${sec.id})">Удалить</button>
+              <button class="btn-primary" onclick="startEditSection('${sec.id}')">Редактировать</button>
+              <button class="btn-danger" onclick="confirmDeleteSection('${sec.id}')">Удалить</button>
             </div>
           `;
         } else {
@@ -4559,20 +4558,21 @@ function runPendingConfirm() {
               <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
             </div>
             <div class="header-actions">
+              <button class="btn-refresh" onclick="startGenerate('${subj.id}')">Сгенерировать параграф</button>
               <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
             </div>
           `;
 
           const sections = subj.sections || [];
           if (sections.length === 0) {
-            cardBodyHtml = '<div class="empty-state">Нет параграфов. Нажмите «+ Добавить параграф», чтобы создать первый.</div>';
+            cardBodyHtml = '<div class="empty-state">Нет параграфов. Нажмите «+ Добавить параграф» или «Сгенерировать параграф».</div>';
           } else {
             const cardsHtml = sections.map(sec => {
               const previewText = sec.content ? escapeHtml(sec.content.replace(/\$([^$]+)\$/g, '$1')) : 'Пустой параграф...';
               const dateText = sec.last_modified || sec.created_at ? formatDate(sec.last_modified || sec.created_at) : '';
 
               return `
-                <div class="useful-card" onclick="viewSection(${sec.id})">
+                <div class="useful-card" onclick="viewSection('${sec.id}')">
                   <div>
                     <div class="useful-card-title">${escapeHtml(sec.title || 'Без названия')}</div>
                     <div class="useful-card-preview">${previewText}</div>
@@ -4812,7 +4812,7 @@ function runPendingConfirm() {
 
 
     function selectUsefulSubject(id) {
-      state.usefulSelectedSubjectId = id;
+      state.usefulSelectedSubjectId = String(id);
       state.usefulSelectedSectionId = null;
       state.usefulEditingSectionId = null;
       renderUseful();
