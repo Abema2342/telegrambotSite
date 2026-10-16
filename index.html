@@ -4898,9 +4898,9 @@ function runPendingConfirm() {
     }
 
     async function deleteSection(sectionId) {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
       if (!subj || !subj.sections) return;
-      subj.sections = subj.sections.filter(s => s.id !== sectionId);
+      subj.sections = subj.sections.filter(s => String(s.id) !== String(sectionId));
       state.usefulEditingSectionId = null;
       state.usefulSelectedSectionId = null;
       await saveUseful();
