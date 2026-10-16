@@ -4715,9 +4715,25 @@ function runPendingConfirm() {
       }
 
       // Сортируем: по last_modified (убывание)
+            // Сортируем: сначала невыполненные, потом выполненные
       const sorted = [...filtered].sort((a, b) => {
-        const aTime = new Date(a.last_modified || a.created_at || 0).getTime();
-        const bTime = new Date(b.last_modified || b.created_at || 0).getTime();
+        const aDone = a.status === 'done';
+        const bDone = b.status === 'done';
+
+        // Невыполненные — вперёд
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
+
+        // Внутри выполненных — по completed_at (свежие сверху)
+        if (aDone && bDone) {
+          const aTime = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const bTime = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          return bTime - aTime;
+        }
+
+        // Внутри невыполненных — по created_at (свежие сверху)
+        const aTime = new Date(a.created_at || 0).getTime();
+        const bTime = new Date(b.created_at || 0).getTime();
         return bTime - aTime;
       });
 
