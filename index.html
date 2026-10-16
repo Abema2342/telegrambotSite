@@ -1480,6 +1480,78 @@
       flex-wrap: wrap;
     }
 
+        /* ГЕНЕРАЦИЯ ПАРАГРАФА */
+    .gen-top-row {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 16px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 700px) {
+      .gen-top-row { grid-template-columns: 1fr; }
+    }
+
+    .gen-prompt-cell,
+    .gen-params-cell {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gen-btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .gen-opt-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .gen-opt-btn:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+
+    .gen-opt-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+    }
+
+    .gen-preview-cell {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gen-preview-cell .note-input-text {
+      min-height: 300px;
+    }
+
+    .gen-actions {
+      display: flex;
+      gap: 8px;
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .gen-actions .btn-primary:disabled,
+    .gen-actions .btn-primary[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .upd-filter-btn {
       background: transparent;
       border: 1px solid var(--border-color);
@@ -2416,6 +2488,12 @@
       currentChatId: null,
       aiMode: 'spelling',
       aiSending: false,
+      genSubjectId: null,
+      genTopic: '',
+      genClass: '9',
+      genLength: 'medium',
+      genResult: '',
+      genLoading: false,
       aiModes: null,
       aiModesLoaded: false,
       aiModesSha: null
@@ -3036,13 +3114,16 @@ function runPendingConfirm() {
 
         const data = JSON.parse(utf8Content);
         state.usefulSubjects = Array.isArray(data.subjects) ? data.subjects : (Array.isArray(data) ? data : []);
+        ensureBuiltinSubjects();
         state.usefulLoaded = true;
         return state.usefulSubjects;
       } catch (err) {
         console.warn("Ошибка загрузки useful.json:", err);
-        state.usefulSubjects = [];
-        state.usefulLoaded = true;
-        return state.usefulSubjects;
+          state.usefulSubjects = [];
+          ensureBuiltinSubjects();
+          state.usefulSha = null;
+          state.usefulLoaded = true;
+          return state.usefulSubjects;
       }
     }
 
@@ -3322,9 +3403,29 @@ function runPendingConfirm() {
       dsLoadFile(val);
     }
     
+        /* =========================================================
+       ВСТРОЕННЫЕ ПРЕДМЕТЫ (НЕУДАЛЯЕМЫЕ)
+       ========================================================= */
+    const BUILTIN_SUBJECTS = [
+      { id: 'builtin_math',      name: 'Математика', is_chemistry: false, builtin: true, sections: [] },
+      { id: 'builtin_physics',   name: 'Физика',     is_chemistry: false, builtin: true, sections: [] },
+      { id: 'builtin_chemistry', name: 'Химия',      is_chemistry: true,  builtin: true, sections: [] },
+      { id: 'builtin_biology',   name: 'Биология',   is_chemistry: false, builtin: true, sections: [] }
+    ];
+
+    function ensureBuiltinSubjects() {
+      if (!Array.isArray(state.usefulSubjects)) state.usefulSubjects = [];
+      for (const b of BUILTIN_SUBJECTS) {
+        if (!state.usefulSubjects.find(s => s.id === b.id)) {
+          state.usefulSubjects.unshift(JSON.parse(JSON.stringify(b)));
+        }
+      }
+    }
+
     /* =========================================================
        ЗАГРУЗКА РЕЖИМОВ ИИ
        ========================================================= */
+    
     const DEFAULT_AI_MODES = [
       {
         id: 'spelling',
@@ -4256,6 +4357,12 @@ function runPendingConfirm() {
         return;
       }
 
+      if (state.genSubjectId !== null) {
+        renderGenerateScreen();
+        fadeInApp();
+        return;
+      }
+
       if (state.editingNoteId !== null) {
         header.style.display = 'none';
         renderNoteEditor(state.editingNoteId);
@@ -4355,7 +4462,11 @@ function runPendingConfirm() {
           cardHeaderHtml = `
             <div style="display: flex; align-items: center; gap: 10px;">
               <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
-              <span class="card-title">${escapeHtml(subj.name || 'Химия')}</span>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="startGenerate(${JSON.stringify(subj.id)})">Сгенерировать параграф</button>
+              <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
             </div>
           `;
           cardBodyHtml = `
@@ -4481,6 +4592,215 @@ function runPendingConfirm() {
         </div>
       `;
     }
+
+        /* =========================================================
+       ГЕНЕРАЦИЯ ПАРАГРАФА ЧЕРЕЗ GEMINI
+       ========================================================= */
+    function startGenerate(subjectId) {
+      state.genSubjectId = subjectId;
+      state.genTopic = '';
+      state.genResult = '';
+      state.genClass = '9';
+      state.genLength = 'medium';
+      state.genLoading = false;
+      render();
+    }
+
+    function cancelGenerate() {
+      state.genSubjectId = null;
+      state.genTopic = '';
+      state.genResult = '';
+      state.genLoading = false;
+      render();
+    }
+
+    function setGenClass(c) {
+      state.genClass = c;
+      renderGenerateScreen();
+    }
+
+    function setGenLength(l) {
+      state.genLength = l;
+      renderGenerateScreen();
+    }
+
+    async function sendGeneratePrompt() {
+      if (state.genLoading) return;
+
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      if (!subj) return;
+
+      const topic = (state.genTopic || '').trim();
+      if (!topic) {
+        showToast('Введи тему параграфа', 'error');
+        return;
+      }
+
+      const lengthNames = {
+        small: 'маленькая (100–150 слов)',
+        medium: 'средняя (150–250 слов)',
+        large: 'большая (250+ слов)'
+      };
+
+      const lengthText = lengthNames[state.genLength] || lengthNames.medium;
+
+      const userPrompt =
+        `Сгенерируй учебный параграф.\n` +
+        `Предмет: ${subj.name}\n` +
+        `Класс: ${state.genClass}\n` +
+        `Длина: ${lengthText}\n` +
+        `Тема: ${topic}\n\n` +
+        `Структура:\n` +
+        `- Определение или формулировка\n` +
+        `- 2-3 ключевых факта или примера\n` +
+        `- Формула (если уместно) — оформи как $...$\n` +
+        `- Итог: что нужно запомнить\n\n` +
+        `Не используй Markdown (** и *). Не используй LaTeX, кроме $...$ для формул.\n` +
+        `Разделитель между смысловыми блоками: ---`;
+
+      const systemPrompt =
+        'Ты помогаешь школьнику с учёбой. Пишешь понятным языком, без лишних слов. ' +
+        'Строго следуешь структуре из запроса. Не используешь Markdown и LaTeX (кроме $...$ для формул).';
+
+      state.genLoading = true;
+      renderGenerateScreen();
+
+      try {
+        const response = await fetch(GEMINI_WORKER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userPrompt,
+            systemPrompt: systemPrompt,
+            history: []
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.error || `HTTP ${response.status}`;
+
+          if (errMsg.includes('high demand') || errMsg.includes('Spikes in demand')) {
+            throw new Error('Сервер временно перегружен. Попробуй ещё раз через минуту.');
+          }
+          if (errMsg.includes('quota') || errMsg.includes('rate limit')) {
+            throw new Error('Лимит запросов исчерпан. Попробуй позже.');
+          }
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        state.genResult = data.text || '';
+        state.genLoading = false;
+        renderGenerateScreen();
+        showToast('Параграф сгенерирован', 'success');
+      } catch (err) {
+        state.genLoading = false;
+        renderGenerateScreen();
+        showToast(`Ошибка: ${err.message}`, 'error');
+      }
+    }
+
+    async function saveGeneratedParagraph() {
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      if (!subj) return;
+
+      const content = (state.genResult || '').trim();
+      if (!content) {
+        showToast('Пустой параграф не сохраняется', 'error');
+        return;
+      }
+
+      const title = (state.genTopic || '').trim() || 'Без названия';
+      const now = new Date().toISOString();
+
+      subj.sections = subj.sections || [];
+      const nextId = subj.sections.length > 0
+        ? Math.max(...subj.sections.map(s => (typeof s.id === 'number' ? s.id : 0))) + 1
+        : 1;
+
+      subj.sections.push({
+        id: nextId,
+        title: title,
+        content: content,
+        created_at: now,
+        last_modified: now
+      });
+
+      state.genSubjectId = null;
+      state.genTopic = '';
+      state.genResult = '';
+      state.genLoading = false;
+
+      await saveUseful();
+      render();
+      showToast('Параграф добавлен', 'success');
+    }
+
+    function renderGenerateScreen() {
+      const subj = (state.usefulSubjects || []).find(s => s.id === state.genSubjectId);
+      if (!subj) {
+        state.genSubjectId = null;
+        render();
+        return;
+      }
+
+      const classesHtml = ['9', '10', '11'].map(c => `
+        <button class="gen-opt-btn ${state.genClass === c ? 'active' : ''}" onclick="setGenClass('${c}')">${c} класс</button>
+      `).join('');
+
+      const lengthsHtml = [
+        { id: 'small',  name: 'Маленькая' },
+        { id: 'medium', name: 'Средняя' },
+        { id: 'large',  name: 'Большая' }
+      ].map(l => `
+        <button class="gen-opt-btn ${state.genLength === l.id ? 'active' : ''}" onclick="setGenLength('${l.id}')">${l.name}</button>
+      `).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="cancelGenerate()">← Назад</button>
+              <span class="card-title">Генерация параграфа — ${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+          </div>
+
+          <div class="gen-top-row">
+            <div class="gen-prompt-cell">
+              <label class="sub-text" style="margin-bottom: 6px; display: block;">Тема параграфа</label>
+              <input type="text" id="gen-topic" class="form-input"
+                placeholder="Например: Теорема Пифагора"
+                value="${escapeHtml(state.genTopic)}"
+                oninput="state.genTopic = this.value"
+                style="margin-bottom: 0;">
+            </div>
+            <div class="gen-params-cell">
+              <label class="sub-text" style="margin-bottom: 6px; display: block;">Класс</label>
+              <div class="gen-btn-row">${classesHtml}</div>
+              <label class="sub-text" style="margin-top: 12px; margin-bottom: 6px; display: block;">Длина</label>
+              <div class="gen-btn-row">${lengthsHtml}</div>
+            </div>
+          </div>
+
+          <div class="gen-preview-cell">
+            <label class="sub-text" style="margin-bottom: 6px; display: block;">Предпросмотр (можно редактировать перед публикацией)</label>
+            <textarea id="gen-result" class="note-input-text"
+              placeholder="Здесь появится сгенерированный параграф..."
+              oninput="state.genResult = this.value">${escapeHtml(state.genResult)}</textarea>
+          </div>
+
+          <div class="gen-actions">
+            <button class="btn-primary" onclick="sendGeneratePrompt()" ${state.genLoading ? 'disabled' : ''}>
+              ${state.genLoading ? 'Генерация...' : (state.genResult ? 'Сгенерировать заново' : 'Сгенерировать')}
+            </button>
+            <button class="btn-primary" onclick="saveGeneratedParagraph()" ${!state.genResult || state.genLoading ? 'disabled' : ''}>Опубликовать</button>
+            <button class="btn-refresh" onclick="cancelGenerate()">Отмена</button>
+          </div>
+        </div>
+      `;
+    }
+
 
     function selectUsefulSubject(id) {
       state.usefulSelectedSubjectId = id;
