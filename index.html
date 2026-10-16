@@ -2734,9 +2734,9 @@ function runPendingConfirm() {
     }
 
     function updateSectionContent(sectionId, value) {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
       if (!subj || !subj.sections) return;
-      const sec = subj.sections.find(s => s.id === sectionId);
+      const sec = subj.sections.find(s => String(s.id) === String(sectionId));
       if (sec) sec.content = value;
     }
 
@@ -4848,7 +4848,7 @@ function runPendingConfirm() {
     }
 
     function createSection() {
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
       if (!subj) return;
       subj.sections = subj.sections || [];
       const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(s => s.id || 0)) + 1 : 1;
@@ -4874,10 +4874,10 @@ function runPendingConfirm() {
       const title = titleInput.value.trim();
       const content = contentInput.value.trim();
 
-      const subj = (state.usefulSubjects || []).find(s => s.id === state.usefulSelectedSubjectId);
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
       if (!subj || !subj.sections) return;
 
-      const sec = subj.sections.find(s => s.id === id);
+      const sec = subj.sections.find(s => String(s.id) === String(id));
       if (!sec) return;
 
       sec.title = title || "Без названия";
