@@ -2034,6 +2034,7 @@
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
     }
+    
 
     .loading-shimmer {
       background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
@@ -4666,40 +4667,102 @@ function runPendingConfirm() {
         return bCreated - aCreated;
       });
 
+      // Функция: ближайшая суббота >= даты
+      function getSaturdayForDate(dateStr) {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return null;
+
+        // 6 = суббота (0 = воскресенье, 1 = понедельник, ...)
+        const day = d.getDay();
+        const diff = (6 - day + 7) % 7; // сколько дней до ближайшей субботы включительно
+
+        const sat = new Date(d);
+        sat.setDate(d.getDate() + diff);
+        sat.setHours(23, 59, 59, 999);
+
+        return sat;
+      }
+
+      // Сортируем: по last_modified (убывание)
+      const sorted = [...filtered].sort((a, b) => {
+        const aTime = new Date(a.last_modified || a.created_at || 0).getTime();
+        const bTime = new Date(b.last_modified || b.created_at || 0).getTime();
+        return bTime - aTime;
+      });
+
+      // Группируем по субботам
+      const groups = new Map();
+
+      for (const u of sorted) {
+        const dateStr = u.last_modified || u.created_at || new Date().toISOString();
+        const sat = getSaturdayForDate(dateStr);
+        const key = sat ? sat.toISOString().slice(0, 10) : 'unknown';
+
+        if (!groups.has(key)) {
+          groups.set(key, { date: sat, items: [] });
+        }
+        groups.get(key).items.push(u);
+      }
+
+      // Сортируем группы по дате (свежие сверху)
+      const sortedGroups = [...groups.entries()].sort((a, b) => {
+        const aTime = a[1].date ? a[1].date.getTime() : 0;
+        const bTime = b[1].date ? b[1].date.getTime() : 0;
+        return bTime - aTime;
+      });
+
+      // Формируем HTML
       let contentHtml = '';
-      if (filtered.length === 0) {
+      if (sorted.length === 0) {
         contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет записей об обновлениях</div>`;
       } else {
-        contentHtml = filtered.map(u => {
-          const statusKey = u.status || 'not_done';
-          const statusText = UPDATE_STATUS_NAMES[statusKey] || 'Не сделано';
+        contentHtml = sortedGroups.map(([key, group]) => {
+          // Заголовок группы — дата субботы
+          const dateLabel = group.date
+            ? `Суббота, ${String(group.date.getDate()).padStart(2, '0')}.${String(group.date.getMonth() + 1).padStart(2, '0')}.${group.date.getFullYear()}`
+            : 'Без даты';
 
-          let dateText = '';
-          if (statusKey === 'done' && u.completed_at) {
-            dateText = `Выполнено: ${formatDate(u.completed_at)}`;
-          } else if (u.last_modified && u.last_modified !== u.created_at) {
-            dateText = `Изм: ${formatDate(u.last_modified)}`;
-          } else {
-            dateText = `Созд: ${formatDate(u.created_at)}`;
-          }
-
-          return `
-            <div class="upd-card status-${statusKey}" onclick="openUpdateEditor(${u.id})">
-              <div>
-                <div class="upd-card-title">${escapeHtml(u.title || 'Без названия')}</div>
-                <div class="upd-card-preview">${escapeHtml(u.text || '')}</div>
-              </div>
-              <div class="upd-card-footer">
-                <span 
-                  class="badge badge-upd-${statusKey}" 
-                  onclick="event.stopPropagation(); cycleUpdateStatus(${u.id})" 
-                  title="Нажмите, чтобы изменить статус">
-                  ${statusText} ⟳
-                </span>
-                <span class="sub-text" style="font-size: 11px;">${dateText}</span>
-              </div>
+          const groupHeader = `
+            <div class="upd-group-header">
+              <span class="upd-group-line"></span>
+              <span class="upd-group-title">${dateLabel}</span>
+              <span class="upd-group-line"></span>
             </div>
           `;
+
+          const cardsHtml = group.items.map(u => {
+            const statusKey = u.status || 'not_done';
+            const statusText = UPDATE_STATUS_NAMES[statusKey] || 'Не сделано';
+
+            let dateText = '';
+            if (statusKey === 'done' && u.completed_at) {
+              dateText = `Выполнено: ${formatDate(u.completed_at)}`;
+            } else if (u.last_modified && u.last_modified !== u.created_at) {
+              dateText = `Изм: ${formatDate(u.last_modified)}`;
+            } else {
+              dateText = `Созд: ${formatDate(u.created_at)}`;
+            }
+
+            return `
+              <div class="upd-card status-${statusKey}" onclick="openUpdateEditor(${u.id})">
+                <div>
+                  <div class="upd-card-title">${escapeHtml(u.title || 'Без названия')}</div>
+                  <div class="upd-card-preview">${escapeHtml(u.text || '')}</div>
+                </div>
+                <div class="upd-card-footer">
+                  <span 
+                    class="badge badge-upd-${statusKey}" 
+                    onclick="event.stopPropagation(); cycleUpdateStatus(${u.id})" 
+                    title="Нажмите, чтобы изменить статус">
+                    ${statusText} ⟳
+                  </span>
+                  <span class="sub-text" style="font-size: 11px;">${dateText}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          return groupHeader + `<div class="upd-group-cards">${cardsHtml}</div>`;
         }).join('');
       }
 
