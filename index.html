@@ -4736,12 +4736,18 @@ function runPendingConfirm() {
         const bTime = new Date(b.created_at || 0).getTime();
         return bTime - aTime;
       });
-
       // Группируем по субботам
       const groups = new Map();
 
       for (const u of sorted) {
-        const dateStr = u.last_modified || u.created_at || new Date().toISOString();
+        // Для выполненных — по дате выполнения, иначе — по дате последнего изменения
+        let dateStr;
+        if (u.status === 'done' && u.completed_at) {
+          dateStr = u.completed_at;
+        } else {
+          dateStr = u.last_modified || u.created_at || new Date().toISOString();
+        }
+
         const sat = getSaturdayForDate(dateStr);
         const key = sat ? sat.toISOString().slice(0, 10) : 'unknown';
 
