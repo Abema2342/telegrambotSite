@@ -1513,6 +1513,32 @@
       transition: all 0.15s;
     }
 
+    .upd-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px 16px 12px;
+      width: 100%;
+    }
+
+    .upd-group-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.15);
+      max-width: 100%;
+    }
+
+    .upd-group-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
     .btn-cat:hover {
       background: var(--card-hover);
       color: var(--text-main);
