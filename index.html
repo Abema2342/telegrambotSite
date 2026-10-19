@@ -2971,35 +2971,34 @@
   </div>
 
   <script>
-	      function triggerFailVisual() {
+    function triggerFailVisual() {
       const overlay = document.getElementById('fail-overlay');
       const img = document.getElementById('fail-img');
       
-      // 50 на 50
       const isScreamer = Math.random() < 0.5; 
       
       overlay.style.display = 'flex';
-      overlay.className = ''; // Сброс классов
+      overlay.className = '';
       img.className = '';
 
-      // Безопасные ссылки на картинки (они не сломаются)
       if (isScreamer) {
-        // СКРИМЕР (Страшная рожа)
-        img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Creepy_face.jpg/800px-Creepy_face.jpg';
+        // СКРИМЕР (Страшная картинка с Imgur - они не блокируют)
+        // Добавляем случайный параметр, чтобы картинка не кэшировалась
+        img.src = 'https://i.imgur.com/Oq9J4kM.jpeg?t=' + Date.now(); 
         overlay.style.background = '#000';
         img.className = 'fail-screamer';
+        
         // Визуальный эффект вспышки
         overlay.animate([
           { background: '#000' }, { background: '#f00' }, { background: '#000' }
         ], { duration: 300, iterations: 2 });
       } else {
-        // МИЛАЯ КАРТИНКА (Котик)
-        img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/800px-Cat03.jpg';
+        // МИЛАЯ КАРТИНКА (Случайный котик с Cataas.com)
+        img.src = 'https://cataas.com/cat?width=1000&height=1000&t=' + Date.now();
         overlay.style.background = '#fff';
         img.className = 'fail-cute';
       }
 
-      // Через 2 секунды убираем и закрываем модалку квеста
       setTimeout(() => {
         overlay.style.display = 'none';
         document.getElementById('quest-modal').classList.remove('active');
