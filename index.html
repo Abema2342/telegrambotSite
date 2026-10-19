@@ -656,6 +656,78 @@
       overflow: hidden;
       animation: fadeInUp 0.3s ease;
     }
+	
+	    /* МИНИ-ИГРА: СОЕДИНИ ПРОВОДА */
+    .wire-game {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      padding: 20px 40px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .wire-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 2;
+    }
+
+    .wire-node {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+
+    .wire-node:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+
+    .wire-node.selected {
+      box-shadow: 0 0 0 4px var(--accent-color);
+      transform: scale(1.1);
+    }
+
+    .wire-node.connected {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .wire-node.connected:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Слой для отрисовки линий (SVG) */
+    #wire-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .wire-path {
+      stroke-width: 6;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: drawWire 0.3s ease-out forwards;
+    }
+
+    @keyframes drawWire {
+      from { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+      to { stroke-dasharray: 1000; stroke-dashoffset: 0; }
+    }
 
     .card-widget-header {
       font-size: 15px;
@@ -2540,6 +2612,262 @@
     @media (prefers-reduced-motion: reduce) {
       .nav-btn.active { animation: none; }
     }
+	
+	    /* ===== ОФОРМЛЕНИЕ КВЕСТОВ ===== */
+    
+    /* Общие настройки для текста в модалке */
+    .quest-instruction {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* 1. МАТЕМАТИЧЕСКИЙ СЕЙФ */
+    .quest-math-display {
+      font-size: 28px;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: var(--accent-color);
+      background: #111;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    .quest-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .quest-numpad button {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 20px;
+      font-weight: 600;
+      padding: 16px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .quest-numpad button:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .quest-numpad button:active {
+      transform: scale(0.95);
+    }
+
+    .quest-numpad button[onclick*="del"] {
+      color: var(--text-secondary);
+      font-size: 18px;
+    }
+
+    .quest-numpad button[onclick*="ok"] {
+      background: rgba(67, 181, 129, 0.2);
+      color: #43b581;
+      border-color: rgba(67, 181, 129, 0.5);
+      font-size: 16px;
+    }
+
+    /* 2. СПАМ-КНОПКА */
+    .quest-spam-timer {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-color);
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+
+    .quest-spam-btn {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ed4245, #c03537);
+      color: white;
+      font-size: 28px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      box-shadow: 0 8px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.4);
+      transition: all 0.1s ease;
+    }
+
+    .quest-spam-btn:active {
+      transform: translateY(8px);
+      box-shadow: 0 0px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.4);
+    }
+
+    /* 3. САЙМОН ГОВОРИТ */
+    .quest-simon-status {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--accent-color);
+      height: 24px;
+    }
+
+    .quest-simon-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 240px;
+      margin: 0 auto;
+    }
+
+    .simon-btn {
+      height: 100px;
+      border-radius: 12px;
+      opacity: 0.3;
+      transition: opacity 0.2s, transform 0.1s;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .simon-btn:hover {
+      opacity: 0.5;
+    }
+
+    .simon-btn.active {
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: rgba(255,255,255,0.8);
+      box-shadow: 0 0 20px currentColor;
+    }
+
+    /* 4. МЕМОРИ (ПОИСК ПАР) */
+    .memory-card {
+      height: 100px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: transparent; /* Текст скрыт, пока карта закрыта */
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .memory-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .memory-card.flipped {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+      transform: scale(1.05); /* Легкое увеличение вместо 3D-поворота */
+    }
+
+    .memory-card.matched {
+      background: rgba(67, 181, 129, 0.2);
+      color: #43b581;
+      border-color: #43b581;
+      cursor: default;
+      transform: scale(1);
+    }
+
+    /* 5. ПРОВОДА */
+    .wire-game {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      padding: 24px 40px;
+      background: #111;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-top: 16px;
+    }
+
+    .wire-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      z-index: 2;
+    }
+
+    .wire-node {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 3px solid rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5), inset 2px 2px 6px rgba(255,255,255,0.3);
+    }
+
+    .wire-node:hover {
+      transform: scale(1.1);
+    }
+
+    .wire-node.selected {
+      box-shadow: 0 0 0 4px var(--accent-color), inset -2px -2px 6px rgba(0,0,0,0.5);
+      transform: scale(1.1);
+    }
+
+    .wire-node.connected {
+      cursor: default;
+      opacity: 0.4;
+      transform: scale(0.9);
+    }
+	
+	    /* Плотный фон для всех модалок, чтобы шарики не просвечивали */
+    .modal-window {
+      background-color: #1a1a1a !important; /* Принудительно делаем фон темным */
+    }
+
+    /* Красивая кнопка для игры "Перегрузка" */
+    .quest-spam-btn {
+      width: 160px !important;
+      height: 160px !important;
+      border-radius: 50% !important;
+      background: linear-gradient(135deg, #ff4b4b, #c03537) !important;
+      color: white !important;
+      font-size: 32px !important;
+      font-weight: 900 !important;
+      font-family: 'Inter', sans-serif !important;
+      border: 4px solid rgba(255, 255, 255, 0.1) !important;
+      cursor: pointer !important;
+      margin: 20px auto !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      user-select: none !important;
+      box-shadow: 0 10px 0 #7a1c1e, 0 15px 25px rgba(0,0,0,0.5) !important;
+      transition: transform 0.1s, box-shadow 0.1s !important;
+      padding: 0 !important;
+    }
+
+    .quest-spam-btn:active {
+      transform: translateY(8px) !important;
+      box-shadow: 0 2px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.5) !important;
+    }
+
+    .quest-spam-timer {
+      font-size: 28px !important;
+      font-weight: 800 !important;
+      color: var(--accent-color) !important;
+      margin-bottom: 20px !important;
+      font-family: monospace !important;
+    }
+	
     }
   </style>
 </head>
@@ -2597,6 +2925,18 @@
       </div>
       <div class="modal-body" id="modal-content"></div>
       <div class="modal-footer" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- УНИВЕРСАЛЬНОЕ ОКНО ДЛЯ КВЕСТОВ -->
+  <div class="modal-overlay" id="quest-modal">
+    <div class="modal-window" style="max-width: 500px; text-align: center;">
+      <div class="modal-header">
+        <span class="card-title" id="quest-title">Взлом системы безопасности</span>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        <div id="quest-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2874,6 +3214,9 @@
       calcPercentA: '',
       calcPercentB: '',
       gameBalls: JSON.parse(localStorage.getItem('md_game_balls')) || [],
+	  pendingBallValue: null,
+      questConnected: [],
+      questSelectedNode: null,
       gameInput: '',      // <--- И ЭТО
       aiModes: null,
       aiModesLoaded: false,
@@ -5785,23 +6128,20 @@ function runPendingConfirm() {
       return '#43b581';                 // Зелёный
     }
 
-        function addGameNumber() {
+    function addGameNumber() {
       const inputEl = document.getElementById('game-input');
       if (!inputEl) return;
 
       const val = parseInt(inputEl.value, 10);
-      pushGameBall(val);
+      startQuest(val);
       
       if (!isNaN(val) && val > 0) {
         inputEl.value = '';
-        inputEl.focus();
       }
     }
 
     function quickAddGameNumber(val) {
-      pushGameBall(val);
-      const inputEl = document.getElementById('game-input');
-      if (inputEl) inputEl.focus(); // Возвращаем фокус в поле, чтобы можно было продолжать печатать
+      startQuest(val);
     }
 
     function saveGameState() {
@@ -5809,37 +6149,454 @@ function runPendingConfirm() {
       const saveData = state.gameBalls.map(b => ({ id: b.id, value: b.value }));
       localStorage.setItem('md_game_balls', JSON.stringify(saveData));
     }
+	
+	    /* =========================================================
+       КВЕСТ: СОЕДИНИ ПРОВОДА
+       ========================================================= */
+    const WIRE_COLORS = ['#ed4245', '#5865F2', '#43b581', '#e67e22']; // Красный, Синий, Зеленый, Оранжевый
+	
+	    /* =========================================================
+       СИСТЕМА КВЕСТОВ (РАНДОМ)
+       ========================================================= */
+    function startQuest(val) {
+      if (isNaN(val) || val <= 0) { showToast('Введи положительное число', 'error'); return; }
+      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
+      if (currentSum + val > 1500) { showToast('Перебор! Сумма не должна превышать 1500', 'error'); return; }
+
+      state.pendingBallValue = val;
+      
+      const quests = [questMath, questSpam, questSimon, questMemory, questWire];
+      const randomQuest = quests[Math.floor(Math.random() * quests.length)];
+      
+      document.getElementById('quest-body').innerHTML = ''; // Очищаем
+      document.getElementById('quest-modal').classList.add('active');
+      
+      randomQuest();
+    }
+
+    function completeQuest() {
+      document.getElementById('quest-modal').classList.remove('active');
+      const val = state.pendingBallValue;
+      state.pendingBallValue = null;
+      pushGameBall(val);
+    }
+
+    // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
+    function questMath() {
+      document.getElementById('quest-title').innerText = 'Взлом кода';
+      const a = Math.floor(Math.random() * 40) + 10;
+      const b = Math.floor(Math.random() * 40) + 10;
+      const answer = a + b;
+      let input = '';
+
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример:</p>
+        <div style="font-size: 28px; font-family: monospace; font-weight: bold; color: var(--accent-color); background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
+          ${a} + ${b} = <span id="math-input" style="color: #fff;">_</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 280px; margin: 0 auto;">
+          ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="mathPress('${n}')" style="padding: 16px; font-size: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; border-radius: 8px; cursor: pointer;">${n}</button>`).join('')}
+          <button onclick="mathPress('del')" style="padding: 16px; font-size: 18px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #ed4245; border-radius: 8px; cursor: pointer;">←</button>
+          <button onclick="mathPress('0')" style="padding: 16px; font-size: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; border-radius: 8px; cursor: pointer;">0</button>
+          <button onclick="mathPress('ok')" style="padding: 16px; font-size: 16px; background: rgba(67, 181, 129, 0.2); border: 1px solid #43b581; color: #43b581; border-radius: 8px; cursor: pointer;">OK</button>
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      window.mathPress = (val) => {
+        if (val === 'del') input = input.slice(0, -1);
+        else if (val === 'ok') {
+          if (parseInt(input) === answer) completeQuest();
+          else { 
+            showToast('Неверный код', 'error'); 
+            input = ''; 
+            document.getElementById('math-input').style.color = '#ed4245';
+            setTimeout(() => document.getElementById('math-input').style.color = '#fff', 500);
+          }
+        } else if (input.length < 3) input += val;
+        
+        const el = document.getElementById('math-input');
+        if (el) el.innerText = input || '_';
+      };
+    }
+
+     // --- 2. СПАМ-КНОПКА ---
+    function questSpam() {
+      document.getElementById('quest-title').innerText = 'Перегрузка системы';
+      let clicks = 0;
+      const target = 15;
+      let timeLeft = 5.0;
+      let timer = null;
+
+      // Впихиваем все стили прямо в тег style атрибута style, чтобы кнопка точно стала красивой
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 5 секунд!</p>
+        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">5.0s</div>
+        
+        <button id="spam-btn" style="
+            width: 160px; 
+            height: 160px; 
+            border-radius: 50%; 
+            background: linear-gradient(145deg, #ff4757, #c0392b); 
+            color: white; 
+            font-size: 36px; 
+            font-weight: 900; 
+            font-family: 'Inter', sans-serif;
+            border: 6px solid #2a1a1a; 
+            cursor: pointer; 
+            margin: 0 auto; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+            outline: none;
+        ">
+          0/15
+        </button>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      const btn = document.getElementById('spam-btn');
+      const timerEl = document.getElementById('spam-timer');
+
+      btn.onclick = () => {
+        if (timer === null) {
+          timer = setInterval(() => {
+            timeLeft -= 0.1;
+            if (timeLeft < 0) timeLeft = 0;
+            
+            timerEl.innerText = timeLeft.toFixed(1) + 's';
+            if (timeLeft <= 2.0) timerEl.style.color = '#ed4245';
+            
+            if (timeLeft <= 0) {
+              clearInterval(timer);
+              showToast('Время вышло! Попробуй снова.', 'error');
+              document.getElementById('quest-modal').classList.remove('active');
+            }
+          }, 100);
+        }
+        
+        clicks++;
+        btn.innerText = clicks + "/15";
+        
+        // Эффект нажатия
+        btn.style.transform = 'translateY(8px)';
+        btn.style.boxShadow = '0 2px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.5)';
+        setTimeout(() => {
+            btn.style.transform = 'translateY(0)';
+            btn.style.boxShadow = '0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5)';
+        }, 50);
+
+        if (clicks >= target) {
+          clearInterval(timer);
+          completeQuest();
+        }
+      };
+    }
+
+    // --- 3. САЙМОН ГОВОРИТ ---
+    // --- 3. САЙМОН ГОВОРИТ ---
+    function questSimon() {
+      document.getElementById('quest-title').innerText = 'Повтори сигнал';
+      const colors = ['#ed4245', '#5865F2', '#43b581', '#f1c40f'];
+      let sequence = [];
+      for(let i=0; i<3; i++) sequence.push(Math.floor(Math.random()*4));
+      let userIndex = 0;
+      let lock = true;
+
+      // Впихиваем стили прямо в HTML
+      let html = `
+        <p id="simon-status" style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Смотри и запоминай...</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 260px; margin: 0 auto;">
+          ${colors.map((c, i) => `
+            <div id="simon-${i}" onclick="simonClick(${i})" style="
+              height: 100px; 
+              border-radius: 12px; 
+              background: ${c}; 
+              opacity: 0.3; 
+              cursor: pointer; 
+              border: 2px solid transparent; 
+              transition: all 0.2s;
+            "></div>
+          `).join('')}
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      window.simonClick = (idx) => {
+        if (lock) return;
+        const el = document.getElementById(`simon-${idx}`);
+        
+        // Подсветка при клике
+        el.style.opacity = '1';
+        el.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+          el.style.opacity = '0.3';
+          el.style.transform = 'scale(1)';
+        }, 200);
+
+        if (idx === sequence[userIndex]) {
+          userIndex++;
+          if (userIndex === sequence.length) completeQuest();
+        } else {
+          showToast('Ошибка! Начни заново.', 'error');
+          setTimeout(() => questSimon(), 600);
+        }
+      };
+
+      let i = 0;
+      const playSeq = () => {
+        if (i >= sequence.length) {
+          lock = false;
+          document.getElementById('simon-status').innerText = 'Твой ход!';
+          document.getElementById('simon-status').style.color = 'var(--accent-color)';
+          return;
+        }
+        const idx = sequence[i];
+        const el = document.getElementById(`simon-${idx}`);
+        
+        el.style.opacity = '1';
+        el.style.transform = 'scale(1.05)';
+        
+        setTimeout(() => {
+          el.style.opacity = '0.3';
+          el.style.transform = 'scale(1)';
+          i++;
+          setTimeout(playSeq, 200);
+        }, 400);
+      };
+      setTimeout(playSeq, 600);
+    }
+
+    // --- 4. МЕМОРИ (НАЙДИ ПАРУ) ---
+    function questMemory() {
+      document.getElementById('quest-title').innerText = 'Поиск совпадений';
+      const icons = ['🍎', '🍌', '🍎', '🍌'].sort(() => Math.random() - 0.5);
+      let opened = [];
+      let matched = 0;
+      let lock = false;
+
+      // Прописываем стили прямо в HTML, чтобы они 100% применились
+      let html = `<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">Найди все пары</p>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 260px; margin: 0 auto;">
+                    ${icons.map((icon, i) => `
+                      <div id="mem-${i}" data-icon="${icon}" onclick="memClick(${i})"
+                           style="height: 100px; border-radius: 12px; background: #2a2a2a; border: 2px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 36px; color: transparent; transition: all 0.2s; user-select: none;">
+                      </div>
+                    `).join('')}
+                  </div>`;
+      document.getElementById('quest-body').innerHTML = html;
+
+      window.memClick = (idx) => {
+        if (lock) return;
+        const card = document.getElementById(`mem-${idx}`);
+        
+        if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+        // Переворачиваем
+        card.style.background = 'var(--accent-color)';
+        card.style.borderColor = 'var(--accent-color)';
+        card.style.color = '#fff';
+        card.classList.add('flipped');
+        card.innerText = card.dataset.icon;
+        opened.push(card);
+
+        if (opened.length === 2) {
+          lock = true;
+          
+          if (opened[0].dataset.icon === opened[1].dataset.icon) {
+            // Совпало
+            opened[0].style.background = 'rgba(67, 181, 129, 0.2)';
+            opened[0].style.borderColor = '#43b581';
+            opened[0].style.color = '#43b581';
+            opened[0].classList.add('matched');
+
+            opened[1].style.background = 'rgba(67, 181, 129, 0.2)';
+            opened[1].style.borderColor = '#43b581';
+            opened[1].style.color = '#43b581';
+            opened[1].classList.add('matched');
+
+            matched++;
+            opened = [];
+            lock = false;
+            
+            if (matched === 2) {
+              completeQuest();
+            }
+          } else {
+            // Не совпало (возвращаем через 800мс)
+            setTimeout(() => {
+              opened.forEach(c => {
+                c.style.background = '#2a2a2a';
+                c.style.borderColor = '#444';
+                c.style.color = 'transparent';
+                c.classList.remove('flipped');
+                c.innerText = '';
+              });
+              opened = [];
+              lock = false;
+            }, 800);
+          }
+        }
+      };
+    }
+    // --- 5. ПРОВОДА (СТАРАЯ ИГРА, АДАПТИРОВАННАЯ) ---
+    function questWire() {
+      document.getElementById('quest-title').innerText = 'Взлом проводов';
+      const WIRE_COLORS = ['#ed4245', '#5865F2', '#43b581', '#e67e22'];
+      const leftColors = [...WIRE_COLORS].sort(() => Math.random() - 0.5);
+      const rightColors = [...leftColors].sort(() => Math.random() - 0.5);
+      let connected = [];
+      let selectedNode = null;
+
+      let html = `
+        <p class="sub-text">Соедини контакты одинакового цвета</p>
+        <div class="wire-game" id="wire-game" style="display:flex; justify-content:space-between; position:relative; padding:20px 40px; background:rgba(0,0,0,0.2); border-radius:12px; border:1px solid var(--border-color); margin-top:15px;">
+          <svg id="wire-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1;"></svg>
+          <div class="wire-column" style="display:flex; flex-direction:column; gap:20px; z-index:2;">
+            ${leftColors.map(c => `<div class="wire-node" data-color="${c}" data-side="left" style="width:40px; height:40px; border-radius:50%; border:3px solid rgba(0,0,0,0.5); cursor:pointer; background:${c}"></div>`).join('')}
+          </div>
+          <div class="wire-column" style="display:flex; flex-direction:column; gap:20px; z-index:2;">
+            ${rightColors.map(c => `<div class="wire-node" data-color="${c}" data-side="right" style="width:40px; height:40px; border-radius:50%; border:3px solid rgba(0,0,0,0.5); cursor:pointer; background:${c}"></div>`).join('')}
+          </div>
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      const nodes = document.querySelectorAll('#wire-game .wire-node');
+      nodes.forEach(n => n.onclick = () => {
+        if (n.classList.contains('connected')) return;
+        const side = n.getAttribute('data-side');
+        const color = n.getAttribute('data-color');
+
+        if (!selectedNode) {
+          if (side === 'left') { n.style.boxShadow = '0 0 0 4px var(--accent-color)'; selectedNode = n; }
+          return;
+        }
+        if (side === 'right') {
+          if (selectedNode.getAttribute('data-color') === color) {
+            selectedNode.style.boxShadow = 'none';
+            selectedNode.classList.add('connected'); n.classList.add('connected');
+            selectedNode.style.opacity = '0.5'; n.style.opacity = '0.5';
+
+            const svg = document.getElementById('wire-svg');
+            const gRect = document.getElementById('wire-game').getBoundingClientRect();
+            const lRect = selectedNode.getBoundingClientRect();
+            const rRect = n.getBoundingClientRect();
+            const x1 = lRect.left + lRect.width/2 - gRect.left;
+            const y1 = lRect.top + lRect.height/2 - gRect.top;
+            const x2 = rRect.left + rRect.width/2 - gRect.left;
+            const y2 = rRect.top + rRect.height/2 - gRect.top;
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+            path.setAttribute('stroke', color); path.setAttribute('stroke-width', '6'); path.setAttribute('fill', 'none');
+            svg.appendChild(path);
+
+            connected.push(color); selectedNode = null;
+            if (connected.length === 4) completeQuest();
+          } else {
+            n.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 200 });
+          }
+        } else {
+          selectedNode.style.boxShadow = 'none';
+          if (side === 'left') { n.style.boxShadow = '0 0 0 4px var(--accent-color)'; selectedNode = n; }
+          else selectedNode = null;
+        }
+      });
+    }
+
+    function handleWireClick(node) {
+      if (node.classList.contains('connected')) return;
+
+      const side = node.getAttribute('data-side');
+      const color = node.getAttribute('data-color');
+
+      // Если кликнули по той же стороне - просто меняем выделение
+      if (!state.questSelectedNode) {
+        // Если это левая сторона, начинаем с нее. Если правая - ничего не делаем.
+        if (side === 'left') {
+          node.classList.add('selected');
+          state.questSelectedNode = node;
+        }
+        return;
+      }
+
+      // Если кликнули по второй ноде
+      if (side === 'right') {
+        const leftColor = state.questSelectedNode.getAttribute('data-color');
+        if (leftColor === color) {
+          // УСПЕХ! Соединяем.
+          connectWires(state.questSelectedNode, node);
+          state.questSelectedNode = null;
+        } else {
+          // ОШИБКА! Трясем
+          node.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 200 });
+          showToast('Неверный контакт!', 'error');
+        }
+      } else {
+        // Кликнули по другой левой ноде
+        state.questSelectedNode.classList.remove('selected');
+        state.questSelectedNode = node;
+        node.classList.add('selected');
+      }
+    }
+
+    function connectWires(leftNode, rightNode) {
+      leftNode.classList.remove('selected');
+      leftNode.classList.add('connected');
+      rightNode.classList.add('connected');
+      state.questConnected.push(leftNode.getAttribute('data-color'));
+
+      // Рисуем линию
+      const svg = document.getElementById('wire-svg');
+      const gameRect = document.getElementById('wire-game').getBoundingClientRect();
+      const lRect = leftNode.getBoundingClientRect();
+      const rRect = rightNode.getBoundingClientRect();
+
+      const x1 = lRect.left + lRect.width / 2 - gameRect.left;
+      const y1 = lRect.top + lRect.height / 2 - gameRect.top;
+      const x2 = rRect.left + rRect.width / 2 - gameRect.left;
+      const y2 = rRect.top + rRect.height / 2 - gameRect.top;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+      path.setAttribute('stroke', leftNode.getAttribute('data-color'));
+      path.classList.add('wire-path');
+      svg.appendChild(path);
+
+      // Проверяем, все ли соединены
+      if (state.questConnected.length === 4) {
+        document.getElementById('quest-status').innerText = 'Доступ разрешен!';
+        document.getElementById('quest-status').style.color = '#43b581';
+        
+        setTimeout(() => {
+          document.getElementById('quest-modal').classList.remove('active');
+          const val = state.pendingBallValue;
+          state.pendingBallValue = null;
+          pushGameBall(val);
+        }, 800);
+      }
+    }
 
     function pushGameBall(val) {
-      if (isNaN(val) || val <= 0) {
-        showToast('Введи положительное число', 'error');
-        return;
-      }
-
+      // Проверки теперь в startQuest, тут только спавн
       const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
-      if (currentSum + val > 1500) {
-        showToast('Перебор! Сумма не должна превышать 1500', 'error');
-        return;
-      }
-
-      // Добавляем новый шарик
+      
       const newBall = {
-        id: Date.now() + Math.random(), // Уникальный ID, чтобы при быстрых кликах не было совпадений
+        id: Date.now() + Math.random(),
         value: val,
         x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
         y: -50,
         vx: (Math.random() - 0.5) * 3,
         vy: 0,
-        r: Math.max(18, Math.min(38, 18 + val * 0.15)), 
+        r: Math.max(18, Math.min(38, 18 + val * 0.15)),
         mass: Math.max(18, Math.min(38, 18 + val * 0.15)) ** 2
       };
 
       state.gameBalls.push(newBall);
-      state.gameInput = '';
-      
-      saveGameState(); // <-- ДОБАВИЛИ СОХРАНЕНИЕ
-      
-      // Обновляем интерфейс
+      saveGameState();
       updateGameUI(currentSum + val);
 
       if (currentSum + val === 1500) {
