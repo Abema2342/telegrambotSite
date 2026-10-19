@@ -6247,6 +6247,7 @@ function runPendingConfirm() {
     }
 
     // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
+    // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
     function questMath() {
       document.getElementById('quest-title').innerText = 'Взлом кода';
       const a = Math.floor(Math.random() * 40) + 10;
@@ -6269,20 +6270,29 @@ function runPendingConfirm() {
       document.getElementById('quest-body').innerHTML = html;
 
       window.mathPress = (val) => {
-        if (val === 'del') input = input.slice(0, -1);
-        else if (val === 'ok') {
+        if (val === 'del') {
+          input = input.slice(0, -1);
+        } else if (val === 'ok') {
           if (parseInt(input) === answer) {
             completeQuest();
           } else { 
-            triggerFailVisual(); // <--- ВЫЗОВ СКРИМЕРА/КОТИКА
+            triggerFailVisual(); // Вызов скримера/котика
             input = ''; 
+            
+            // Подсветка красным при ошибке
+            const el = document.getElementById('math-input');
+            if (el) {
+              el.style.color = '#ed4245';
+              setTimeout(() => { 
+                if (el) el.style.color = '#fff'; 
+              }, 500);
+            }
           }
+        } else if (input.length < 3) {
+          input += val;
         }
-            document.getElementById('math-input').style.color = '#ed4245';
-            setTimeout(() => document.getElementById('math-input').style.color = '#fff', 500);
-          }
-        } else if (input.length < 3) input += val;
         
+        // Обновляем текст на экране
         const el = document.getElementById('math-input');
         if (el) el.innerText = input || '_';
       };
