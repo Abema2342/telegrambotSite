@@ -1391,34 +1391,13 @@
       width: 100%;
       max-width: 500px;
       height: 550px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 2px solid var(--border-color);
-      border-top: none;
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 20px;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+      /* Убрали рамки, теперь их рисует Canvas */
+      background: radial-gradient(circle at top, rgba(255,255,255,0.03), transparent 70%);
       overflow: hidden;
       display: flex;
       justify-content: center;
     }
 
-    .game-jar-visual::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 10px; bottom: 0;
-      width: 4px;
-      background: linear-gradient(to right, rgba(255,255,255,0.1), transparent);
-      border-top-left-radius: 10px;
-    }
-    
-    .game-jar-visual::after {
-      content: '';
-      position: absolute;
-      top: 0; right: 10px; bottom: 0;
-      width: 4px;
-      background: linear-gradient(to left, rgba(255,255,255,0.1), transparent);
-      border-top-right-radius: 10px;
-    }
 
     #game-canvas {
       display: block;
@@ -1884,6 +1863,38 @@
       background: rgba(67, 181, 129, 0.2);
       border-color: #43b581;
       color: #43b581;
+    }
+	
+	    .game-quick-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .game-quick-btns button {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 10px 0;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .game-quick-btns button:hover {
+      background: var(--card-hover);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+
+    .game-quick-btns button:active {
+      transform: scale(0.95);
     }
 
     .upd-status-btn.selected-in_progress {
@@ -2862,6 +2873,8 @@
       calcPercentMode: 'of',
       calcPercentA: '',
       calcPercentB: '',
+      gameBalls: JSON.parse(localStorage.getItem('md_game_balls')) || [],
+      gameInput: '',      // <--- И ЭТО
       aiModes: null,
       aiModesLoaded: false,
       aiModesSha: null
@@ -5503,11 +5516,35 @@ function runPendingConfirm() {
        МИНИ-ИГРА: БАНКА С ШАРИКАМИ (ФИЗИКА)
        ========================================================= */
     let gamePhysicsLoop = null;
-    const GAME_GRAVITY = 0.5;
-    const GAME_FRICTION = 0.99;
-    const GAME_BOUNCE = 0.3;
+    const GAME_GRAVITY = 0.3;
+    const GAME_FRICTION = 0.9;  // Чем меньше, тем быстрее останавливаются
+    const GAME_BOUNCE = 0.05;   // Почти не отскакивают от пола и стен
     const JAR_WIDTH = 500;
     const JAR_HEIGHT = 550;
+	
+    // Параметры горлышка (как на картинке)
+    const NECK_WIDTH = 400; // Широкое горло
+    const NECK_HEIGHT = 60; // Прямая часть горла
+    const SHOULDER_HEIGHT = 180; // Где заканчиваются плечики и начинается прямая банка
+    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   // 50
+    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;         // 450
+
+    // Умная функция, которая говорит физике: "на этой высоте стенки вот тут"
+    function getJarBounds(y) {
+      if (y < NECK_HEIGHT) {
+        // В горлышке
+        return [LEFT_NECK, RIGHT_NECK];
+      } else if (y < SHOULDER_HEIGHT) {
+        // На плечиках (плавно расширяются от горла к телу банки)
+        let progress = (y - NECK_HEIGHT) / (SHOULDER_HEIGHT - NECK_HEIGHT);
+        let left = LEFT_NECK - (LEFT_NECK * progress);
+        let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * progress);
+        return [left, right];
+      } else {
+        // В основной части банки
+        return [0, JAR_WIDTH];
+      }
+    }
 
     function renderGame() {
       const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
@@ -5547,6 +5584,13 @@ function runPendingConfirm() {
               >
               <button onclick="addGameNumber()">Добавить</button>
             </div>
+            
+            <div class="game-quick-btns">
+              <button onclick="quickAddGameNumber(1)">+1</button>
+              <button onclick="quickAddGameNumber(2)">+2</button>
+              <button onclick="quickAddGameNumber(5)">+5</button>
+              <button onclick="quickAddGameNumber(10)">+10</button>
+            </div>
           </div>
 
           <div class="card">
@@ -5575,91 +5619,152 @@ function runPendingConfirm() {
       canvas.height = JAR_HEIGHT;
       const ctx = canvas.getContext('2d');
 
-      // Настраиваем физические параметры для существующих шариков, если их нет
       state.gameBalls.forEach(b => {
         if (b.x === undefined) {
-          b.x = Math.random() * (JAR_WIDTH - 60) + 30;
-          b.y = -Math.random() * 200; // Падают сверху
+          b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
+          b.y = -Math.random() * 200;
           b.vx = (Math.random() - 0.5) * 4;
           b.vy = Math.random() * 2;
-          b.r = Math.max(18, Math.min(35, 12 + b.value * 0.15)); // Размер зависит от числа
-          b.mass = b.r * b.r;
+          b.r = Math.max(18, Math.min(38, 18 + b.value * 0.15)); 
+          b.mass = Math.max(18, Math.min(38, 18 + b.value * 0.15)) ** 2;
         }
       });
 
       if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
 
       function update() {
-        if (state.currentTab !== 'game') return; // Останавливаем если ушли с вкладки
+        if (state.currentTab !== 'game') return;
 
         ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
 
-        // Обновляем физику
-        for (let i = 0; i < state.gameBalls.length; i++) {
-          let b = state.gameBalls[i];
-
+        // 1. Гравитация и движение
+        for (let b of state.gameBalls) {
           b.vy += GAME_GRAVITY;
           b.vx *= GAME_FRICTION;
           b.vy *= GAME_FRICTION;
 
+          if (b.vx > 15) b.vx = 15;
+          if (b.vx < -15) b.vx = -15;
+          if (b.vy > 15) b.vy = 15;
+          if (b.vy < -15) b.vy = -15;
+
           b.x += b.vx;
           b.y += b.vy;
+        }
 
-          // Коллизия со стенами
-          if (b.x - b.r < 0) { b.x = b.r; b.vx *= -GAME_BOUNCE; }
-          if (b.x + b.r > JAR_WIDTH) { b.x = JAR_WIDTH - b.r; b.vx *= -GAME_BOUNCE; }
-          
-          // Коллизия с полом
-          if (b.y + b.r > JAR_HEIGHT) { 
-            b.y = JAR_HEIGHT - b.r; 
-            b.vy *= -GAME_BOUNCE; 
-            b.vx *= 0.9; // Трение о пол
-            if (Math.abs(b.vy) < 1) b.vy = 0; // Остановка мелких прыжков
-          }
+        // 2. Разрешаем столкновения
+        for (let iter = 0; iter < 6; iter++) {
+          for (let i = 0; i < state.gameBalls.length; i++) {
+            let b = state.gameBalls[i];
+            
+            // Границы банки
+            let [leftWall, rightWall] = getJarBounds(b.y);
+            
+            if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
+            if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
+            
+            // Пол
+            if (b.y + b.r > JAR_HEIGHT) { 
+              b.y = JAR_HEIGHT - b.r; 
+              b.vy *= -GAME_BOUNCE; 
+              b.vx *= 0.9; 
+              if (Math.abs(b.vy) < 0.5) b.vy = 0; 
+            }
 
-          // Коллизия шариков друг с другом
-          for (let j = i + 1; j < state.gameBalls.length; j++) {
-            let b2 = state.gameBalls[j];
-            let dx = b2.x - b.x;
-            let dy = b2.y - b.y;
-            let dist = Math.sqrt(dx * dx + dy * dy);
-            let minDist = b.r + b2.r;
+            // Столкновения шариков
+            for (let j = i + 1; j < state.gameBalls.length; j++) {
+              let b2 = state.gameBalls[j];
+              let dx = b2.x - b.x;
+              let dy = b2.y - b.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              let minDist = b.r + b2.r;
 
-            if (dist < minDist) {
-              let nx = dx / dist;
-              let ny = dy / dist;
-              let overlap = minDist - dist;
+              if (dist < minDist) {
+                let nx, ny;
+                if (dist === 0) {
+                  let angle = Math.random() * Math.PI * 2;
+                  nx = Math.cos(angle);
+                  ny = Math.sin(angle);
+                  dist = 0.1;
+                } else {
+                  nx = dx / dist;
+                  ny = dy / dist;
+                }
 
-              // Расталкиваем
-              b.x -= nx * overlap / 2;
-              b.y -= ny * overlap / 2;
-              b2.x += nx * overlap / 2;
-              b2.y += ny * overlap / 2;
-
-              // Простой обмен импульсами
-              let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
-              b.vx -= p * b2.mass * nx;
-              b.vy -= p * b2.mass * ny;
-              b2.vx += p * b.mass * nx;
-              b2.vy += p * b.mass * ny;
+                let overlap = minDist - dist;
+                b.x -= nx * overlap / 2;
+                b.y -= ny * overlap / 2;
+                b2.x += nx * overlap / 2;
+                b2.y += ny * overlap / 2;
+                
+                let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
+                b.vx -= p * b2.mass * nx;
+                b.vy -= p * b2.mass * ny;
+                b2.vx += p * b.mass * nx;
+                b2.vy += p * b.mass * ny;
+              }
             }
           }
         }
 
-        // Отрисовка
+        // 3. Отрисовка банки (СНАЧАЛА БАНКА)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        // Левая сторона
+        ctx.moveTo(LEFT_NECK, 0); 
+        ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
+        // Плавный переход в тело банки
+        ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
+        ctx.lineTo(0, JAR_HEIGHT - 40);
+        // Скругление дна
+        ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
+        
+        // Дно
+        ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
+        
+        // Правая сторона
+        ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
+        ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
+        // Плавный переход в горлышко
+        ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
+        ctx.lineTo(RIGHT_NECK, 0);
+        ctx.stroke();
+
+        // Резьба на горлышке (3 полоски)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+            let y = 12 + i * 14;
+            ctx.moveTo(LEFT_NECK - 3, y);
+            ctx.lineTo(RIGHT_NECK + 3, y);
+        }
+        ctx.stroke();
+
+        // Блик на стекле (слева)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.beginPath();
+        ctx.roundRect(10, SHOULDER_HEIGHT + 20, 20, JAR_HEIGHT - SHOULDER_HEIGHT - 60, 10);
+        ctx.fill();
+
+        // 4. Отрисовка шариков (ПОВЕРХ БАНКИ)
         for (let b of state.gameBalls) {
           ctx.beginPath();
           ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
           ctx.fillStyle = getBallColor(b.value);
           ctx.fill();
           
-          // Блик для объема
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.stroke();
+          
           ctx.beginPath();
-          ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.35, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.fill();
 
-          // Текст
           ctx.fillStyle = '#fff';
           ctx.font = `bold ${Math.floor(b.r * 0.8)}px sans-serif`;
           ctx.textAlign = 'center';
@@ -5680,11 +5785,32 @@ function runPendingConfirm() {
       return '#43b581';                 // Зелёный
     }
 
-    function addGameNumber() {
+        function addGameNumber() {
       const inputEl = document.getElementById('game-input');
       if (!inputEl) return;
 
       const val = parseInt(inputEl.value, 10);
+      pushGameBall(val);
+      
+      if (!isNaN(val) && val > 0) {
+        inputEl.value = '';
+        inputEl.focus();
+      }
+    }
+
+    function quickAddGameNumber(val) {
+      pushGameBall(val);
+      const inputEl = document.getElementById('game-input');
+      if (inputEl) inputEl.focus(); // Возвращаем фокус в поле, чтобы можно было продолжать печатать
+    }
+
+    function saveGameState() {
+      // Сохраняем только id и значение, чтобы не забивать память координатами
+      const saveData = state.gameBalls.map(b => ({ id: b.id, value: b.value }));
+      localStorage.setItem('md_game_balls', JSON.stringify(saveData));
+    }
+
+    function pushGameBall(val) {
       if (isNaN(val) || val <= 0) {
         showToast('Введи положительное число', 'error');
         return;
@@ -5698,24 +5824,42 @@ function runPendingConfirm() {
 
       // Добавляем новый шарик
       const newBall = {
-        id: Date.now(),
+        id: Date.now() + Math.random(), // Уникальный ID, чтобы при быстрых кликах не было совпадений
         value: val,
-        x: Math.random() * (JAR_WIDTH - 100) + 50, // Случайная позиция X
-        y: -50, // Начинает падать сверху
+        x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
+        y: -50,
         vx: (Math.random() - 0.5) * 3,
         vy: 0,
-        r: Math.max(18, Math.min(35, 12 + val * 0.15)),
-        mass: Math.max(18, Math.min(35, 12 + val * 0.15)) ** 2
+        r: Math.max(18, Math.min(38, 18 + val * 0.15)), 
+        mass: Math.max(18, Math.min(38, 18 + val * 0.15)) ** 2
       };
 
       state.gameBalls.push(newBall);
       state.gameInput = '';
       
-      // Обновляем UI (сумму и историю) без перерисовки канваса
+      saveGameState(); // <-- ДОБАВИЛИ СОХРАНЕНИЕ
+      
+      // Обновляем интерфейс
+      updateGameUI(currentSum + val);
+
+      if (currentSum + val === 1500) {
+        showToast('Идеально! Банка заполнена ровно на 1500!', 'success');
+      }
+    }
+
+    function removeGameNumber(id) {
+      state.gameBalls = state.gameBalls.filter(b => b.id !== id);
+      saveGameState(); // <-- ДОБАВИЛИ СОХРАНЕНИЕ
+      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
+      updateGameUI(currentSum);
+    }
+
+    function updateGameUI(newSum) {
+      // Обновляем сумму
       const sumDisplay = document.querySelector('.game-sum-display');
       if (sumDisplay) {
-        sumDisplay.className = `game-sum-display ${currentSum + val === 1500 ? 'success' : ''}`;
-        sumDisplay.innerHTML = `Сумма: <span>${currentSum + val}</span> / 1500`;
+        sumDisplay.className = `game-sum-display ${newSum === 1500 ? 'success' : ''}`;
+        sumDisplay.innerHTML = `Сумма: <span>${newSum}</span> / 1500`;
       }
       
       // Обновляем историю
@@ -5726,34 +5870,9 @@ function runPendingConfirm() {
         </div>
       `).join('');
       const historyContainer = document.getElementById('game-history');
-      if (historyContainer) historyContainer.innerHTML = historyHtml;
-
-      inputEl.value = '';
-      inputEl.focus();
-
-      if (currentSum + val === 1500) {
-        showToast('Идеально! Банка заполнена ровно на 1500!', 'success');
+      if (historyContainer) {
+        historyContainer.innerHTML = historyHtml || '<div class="empty-state" style="padding: 20px;">Пока пусто</div>';
       }
-    }
-
-    function removeGameNumber(id) {
-      state.gameBalls = state.gameBalls.filter(b => b.id !== id);
-      
-      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
-      const sumDisplay = document.querySelector('.game-sum-display');
-      if (sumDisplay) {
-        sumDisplay.className = 'game-sum-display';
-        sumDisplay.innerHTML = `Сумма: <span>${currentSum}</span> / 1500`;
-      }
-
-      const historyHtml = [...state.gameBalls].reverse().map(b => `
-        <div class="game-history-item">
-          <span>+${b.value}</span>
-          <button onclick="removeGameNumber(${b.id})" title="Удалить">×</button>
-        </div>
-      `).join('');
-      const historyContainer = document.getElementById('game-history');
-      if (historyContainer) historyContainer.innerHTML = historyHtml || '<div class="empty-state" style="padding: 20px;">Пока пусто</div>';
     }
 
     /* =========================================================
