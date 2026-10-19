@@ -6241,13 +6241,13 @@ function runPendingConfirm() {
       const op = ops[Math.floor(Math.random() * ops.length)];
       
       let a, b, answer;
-      if (op === '+') { a = Math.floor(Math.random() * 40) + 10; b = Math.floor(Math.random() * 40) + 10; answer = a + b; }
-      else if (op === '-') { a = Math.floor(Math.random() * 40) + 20; b = Math.floor(Math.random() * 20) + 5; answer = a - b; }
-      else { a = Math.floor(Math.random() * 8) + 2; b = Math.floor(Math.random() * 8) + 2; answer = a * b; }
+      if (op === '+') { a = Math.floor(Math.random() * 20) + 10; b = Math.floor(Math.random() * 20) + 10; answer = a + b; }
+      else if (op === '-') { a = Math.floor(Math.random() * 20) + 20; b = Math.floor(Math.random() * 10) + 5; answer = a - b; }
+      else { a = Math.floor(Math.random() * 5) + 2; b = Math.floor(Math.random() * 5) + 2; answer = a * b; }
 
       let input = '';
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (у тебя 10 секунд!):</p>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (у тебя 4 секунды!):</p>
         <div style="font-size: 28px; font-family: monospace; font-weight: bold; color: var(--accent-color); background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
           ${a} ${op} ${b} = <span id="math-input" style="color: #fff;">_</span>
         </div>
@@ -6260,8 +6260,8 @@ function runPendingConfirm() {
       `;
       document.getElementById('quest-body').innerHTML = html;
 
-      // Таймер на 10 секунд
-      let mathTimer = setTimeout(() => { triggerFailVisual(); }, 10000);
+      // Таймер на 4 секунды
+      let mathTimer = setTimeout(() => { triggerFailVisual(); }, 4000);
 
       window.mathPress = (val) => {
         if (val === 'del') input = input.slice(0, -1);
@@ -6273,7 +6273,7 @@ function runPendingConfirm() {
             clearTimeout(mathTimer);
             triggerFailVisual(); 
           }
-        } else if (input.length < 4) input += val;
+        } else if (input.length < 3) input += val;
         const el = document.getElementById('math-input');
         if (el) el.innerText = input || '_';
       };
@@ -6284,12 +6284,12 @@ function runPendingConfirm() {
       document.getElementById('quest-title').innerText = 'Перегрузка системы';
       let clicks = 0;
       const target = 15;
-      let timeLeft = 3.0; // Было 5, стало 3
+      let timeLeft = 2.0; // Было 3, стало 2
       let timer = null;
 
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 3 секунды!</p>
-        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">3.0s</div>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 2 секунды!</p>
+        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">2.0s</div>
         <button id="spam-btn" style="width: 160px; height: 160px; border-radius: 50%; background: linear-gradient(145deg, #ff4757, #c0392b); color: white; font-size: 36px; font-weight: 900; font-family: 'Inter', sans-serif; border: 6px solid #2a1a1a; cursor: pointer; margin: 0 auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5); transition: all 0.1s; outline: none;">0/15</button>
       `;
       document.getElementById('quest-body').innerHTML = html;
@@ -6303,7 +6303,7 @@ function runPendingConfirm() {
             timeLeft -= 0.1;
             if (timeLeft < 0) timeLeft = 0;
             timerEl.innerText = timeLeft.toFixed(1) + 's';
-            if (timeLeft <= 1.0) timerEl.style.color = '#ed4245';
+            if (timeLeft <= 0.8) timerEl.style.color = '#ed4245';
             if (timeLeft <= 0) { clearInterval(timer); triggerFailVisual(); }
           }, 100);
         }
@@ -6351,10 +6351,10 @@ function runPendingConfirm() {
       const playSeq = () => {
         if (i >= sequence.length) {
           lock = false;
-          document.getElementById('simon-status').innerText = 'Твой ход! (5 сек)';
+          document.getElementById('simon-status').innerText = 'Твой ход! (3 сек)';
           document.getElementById('simon-status').style.color = 'var(--accent-color)';
-          // Таймер на ответ
-          simonTimer = setTimeout(() => { triggerFailVisual(); }, 5000);
+          // Таймер на ответ (3 секунды)
+          simonTimer = setTimeout(() => { triggerFailVisual(); }, 3000);
           return;
         }
         const idx = sequence[i];
@@ -6370,21 +6370,21 @@ function runPendingConfirm() {
     // --- 4. МЕМОРИ (НАЙДИ ПАРУ) ---
     function questMemory() {
       document.getElementById('quest-title').innerText = 'Поиск совпадений (3х3)';
-      // 4 пары + 1 джокер
       const icons = ['🍎', '🍌', '🍇', '🍒', '🍎', '🍌', '🍇', '🍒', '🃏'].sort(() => Math.random() - 0.5);
       let opened = [];
       let matched = 0;
       let lock = false;
 
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Найди пары (у тебя 15 сек)</p>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Найди пары (у тебя 8 сек!)</p>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto;">
           ${icons.map((icon, i) => `<div id="mem-${i}" data-icon="${icon}" onclick="memClick(${i})" style="height: 80px; border-radius: 8px; background: #2a2a2a; border: 2px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; color: transparent; transition: all 0.2s; user-select: none;"></div>`).join('')}
         </div>
       `;
       document.getElementById('quest-body').innerHTML = html;
 
-      let memTimer = setTimeout(() => { triggerFailVisual(); }, 15000);
+      // Таймер на 8 секунд
+      let memTimer = setTimeout(() => { triggerFailVisual(); }, 8000);
 
       window.memClick = (idx) => {
         if (lock) return;
@@ -6402,13 +6402,12 @@ function runPendingConfirm() {
             opened[1].style.background = 'rgba(67, 181, 129, 0.2)'; opened[1].style.borderColor = '#43b581'; opened[1].style.color = '#43b581'; opened[1].classList.add('matched');
             matched++; opened = []; lock = false;
             
-            // Чтобы выиграть, нужно найти 4 пары (8 карт). Джокер в паре не нуждается.
             if (matched === 4) { clearTimeout(memTimer); completeQuest(); }
           } else {
             setTimeout(() => {
               opened.forEach(c => { c.style.background = '#2a2a2a'; c.style.borderColor = '#444'; c.style.color = 'transparent'; c.classList.remove('flipped'); c.innerText = ''; });
               opened = []; lock = false;
-            }, 800);
+            }, 600); // Ускорил закрытие карт с 800 до 600мс
           }
         }
       };
@@ -6424,7 +6423,7 @@ function runPendingConfirm() {
       let tempPath = null;
 
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Протяни провода от контакта к контакту (соединять можно в любую сторону)</p>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Протяни провода (у тебя 5 сек!)</p>
         <div id="wire-game" style="display: flex; justify-content: space-between; position: relative; padding: 20px 40px; background: #111; border-radius: 12px; border: 1px solid #333; margin-top: 15px; touch-action: none;">
           <svg id="wire-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
           <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
@@ -6436,6 +6435,9 @@ function runPendingConfirm() {
         </div>
       `;
       document.getElementById('quest-body').innerHTML = html;
+
+      // Таймер на 5 секунд
+      let wireTimer = setTimeout(() => { triggerFailVisual(); }, 5000);
 
       const svg = document.getElementById('wire-svg');
       const game = document.getElementById('wire-game');
@@ -6455,26 +6457,22 @@ function runPendingConfirm() {
 
       game.onpointermove = (e) => {
         if (!activeNode || !tempPath) return;
-        
         const gRect = game.getBoundingClientRect();
         const lRect = activeNode.getBoundingClientRect();
         const x1 = lRect.left + lRect.width/2 - gRect.left;
         const y1 = lRect.top + lRect.height/2 - gRect.top;
         const x2 = e.clientX - gRect.left;
         const y2 = e.clientY - gRect.top;
-
         tempPath.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
       };
 
       game.onpointerup = (e) => {
         if (!activeNode) return;
-        
         const targetNode = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wire-node');
         
         if (tempPath) { tempPath.remove(); tempPath = null; }
 
         if (targetNode && targetNode !== activeNode && !targetNode.classList.contains('connected')) {
-          // Проверяем, что они на разных сторонах И одинакового цвета
           if (activeNode.dataset.side !== targetNode.dataset.side && activeNode.dataset.color === targetNode.dataset.color) {
             activeNode.classList.add('connected');
             targetNode.classList.add('connected');
@@ -6498,7 +6496,7 @@ function runPendingConfirm() {
             svg.appendChild(path);
 
             connected++;
-            if (connected === 4) completeQuest();
+            if (connected === 4) { clearTimeout(wireTimer); completeQuest(); }
           }
         }
         activeNode = null;
