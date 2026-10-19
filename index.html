@@ -1416,6 +1416,154 @@
       flex-wrap: wrap;
     }
 
+        /* МИНИ-ИГРА */
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) {
+      .game-layout { grid-template-columns: 1fr; }
+    }
+
+    .game-jar-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .game-jar {
+      position: relative;
+      height: 500px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 2px dashed var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .game-jar.is-full {
+      border-color: var(--accent-color);
+      border-style: solid;
+      background: rgba(88, 101, 242, 0.1);
+    }
+
+    @keyframes dropBall {
+      0% { transform: translateY(-200px) scale(0.5); opacity: 0; }
+      60% { transform: translateY(10px) scale(1.1); opacity: 1; }
+      80% { transform: translateY(-5px) scale(0.95); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    .game-ball {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 4px;
+      box-shadow: inset -2px -2px 6px rgba(0,0,0,0.3), inset 2px 2px 6px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.2);
+      animation: dropBall 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      user-select: none;
+    }
+
+    .game-sum-display {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--text-main);
+      margin-top: 8px;
+    }
+
+    .game-sum-display span {
+      color: var(--accent-color);
+    }
+
+    .game-input-area {
+      display: flex;
+      gap: 8px;
+    }
+
+    .game-input-area input {
+      flex: 1;
+      background: #111;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 600;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .game-input-area input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .game-input-area button {
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .game-input-area button:hover {
+      background: var(--accent-hover);
+    }
+
+    .game-history-list {
+      max-height: 500px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .game-history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .game-history-item button {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .game-history-item button:hover {
+      color: var(--status-banned);
+    }
+
     .useful-divider {
       border: none;
       border-top: 1px solid var(--border-color);
@@ -2400,8 +2548,9 @@
           <button class="nav-btn active" data-tab="useful">Полезное</button>
           <button class="nav-btn" data-tab="ai">Помощник</button>
           <button class="nav-btn" data-tab="valencies">Валентности</button>
-          <button class="nav-btn" data-tab="calc">Калькуляторы</button>
+          <button class="nav-btn" data-tab="calc">Калькуляторы</button>          
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
+          <button class="nav-btn" data-tab="game">Мини-игра</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
@@ -2710,6 +2859,8 @@
       calcPercentMode: 'of',
       calcPercentA: '',
       calcPercentB: '',
+      gameBalls: [],
+      gameInput: '',
       aiModes: null,
       aiModesLoaded: false,
       aiModesSha: null
@@ -5340,11 +5491,128 @@ function runPendingConfirm() {
           }
           break;
         case 'calc': renderCalc(); break;
+        case 'game': renderGame(); break;
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
       }
       fadeInApp();
     }
+
+        /* =========================================================
+       МИНИ-ИГРА: БАНКА С ШАРИКАМИ
+       ========================================================= */
+    function renderGame() {
+      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
+      const isFull = currentSum === 1500;
+      const isOver = currentSum > 1500;
+
+      const ballsHtml = state.gameBalls.map(b => `
+        <div class="game-ball" style="background: ${getBallColor(b.value)};">${b.value}</div>
+      `).join('');
+
+      const historyHtml = [...state.gameBalls].reverse().map(b => `
+        <div class="game-history-item">
+          <span>+${b.value}</span>
+          <button onclick="removeGameNumber(${b.id})" title="Удалить">×</button>
+        </div>
+      `).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="game-layout">
+          <div class="game-jar-container">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Банка (Цель: 1500)</span>
+                ${isOver ? '<span style="color: var(--status-banned); font-weight: bold;">Перебор!</span>' : ''}
+                ${isFull ? '<span style="color: #43b581; font-weight: bold;">Идеально!</span>' : ''}
+              </div>
+              <div class="game-jar ${isFull ? 'is-full' : ''}" id="game-jar">
+                ${ballsHtml}
+              </div>
+              <div class="game-sum-display">
+                Сумма: <span>${currentSum}</span> / 1500
+              </div>
+            </div>
+            
+            <div class="game-input-area">
+              <input 
+                type="number" 
+                id="game-input" 
+                placeholder="Введи число (например, 10)..." 
+                value="${state.gameInput}"
+                oninput="state.gameInput = this.value"
+                onkeydown="if(event.key==='Enter') addGameNumber()"
+              >
+              <button onclick="addGameNumber()">В банку</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">История вводов</span>
+            </div>
+            <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="game-history-list" id="game-history">
+                ${historyHtml || '<div class="empty-state" style="padding: 20px;">Пока пусто</div>'}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const input = document.getElementById('game-input');
+      if (input) input.focus();
+    }
+
+    function getBallColor(val) {
+      // Разные цвета в зависимости от размера числа
+      if (val >= 100) return '#ed4245'; // Красный
+      if (val >= 50) return '#e67e22';  // Оранжевый
+      if (val >= 20) return '#5865F2';  // Синий
+      return '#43b581';                 // Зелёный
+    }
+
+    function addGameNumber() {
+      const inputEl = document.getElementById('game-input');
+      if (!inputEl) return;
+
+      const val = parseInt(inputEl.value, 10);
+      if (isNaN(val) || val <= 0) {
+        showToast('Введи положительное число', 'error');
+        return;
+      }
+
+      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
+      if (currentSum + val > 1500) {
+        showToast('Перебор! Сумма не должна превышать 1500', 'error');
+        return;
+      }
+
+      const newBall = {
+        id: Date.now(), // Уникальный ID
+        value: val
+      };
+
+      state.gameBalls.push(newBall);
+      state.gameInput = '';
+      
+      renderGame();
+
+      // Автоматический скролл вниз в истории
+      const hist = document.getElementById('game-history');
+      if (hist) hist.scrollTop = 0;
+
+      // Если сумма стала ровно 1500 — конфетти!
+      if (currentSum + val === 1500) {
+        showToast('Идеально! Банка заполнена ровно на 1500!', 'success');
+      }
+    }
+
+    function removeGameNumber(id) {
+      state.gameBalls = state.gameBalls.filter(b => b.id !== id);
+      renderGame();
+    }
+
 
     /* =========================================================
        РАЗДЕЛ: ПОЛЕЗНОЕ
