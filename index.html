@@ -3284,6 +3284,7 @@
       calcPercentA: '',
       calcPercentB: '',
       gameBalls: JSON.parse(localStorage.getItem('md_game_balls')) || [],
+	  gameKills: parseInt(localStorage.getItem('md_game_kills')) || 0,
 	  pendingBallValue: null,
       questConnected: [],
       questSelectedNode: null,
@@ -5981,6 +5982,9 @@ function runPendingConfirm() {
               <div class="game-jar-visual">
                 <canvas id="game-canvas"></canvas>
               </div>
+			  <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})
+              </div>
               <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
                 Сумма: <span>${currentSum}</span> / 1500
               </div>
@@ -6032,6 +6036,9 @@ function runPendingConfirm() {
       canvas.height = JAR_HEIGHT;
       const ctx = canvas.getContext('2d');
 
+      // Розовый фон для банки
+      canvas.style.background = 'linear-gradient(to bottom, rgba(255, 182, 193, 0.05), rgba(255, 105, 180, 0.1))';
+
       state.gameBalls.forEach(b => {
         if (b.x === undefined) {
           b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
@@ -6055,12 +6062,8 @@ function runPendingConfirm() {
           b.vy += GAME_GRAVITY;
           b.vx *= GAME_FRICTION;
           b.vy *= GAME_FRICTION;
-
-          if (b.vx > 15) b.vx = 15;
-          if (b.vx < -15) b.vx = -15;
-          if (b.vy > 15) b.vy = 15;
-          if (b.vy < -15) b.vy = -15;
-
+          if (b.vx > 15) b.vx = 15; if (b.vx < -15) b.vx = -15;
+          if (b.vy > 15) b.vy = 15; if (b.vy < -15) b.vy = -15;
           b.x += b.vx;
           b.y += b.vy;
         }
@@ -6069,22 +6072,15 @@ function runPendingConfirm() {
         for (let iter = 0; iter < 6; iter++) {
           for (let i = 0; i < state.gameBalls.length; i++) {
             let b = state.gameBalls[i];
-            
-            // Границы банки
             let [leftWall, rightWall] = getJarBounds(b.y);
-            
             if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
             if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
             
-            // Пол
             if (b.y + b.r > JAR_HEIGHT) { 
-              b.y = JAR_HEIGHT - b.r; 
-              b.vy *= -GAME_BOUNCE; 
-              b.vx *= 0.9; 
+              b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
               if (Math.abs(b.vy) < 0.5) b.vy = 0; 
             }
 
-            // Столкновения шариков
             for (let j = i + 1; j < state.gameBalls.length; j++) {
               let b2 = state.gameBalls[j];
               let dx = b2.x - b.x;
@@ -6096,98 +6092,84 @@ function runPendingConfirm() {
                 let nx, ny;
                 if (dist === 0) {
                   let angle = Math.random() * Math.PI * 2;
-                  nx = Math.cos(angle);
-                  ny = Math.sin(angle);
-                  dist = 0.1;
+                  nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
                 } else {
-                  nx = dx / dist;
-                  ny = dy / dist;
+                  nx = dx / dist; ny = dy / dist;
                 }
-
                 let overlap = minDist - dist;
-                b.x -= nx * overlap / 2;
-                b.y -= ny * overlap / 2;
-                b2.x += nx * overlap / 2;
-                b2.y += ny * overlap / 2;
+                b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
+                b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
                 
                 let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
-                b.vx -= p * b2.mass * nx;
-                b.vy -= p * b2.mass * ny;
-                b2.vx += p * b.mass * nx;
-                b2.vy += p * b.mass * ny;
+                b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
+                b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
               }
             }
           }
         }
 
-        // 3. Отрисовка банки (СНАЧАЛА БАНКА)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        // 3. Отрисовка банки
+        ctx.strokeStyle = 'rgba(255, 105, 180, 0.3)';
         ctx.lineWidth = 3;
-        
         ctx.beginPath();
-        // Левая сторона
-        ctx.moveTo(LEFT_NECK, 0); 
-        ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
-        // Плавный переход в тело банки
+        ctx.moveTo(LEFT_NECK, 0); ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
         ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
         ctx.lineTo(0, JAR_HEIGHT - 40);
-        // Скругление дна
         ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
-        
-        // Дно
         ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
-        
-        // Правая сторона
         ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
         ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
-        // Плавный переход в горлышко
         ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
         ctx.lineTo(RIGHT_NECK, 0);
         ctx.stroke();
 
-        // Резьба на горлышке (3 полоски)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        // Резьба
+        ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
             let y = 12 + i * 14;
-            ctx.moveTo(LEFT_NECK - 3, y);
-            ctx.lineTo(RIGHT_NECK + 3, y);
+            ctx.moveTo(LEFT_NECK - 3, y); ctx.lineTo(RIGHT_NECK + 3, y);
         }
         ctx.stroke();
 
-        // Блик на стекле (слева)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-        ctx.beginPath();
-        ctx.roundRect(10, SHOULDER_HEIGHT + 20, 20, JAR_HEIGHT - SHOULDER_HEIGHT - 60, 10);
-        ctx.fill();
-
-        // 4. Отрисовка шариков (ПОВЕРХ БАНКИ)
+        // 4. Отрисовка СЕРДЕЧЕК
         for (let b of state.gameBalls) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          
           ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-          ctx.fillStyle = getBallColor(b.value);
+          const topCurveHeight = b.r * 0.3;
+          ctx.moveTo(0, topCurveHeight);
+          ctx.bezierCurveTo(0, 0, -b.r / 2, 0, -b.r / 2, topCurveHeight);
+          ctx.bezierCurveTo(-b.r / 2, (b.r + topCurveHeight) / 2, 0, (b.r + topCurveHeight) / 2, 0, b.r);
+          ctx.bezierCurveTo(0, (b.r + topCurveHeight) / 2, b.r / 2, (b.r + topCurveHeight) / 2, b.r / 2, topCurveHeight);
+          ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
+          ctx.closePath();
+
+          // Градиент для сердца
+          let grad = ctx.createLinearGradient(0, 0, 0, b.r);
+          grad.addColorStop(0, '#ff4b4b');
+          grad.addColorStop(1, '#b30000');
+          ctx.fillStyle = grad;
           ctx.fill();
           
           ctx.lineWidth = 2;
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
           ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.35, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-          ctx.fill();
 
+          // Текст
           ctx.fillStyle = '#fff';
-          ctx.font = `bold ${Math.floor(b.r * 0.8)}px sans-serif`;
+          ctx.font = `bold ${Math.floor(b.r * 0.7)}px sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(b.value, b.x, b.y);
+          ctx.fillText(b.value, 0, b.r * 0.3); // Чуть ниже центра, чтобы влезло в сердце
+          
+          ctx.restore();
         }
 
         gamePhysicsLoop = requestAnimationFrame(update);
       }
-
       update();
     }
 
@@ -6255,15 +6237,19 @@ function runPendingConfirm() {
     // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
     function questMath() {
       document.getElementById('quest-title').innerText = 'Взлом кода';
-      const a = Math.floor(Math.random() * 40) + 10;
-      const b = Math.floor(Math.random() * 40) + 10;
-      const answer = a + b;
-      let input = '';
+      const ops = ['+', '-', '*'];
+      const op = ops[Math.floor(Math.random() * ops.length)];
+      
+      let a, b, answer;
+      if (op === '+') { a = Math.floor(Math.random() * 40) + 10; b = Math.floor(Math.random() * 40) + 10; answer = a + b; }
+      else if (op === '-') { a = Math.floor(Math.random() * 40) + 20; b = Math.floor(Math.random() * 20) + 5; answer = a - b; }
+      else { a = Math.floor(Math.random() * 8) + 2; b = Math.floor(Math.random() * 8) + 2; answer = a * b; }
 
+      let input = '';
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример:</p>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (у тебя 10 секунд!):</p>
         <div style="font-size: 28px; font-family: monospace; font-weight: bold; color: var(--accent-color); background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
-          ${a} + ${b} = <span id="math-input" style="color: #fff;">_</span>
+          ${a} ${op} ${b} = <span id="math-input" style="color: #fff;">_</span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 280px; margin: 0 auto;">
           ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="mathPress('${n}')" style="padding: 16px; font-size: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; border-radius: 8px; cursor: pointer;">${n}</button>`).join('')}
@@ -6274,30 +6260,20 @@ function runPendingConfirm() {
       `;
       document.getElementById('quest-body').innerHTML = html;
 
+      // Таймер на 10 секунд
+      let mathTimer = setTimeout(() => { triggerFailVisual(); }, 10000);
+
       window.mathPress = (val) => {
-        if (val === 'del') {
-          input = input.slice(0, -1);
-        } else if (val === 'ok') {
+        if (val === 'del') input = input.slice(0, -1);
+        else if (val === 'ok') {
           if (parseInt(input) === answer) {
+            clearTimeout(mathTimer);
             completeQuest();
           } else { 
-            triggerFailVisual(); // Вызов скримера/котика
-            input = ''; 
-            
-            // Подсветка красным при ошибке
-            const el = document.getElementById('math-input');
-            if (el) {
-              el.style.color = '#ed4245';
-              setTimeout(() => { 
-                if (el) el.style.color = '#fff'; 
-              }, 500);
-            }
+            clearTimeout(mathTimer);
+            triggerFailVisual(); 
           }
-        } else if (input.length < 3) {
-          input += val;
-        }
-        
-        // Обновляем текст на экране
+        } else if (input.length < 4) input += val;
         const el = document.getElementById('math-input');
         if (el) el.innerText = input || '_';
       };
@@ -6308,35 +6284,13 @@ function runPendingConfirm() {
       document.getElementById('quest-title').innerText = 'Перегрузка системы';
       let clicks = 0;
       const target = 15;
-      let timeLeft = 5.0;
+      let timeLeft = 3.0; // Было 5, стало 3
       let timer = null;
 
-      // Впихиваем все стили прямо в тег style атрибута style, чтобы кнопка точно стала красивой
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 5 секунд!</p>
-        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">5.0s</div>
-        
-        <button id="spam-btn" style="
-            width: 160px; 
-            height: 160px; 
-            border-radius: 50%; 
-            background: linear-gradient(145deg, #ff4757, #c0392b); 
-            color: white; 
-            font-size: 36px; 
-            font-weight: 900; 
-            font-family: 'Inter', sans-serif;
-            border: 6px solid #2a1a1a; 
-            cursor: pointer; 
-            margin: 0 auto; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5);
-            transition: all 0.1s;
-            outline: none;
-        ">
-          0/15
-        </button>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 3 секунды!</p>
+        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">3.0s</div>
+        <button id="spam-btn" style="width: 160px; height: 160px; border-radius: 50%; background: linear-gradient(145deg, #ff4757, #c0392b); color: white; font-size: 36px; font-weight: 900; font-family: 'Inter', sans-serif; border: 6px solid #2a1a1a; cursor: pointer; margin: 0 auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5); transition: all 0.1s; outline: none;">0/15</button>
       `;
       document.getElementById('quest-body').innerHTML = html;
 
@@ -6348,36 +6302,19 @@ function runPendingConfirm() {
           timer = setInterval(() => {
             timeLeft -= 0.1;
             if (timeLeft < 0) timeLeft = 0;
-            
             timerEl.innerText = timeLeft.toFixed(1) + 's';
-            if (timeLeft <= 2.0) timerEl.style.color = '#ed4245';
-            
-            if (timeLeft <= 0) {
-              clearInterval(timer);
-              triggerFailVisual(); // <--- ВЫЗОВ СКРИМЕРА/КОТИКА
-            }
+            if (timeLeft <= 1.0) timerEl.style.color = '#ed4245';
+            if (timeLeft <= 0) { clearInterval(timer); triggerFailVisual(); }
           }, 100);
         }
-        
         clicks++;
         btn.innerText = clicks + "/15";
-        
-        // Эффект нажатия
-        btn.style.transform = 'translateY(8px)';
-        btn.style.boxShadow = '0 2px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.5)';
-        setTimeout(() => {
-            btn.style.transform = 'translateY(0)';
-            btn.style.boxShadow = '0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5)';
-        }, 50);
-
-        if (clicks >= target) {
-          clearInterval(timer);
-          completeQuest();
-        }
+        btn.style.transform = 'translateY(8px)'; btn.style.boxShadow = '0 2px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.5)';
+        setTimeout(() => { btn.style.transform = 'translateY(0)'; btn.style.boxShadow = '0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5)'; }, 50);
+        if (clicks >= target) { clearInterval(timer); completeQuest(); }
       };
     }
 
-    // --- 3. САЙМОН ГОВОРИТ ---
     // --- 3. САЙМОН ГОВОРИТ ---
     function questSimon() {
       document.getElementById('quest-title').innerText = 'Повтори сигнал';
@@ -6386,22 +6323,12 @@ function runPendingConfirm() {
       for(let i=0; i<3; i++) sequence.push(Math.floor(Math.random()*4));
       let userIndex = 0;
       let lock = true;
+      let simonTimer = null;
 
-      // Впихиваем стили прямо в HTML
       let html = `
         <p id="simon-status" style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Смотри и запоминай...</p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 260px; margin: 0 auto;">
-          ${colors.map((c, i) => `
-            <div id="simon-${i}" onclick="simonClick(${i})" style="
-              height: 100px; 
-              border-radius: 12px; 
-              background: ${c}; 
-              opacity: 0.3; 
-              cursor: pointer; 
-              border: 2px solid transparent; 
-              transition: all 0.2s;
-            "></div>
-          `).join('')}
+          ${colors.map((c, i) => `<div id="simon-${i}" onclick="simonClick(${i})" style="height: 100px; border-radius: 12px; background: ${c}; opacity: 0.3; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;"></div>`).join('')}
         </div>
       `;
       document.getElementById('quest-body').innerHTML = html;
@@ -6409,20 +6336,14 @@ function runPendingConfirm() {
       window.simonClick = (idx) => {
         if (lock) return;
         const el = document.getElementById(`simon-${idx}`);
-        
-        // Подсветка при клике
-        el.style.opacity = '1';
-        el.style.transform = 'scale(1.05)';
-        setTimeout(() => {
-          el.style.opacity = '0.3';
-          el.style.transform = 'scale(1)';
-        }, 200);
+        el.style.opacity = '1'; el.style.transform = 'scale(1.05)';
+        setTimeout(() => { el.style.opacity = '0.3'; el.style.transform = 'scale(1)'; }, 200);
 
         if (idx === sequence[userIndex]) {
           userIndex++;
-          if (userIndex === sequence.length) completeQuest();
+          if (userIndex === sequence.length) { clearTimeout(simonTimer); completeQuest(); }
         } else {
-          triggerFailVisual(); // <--- ВЫЗОВ СКРИМЕРА/КОТИКА
+          clearTimeout(simonTimer); triggerFailVisual();
         }
       };
 
@@ -6430,21 +6351,17 @@ function runPendingConfirm() {
       const playSeq = () => {
         if (i >= sequence.length) {
           lock = false;
-          document.getElementById('simon-status').innerText = 'Твой ход!';
+          document.getElementById('simon-status').innerText = 'Твой ход! (5 сек)';
           document.getElementById('simon-status').style.color = 'var(--accent-color)';
+          // Таймер на ответ
+          simonTimer = setTimeout(() => { triggerFailVisual(); }, 5000);
           return;
         }
         const idx = sequence[i];
         const el = document.getElementById(`simon-${idx}`);
-        
-        el.style.opacity = '1';
-        el.style.transform = 'scale(1.05)';
-        
+        el.style.opacity = '1'; el.style.transform = 'scale(1.05)';
         setTimeout(() => {
-          el.style.opacity = '0.3';
-          el.style.transform = 'scale(1)';
-          i++;
-          setTimeout(playSeq, 200);
+          el.style.opacity = '0.3'; el.style.transform = 'scale(1)'; i++; setTimeout(playSeq, 200);
         }, 400);
       };
       setTimeout(playSeq, 600);
@@ -6452,78 +6369,45 @@ function runPendingConfirm() {
 
     // --- 4. МЕМОРИ (НАЙДИ ПАРУ) ---
     function questMemory() {
-      document.getElementById('quest-title').innerText = 'Поиск совпадений';
-      
-      // ТАЙМЕР НА ПРОВАЛ (15 секунд)
-      let memTimer = setTimeout(() => {
-        triggerFailVisual();
-      }, 15000);
-
-      // ... дальше твой код
-      const icons = ['🍎', '🍌', '🍎', '🍌'].sort(() => Math.random() - 0.5);
+      document.getElementById('quest-title').innerText = 'Поиск совпадений (3х3)';
+      // 4 пары + 1 джокер
+      const icons = ['🍎', '🍌', '🍇', '🍒', '🍎', '🍌', '🍇', '🍒', '🃏'].sort(() => Math.random() - 0.5);
       let opened = [];
       let matched = 0;
       let lock = false;
 
-      // Прописываем стили прямо в HTML, чтобы они 100% применились
-      let html = `<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">Найди все пары</p>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 260px; margin: 0 auto;">
-                    ${icons.map((icon, i) => `
-                      <div id="mem-${i}" data-icon="${icon}" onclick="memClick(${i})"
-                           style="height: 100px; border-radius: 12px; background: #2a2a2a; border: 2px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 36px; color: transparent; transition: all 0.2s; user-select: none;">
-                      </div>
-                    `).join('')}
-                  </div>`;
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Найди пары (у тебя 15 сек)</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto;">
+          ${icons.map((icon, i) => `<div id="mem-${i}" data-icon="${icon}" onclick="memClick(${i})" style="height: 80px; border-radius: 8px; background: #2a2a2a; border: 2px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; color: transparent; transition: all 0.2s; user-select: none;"></div>`).join('')}
+        </div>
+      `;
       document.getElementById('quest-body').innerHTML = html;
+
+      let memTimer = setTimeout(() => { triggerFailVisual(); }, 15000);
 
       window.memClick = (idx) => {
         if (lock) return;
         const card = document.getElementById(`mem-${idx}`);
-        
         if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
 
-        // Переворачиваем
-        card.style.background = 'var(--accent-color)';
-        card.style.borderColor = 'var(--accent-color)';
-        card.style.color = '#fff';
-        card.classList.add('flipped');
-        card.innerText = card.dataset.icon;
+        card.style.background = 'var(--accent-color)'; card.style.borderColor = 'var(--accent-color)'; card.style.color = '#fff';
+        card.classList.add('flipped'); card.innerText = card.dataset.icon;
         opened.push(card);
 
         if (opened.length === 2) {
           lock = true;
-          
           if (opened[0].dataset.icon === opened[1].dataset.icon) {
-            // Совпало
-            opened[0].style.background = 'rgba(67, 181, 129, 0.2)';
-            opened[0].style.borderColor = '#43b581';
-            opened[0].style.color = '#43b581';
-            opened[0].classList.add('matched');
-
-            opened[1].style.background = 'rgba(67, 181, 129, 0.2)';
-            opened[1].style.borderColor = '#43b581';
-            opened[1].style.color = '#43b581';
-            opened[1].classList.add('matched');
-
-            matched++;
-            opened = [];
-            lock = false;
+            opened[0].style.background = 'rgba(67, 181, 129, 0.2)'; opened[0].style.borderColor = '#43b581'; opened[0].style.color = '#43b581'; opened[0].classList.add('matched');
+            opened[1].style.background = 'rgba(67, 181, 129, 0.2)'; opened[1].style.borderColor = '#43b581'; opened[1].style.color = '#43b581'; opened[1].classList.add('matched');
+            matched++; opened = []; lock = false;
             
-            if (matched === 2) {
-              completeQuest();
-            }
+            // Чтобы выиграть, нужно найти 4 пары (8 карт). Джокер в паре не нуждается.
+            if (matched === 4) { clearTimeout(memTimer); completeQuest(); }
           } else {
-            // Не совпало (возвращаем через 800мс)
             setTimeout(() => {
-              opened.forEach(c => {
-                c.style.background = '#2a2a2a';
-                c.style.borderColor = '#444';
-                c.style.color = 'transparent';
-                c.classList.remove('flipped');
-                c.innerText = '';
-              });
-              opened = [];
-              lock = false;
+              opened.forEach(c => { c.style.background = '#2a2a2a'; c.style.borderColor = '#444'; c.style.color = 'transparent'; c.classList.remove('flipped'); c.innerText = ''; });
+              opened = []; lock = false;
             }, 800);
           }
         }
@@ -6535,65 +6419,90 @@ function runPendingConfirm() {
       const WIRE_COLORS = ['#ed4245', '#5865F2', '#43b581', '#e67e22'];
       const leftColors = [...WIRE_COLORS].sort(() => Math.random() - 0.5);
       const rightColors = [...leftColors].sort(() => Math.random() - 0.5);
-      let connected = [];
-      let selectedNode = null;
+      let connected = 0;
+      let activeNode = null;
+      let tempPath = null;
 
       let html = `
-        <p class="sub-text">Соедини контакты одинакового цвета</p>
-        <div class="wire-game" id="wire-game" style="display:flex; justify-content:space-between; position:relative; padding:20px 40px; background:rgba(0,0,0,0.2); border-radius:12px; border:1px solid var(--border-color); margin-top:15px;">
-          <svg id="wire-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1;"></svg>
-          <div class="wire-column" style="display:flex; flex-direction:column; gap:20px; z-index:2;">
-            ${leftColors.map(c => `<div class="wire-node" data-color="${c}" data-side="left" style="width:40px; height:40px; border-radius:50%; border:3px solid rgba(0,0,0,0.5); cursor:pointer; background:${c}"></div>`).join('')}
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Протяни провода от контакта к контакту (соединять можно в любую сторону)</p>
+        <div id="wire-game" style="display: flex; justify-content: space-between; position: relative; padding: 20px 40px; background: #111; border-radius: 12px; border: 1px solid #333; margin-top: 15px; touch-action: none;">
+          <svg id="wire-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
+          <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
+            ${leftColors.map(c => `<div class="wire-node" data-color="${c}" data-side="left" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
           </div>
-          <div class="wire-column" style="display:flex; flex-direction:column; gap:20px; z-index:2;">
-            ${rightColors.map(c => `<div class="wire-node" data-color="${c}" data-side="right" style="width:40px; height:40px; border-radius:50%; border:3px solid rgba(0,0,0,0.5); cursor:pointer; background:${c}"></div>`).join('')}
+          <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
+            ${rightColors.map(c => `<div class="wire-node" data-color="${c}" data-side="right" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
           </div>
         </div>
       `;
       document.getElementById('quest-body').innerHTML = html;
 
-      const nodes = document.querySelectorAll('#wire-game .wire-node');
-      nodes.forEach(n => n.onclick = () => {
-        if (n.classList.contains('connected')) return;
-        const side = n.getAttribute('data-side');
-        const color = n.getAttribute('data-color');
+      const svg = document.getElementById('wire-svg');
+      const game = document.getElementById('wire-game');
 
-        if (!selectedNode) {
-          if (side === 'left') { n.style.boxShadow = '0 0 0 4px var(--accent-color)'; selectedNode = n; }
-          return;
-        }
-        if (side === 'right') {
-          if (selectedNode.getAttribute('data-color') === color) {
-            selectedNode.style.boxShadow = 'none';
-            selectedNode.classList.add('connected'); n.classList.add('connected');
-            selectedNode.style.opacity = '0.5'; n.style.opacity = '0.5';
+      game.onpointerdown = (e) => {
+        const node = e.target.closest('.wire-node');
+        if (!node || node.classList.contains('connected')) return;
+        activeNode = node;
+        
+        tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tempPath.setAttribute('stroke', node.dataset.color);
+        tempPath.setAttribute('stroke-width', '6');
+        tempPath.setAttribute('fill', 'none');
+        tempPath.setAttribute('stroke-dasharray', '10,5');
+        svg.appendChild(tempPath);
+      };
 
-            const svg = document.getElementById('wire-svg');
-            const gRect = document.getElementById('wire-game').getBoundingClientRect();
-            const lRect = selectedNode.getBoundingClientRect();
-            const rRect = n.getBoundingClientRect();
+      game.onpointermove = (e) => {
+        if (!activeNode || !tempPath) return;
+        
+        const gRect = game.getBoundingClientRect();
+        const lRect = activeNode.getBoundingClientRect();
+        const x1 = lRect.left + lRect.width/2 - gRect.left;
+        const y1 = lRect.top + lRect.height/2 - gRect.top;
+        const x2 = e.clientX - gRect.left;
+        const y2 = e.clientY - gRect.top;
+
+        tempPath.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+      };
+
+      game.onpointerup = (e) => {
+        if (!activeNode) return;
+        
+        const targetNode = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wire-node');
+        
+        if (tempPath) { tempPath.remove(); tempPath = null; }
+
+        if (targetNode && targetNode !== activeNode && !targetNode.classList.contains('connected')) {
+          // Проверяем, что они на разных сторонах И одинакового цвета
+          if (activeNode.dataset.side !== targetNode.dataset.side && activeNode.dataset.color === targetNode.dataset.color) {
+            activeNode.classList.add('connected');
+            targetNode.classList.add('connected');
+            activeNode.style.opacity = '0.4'; targetNode.style.opacity = '0.4';
+            activeNode.style.cursor = 'default'; targetNode.style.cursor = 'default';
+
+            const gRect = game.getBoundingClientRect();
+            const lRect = activeNode.getBoundingClientRect();
+            const rRect = targetNode.getBoundingClientRect();
             const x1 = lRect.left + lRect.width/2 - gRect.left;
             const y1 = lRect.top + lRect.height/2 - gRect.top;
             const x2 = rRect.left + rRect.width/2 - gRect.left;
             const y2 = rRect.top + rRect.height/2 - gRect.top;
-            
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
-            path.setAttribute('stroke', color); path.setAttribute('stroke-width', '6'); path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', activeNode.dataset.color);
+            path.setAttribute('stroke-width', '6');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
             svg.appendChild(path);
 
-            connected.push(color); selectedNode = null;
-            if (connected.length === 4) completeQuest();
-          } else {
-            n.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 200 });
-            triggerFailVisual(); // <--- ВЫЗОВ СКРИМЕРА/КОТИКА
+            connected++;
+            if (connected === 4) completeQuest();
           }
-        } else {
-          selectedNode.style.boxShadow = 'none';
-          if (side === 'left') { n.style.boxShadow = '0 0 0 4px var(--accent-color)'; selectedNode = n; }
-          else selectedNode = null;
         }
-      });
+        activeNode = null;
+      };
     }
 
     function handleWireClick(node) {
@@ -6690,6 +6599,16 @@ function runPendingConfirm() {
 
       if (currentSum + val === 1500) {
         showToast('Идеально! Банка заполнена ровно на 1500!', 'success');
+      }
+      state.gameKills++;
+      localStorage.setItem('md_game_kills', state.gameKills);
+      updateKillsUI(); // Обновляем счетчик на экране
+    }
+
+	      function updateKillsUI() {
+      const killEl = document.getElementById('game-kills');
+      if (killEl) {
+        killEl.innerText = `Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})`;
       }
     }
 
