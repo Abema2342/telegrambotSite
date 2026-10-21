@@ -6227,7 +6227,7 @@ function runPendingConfirm() {
 	    /* =========================================================
        СИСТЕМА КВЕСТОВ (РАНДОМ)
        ========================================================= */
-    function startQuest(val) {
+    async function startQuest(val) {
       if (!state.gamesConfig) {
         await loadGamesConfig(); // Ждем загрузки
       }
