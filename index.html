@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2892,6 +2893,219 @@
     .fail-cute {
       animation: cutePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
+
+	  /* ===== ДУЭЛИ ===== */
+.duels-subtabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+.duels-subtab {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+.duels-subtab:hover { color: var(--text-main); background: var(--card-hover); }
+.duels-subtab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+
+.duels-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.duels-toolbar .search-bar { flex: 1; min-width: 200px; padding: 0; border-bottom: none; }
+.duels-toolbar .search-bar::before { left: 12px; }
+
+.duels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.duels-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s ease;
+  animation: fadeInUp 0.3s ease;
+  min-width: 0;
+}
+.duels-card:hover {
+  background: var(--card-hover);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.duels-card-img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.duels-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.duels-card-prices {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.duels-card-prices .value { color: var(--text-main); font-weight: 600; }
+
+.duels-card-x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--status-banned);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+}
+
+/* Item modal */
+.duels-modal-chart { height: 240px; margin-bottom: 16px; position: relative; }
+.duels-modal-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.duels-modal-tab {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.duels-modal-tab:hover { color: var(--text-main); }
+.duels-modal-tab.active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+.duels-trade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.duels-trade-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.duels-trade-price { font-weight: 600; color: #f1c40f; font-family: monospace; }
+.duels-trade-when { color: var(--text-secondary); font-size: 12px; }
+
+/* Sets */
+.duels-set-builder {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .duels-set-builder { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+}
+.duels-set-slot {
+  aspect-ratio: 1 / 1;
+  background: rgba(0,0,0,0.2);
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 32px;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.duels-set-slot:hover {
+  border-color: var(--accent-color);
+  background: rgba(88,101,242,0.05);
+}
+.duels-set-slot.filled { border-style: solid; border-color: var(--accent-color); }
+.duels-set-slot img { width: 80%; height: 80%; object-fit: contain; }
+
+.duels-view-split { display: flex; gap: 12px; flex-wrap: wrap; }
+.duels-view-split > * { flex: 1; min-width: 0; }
+@media (max-width: 600px) {
+  .duels-view-split { flex-direction: column; }
+}
+
+.duels-view-total {
+  padding: 16px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--accent-color);
+  margin-bottom: 12px;
+}
+
+.duels-set-view-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.duels-set-view-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+}
+.duels-set-view-chart { height: 120px; position: relative; }
 	
     }
   </style>
@@ -2973,61 +3187,709 @@
 
   <script>
 
-	      // --- ВКЛАДКА ДУЭЛИ ---
+    /* =========================================================
+       ВКЛАДКА «ДУЭЛИ» (Murder Duels)
+       ========================================================= */
     async function renderDuels() {
+      if (!state.duelsSubtab) state.duelsSubtab = 'prices';
       document.getElementById('app').innerHTML = `
         <div class="card">
           <div class="card-header">
             <span class="card-title">Murder Duels</span>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="duelsRefresh()">Обновить цены</button>
+            </div>
           </div>
-          <div style="display: flex; border-bottom: 1px solid var(--border-color);">
-            <button class="btn-refresh" onclick="switchDuelsTab('prices')" style="flex:1; border-radius: 0;">Прайс-лист</button>
-            <button class="btn-refresh" onclick="switchDuelsTab('wishlist')" style="flex:1; border-radius: 0;">Хотелки</button>
+          <div class="duels-subtabs">
+            <button class="duels-subtab ${state.duelsSubtab === 'prices' ? 'active' : ''}"   data-subtab="prices"   onclick="switchDuelsTab('prices')">Прайс-лист</button>
+            <button class="duels-subtab ${state.duelsSubtab === 'wishlist' ? 'active' : ''}" data-subtab="wishlist" onclick="switchDuelsTab('wishlist')">Хотелки</button>
+            <button class="duels-subtab ${state.duelsSubtab === 'sets' ? 'active' : ''}"     data-subtab="sets"     onclick="switchDuelsTab('sets')">Сеты</button>
           </div>
-          <div id="duels-content" style="padding: 16px;">
-            Загрузка...
+          <div id="duels-content">
+            <div class="empty-state">Загрузка...</div>
           </div>
         </div>
       `;
-      switchDuelsTab('prices');
+      await switchDuelsTab(state.duelsSubtab);
     }
 
-    let duelsData = null;
-    let duelsHistory = null;
+    function duelsRefresh() {
+      state.duelsData = null;
+      state.duelsHistoryCache = {};
+      switchDuelsTab(state.duelsSubtab || 'prices');
+    }
+
+    async function loadDuelsPrice(force) {
+      if (state.duelsData && !force) return state.duelsData;
+      const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev?_=' + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      state.duelsData = Array.isArray(json) ? json : (json.items || []);
+      return state.duelsData;
+    }
+
+    function getDuelItemId(item) {
+      return String(item.slug || item.id || item.name || '');
+    }
+
+    function getDuelItemById(id) {
+      if (!state.duelsData) return null;
+      const s = String(id);
+      return state.duelsData.find(it => getDuelItemId(it) === s);
+    }
+
+    function formatCoins(n) {
+      if (n === -1 || n === null || n === undefined || isNaN(n)) return '—';
+      return Number(n).toLocaleString('ru-RU');
+    }
 
     async function switchDuelsTab(tab) {
+      state.duelsSubtab = tab;
+      document.querySelectorAll('.duels-subtab').forEach(b => {
+        b.classList.toggle('active', b.dataset.subtab === tab);
+      });
       const content = document.getElementById('duels-content');
-      
-      if (!duelsData) {
-        content.innerHTML = '<div class="empty-state">Загрузка цен...</div>';
+      if (!content) return;
+      content.innerHTML = '<div class="empty-state">Загрузка...</div>';
+
+      try {
+        await loadDuelsPrice();
+      } catch (e) {
+        content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка загрузки цен: ${escapeHtml(e.message)}</div>`;
+        return;
+      }
+
+      if (tab === 'prices') renderDuelsPrices();
+      else if (tab === 'wishlist') {
+        try { await loadDuelsWishlist(); renderDuelsWishlist(); }
+        catch (e) { content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка хотелок: ${escapeHtml(e.message)}</div>`; }
+      } else if (tab === 'sets') {
+        try { await loadDuelsSets(); renderDuelsSets(); }
+        catch (e) { content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка сетов: ${escapeHtml(e.message)}</div>`; }
+      }
+    }
+
+    /* ---------- ПРАЙС-ЛИСТ ---------- */
+    function duelsCardHtml(item, onClickJs, extraTopRight) {
+      const id = getDuelItemId(item);
+      const img = item.image || item.icon || '';
+      return `
+        <div class="duels-card" onclick="${onClickJs}">
+          ${extraTopRight || ''}
+          <img class="duels-card-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.style.opacity=0.3">
+          <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
+          <div class="duels-card-prices">
+            <span>База: <span class="value">${formatCoins(item.basePrice)}</span></span>
+            <span>Ср: <span class="value">${formatCoins(item.salesAvg)}</span></span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDuelsPrices() {
+      const content = document.getElementById('duels-content');
+      const q = (state.duelsSearch || '').toLowerCase().trim();
+      const all = state.duelsData || [];
+      const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <div class="search-bar" style="flex: 1;">
+            <input type="text" id="duels-search" placeholder="Поиск по названию..." value="${escapeHtml(state.duelsSearch || '')}" oninput="onDuelsSearchInput(this.value)" />
+          </div>
+          <span class="sub-text" id="duels-price-count">Всего: ${list.length}</span>
+        </div>
+        <div class="duels-grid" id="duels-price-grid">
+          ${list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Нет предметов</div>'}
+        </div>
+      `;
+    }
+
+    function onDuelsSearchInput(val) {
+      state.duelsSearch = val;
+      const q = (val || '').toLowerCase().trim();
+      const all = state.duelsData || [];
+      const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
+      const grid = document.getElementById('duels-price-grid');
+      if (grid) grid.innerHTML = list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>';
+      const counter = document.getElementById('duels-price-count');
+      if (counter) counter.textContent = `Всего: ${list.length}`;
+    }
+
+    function escapeJsStr(s) {
+      return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
+    async function openDuelItemModal(id) {
+      const item = getDuelItemById(id);
+      if (!item) { showToast('Предмет не найден', 'error'); return; }
+      const itemId = getDuelItemId(item);
+      const name = item.name || itemId;
+      const img = item.image || item.icon || '';
+
+      const bodyHtml = `
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+          <img src="${escapeHtml(img)}" style="width: 72px; height: 72px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 6px;" onerror="this.style.opacity=0.3">
+          <div>
+            <div style="font-size: 16px; font-weight: 700;">${escapeHtml(name)}</div>
+            <div class="sub-text" style="font-size: 12px; margin-top: 4px;">
+              База: <strong>${formatCoins(item.basePrice)}</strong> · Средняя: <strong>${formatCoins(item.salesAvg)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="duels-modal-tabs">
+          <button class="duels-modal-tab active" id="duels-tab-price" onclick="duelsShowChart('price')">Цена</button>
+          <button class="duels-modal-tab" id="duels-tab-deals" onclick="duelsShowChart('deals')">Сделки</button>
+        </div>
+
+        <div class="duels-modal-chart">
+          <canvas id="duels-chart-canvas" data-item-id="${escapeHtml(itemId)}" data-mode="price"></canvas>
+        </div>
+
+        <div>
+          <div class="sub-text" style="font-size: 12px; margin-bottom: 8px;">Последние сделки</div>
+          <div id="duels-history-list" class="duels-trade-list">
+            <div class="empty-state" style="padding: 20px;">Загрузка истории...</div>
+          </div>
+        </div>
+      `;
+
+      openModal(name, bodyHtml, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`);
+
+      let history = state.duelsHistoryCache[itemId];
+      if (!history) {
         try {
-          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev');
-          duelsData = await res.json();
+          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev/item/' + encodeURIComponent(itemId));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          history = await res.json();
+          state.duelsHistoryCache[itemId] = history;
         } catch (e) {
-          content.innerHTML = '<div class="empty-state" style="color:red;">Ошибка загрузки цен.</div>';
+          const listEl = document.getElementById('duels-history-list');
+          if (listEl) listEl.innerHTML = `<div class="empty-state" style="color: var(--status-banned); padding: 12px; font-size: 13px;">Не удалось загрузить историю: ${escapeHtml(e.message)}</div>`;
+          drawDuelsChart(itemId, { sales: [] }, 'price');
           return;
         }
       }
 
-      if (tab === 'prices') {
-        content.innerHTML = `
-          <div class="upd-grid">
-            ${duelsData.slice(0, 50).map(item => `
-              <div class="upd-card" style="border-left-color: var(--accent-color); cursor: default;">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                  <img src="${item.image}" style="width: 40px; height: 40px; object-fit: contain; background: #222; border-radius: 6px;">
-                  <div>
-                    <div class="upd-card-title" style="margin-bottom: 0;">${item.name}</div>
-                    <div class="sub-text" style="font-size: 11px;">База: ${item.basePrice.toLocaleString()} | Средняя: ${item.salesAvg ? item.salesAvg.toLocaleString() : '—'}</div>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
+      drawDuelsChart(itemId, history, 'price');
+      renderDuelsHistoryList(history);
+    }
+
+    function renderDuelsHistoryList(history) {
+      const sales = (history.sales || []).slice(0, 30);
+      const listEl = document.getElementById('duels-history-list');
+      if (!listEl) return;
+      if (!sales.length) {
+        listEl.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 13px;">Нет сделок</div>';
+        return;
+      }
+      listEl.innerHTML = sales.map(s => `
+        <div class="duels-trade-row">
+          <span class="duels-trade-price">${formatCoins(s.price)}</span>
+          <span class="duels-trade-when">${escapeHtml(s.when || s.time || '')}</span>
+        </div>
+      `).join('');
+    }
+
+    function drawDuelsChart(itemId, history, mode) {
+      duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+      duelsCharts.length = 0;
+
+      const canvas = document.getElementById('duels-chart-canvas');
+      if (!canvas || typeof Chart === 'undefined') return;
+
+      const sales = (history.sales || []).slice().reverse();
+      let labels, data, label, type, bgColor;
+
+      if (mode === 'price') {
+        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
+        data = sales.map(s => Number(s.price) || 0);
+        label = 'Цена сделки';
+        type = 'line';
+        bgColor = 'rgba(88,101,242,0.15)';
+      } else {
+        const counts = {};
+        sales.forEach(s => {
+          const key = s.when || 'неизвестно';
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        labels = Object.keys(counts);
+        data = Object.values(counts);
+        label = 'Сделок';
+        type = 'bar';
+        bgColor = 'rgba(88,101,242,0.6)';
+      }
+
+      const chart = new Chart(canvas, {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            borderColor: '#5865F2',
+            backgroundColor: bgColor,
+            tension: 0.3,
+            fill: mode === 'price',
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+      duelsCharts.push(chart);
+
+      canvas.dataset.mode = mode;
+      document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
+      document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
+    }
+
+    function duelsShowChart(mode) {
+      const canvas = document.getElementById('duels-chart-canvas');
+      if (!canvas) return;
+      const itemId = canvas.dataset.itemId;
+      const history = state.duelsHistoryCache[itemId] || { sales: [] };
+      drawDuelsChart(itemId, history, mode);
+    }
+
+    /* ---------- ХОТЕЛКИ ---------- */
+    async function loadDuelsWishlist(force) {
+      if (state.duelsWishlistLoaded && !force) return state.duelsWishlist;
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_wishlist.json?_=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        state.duelsWishlist = [];
+        state.duelsWishlistSha = null;
+        state.duelsWishlistLoaded = true;
+        return state.duelsWishlist;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const meta = await res.json();
+      state.duelsWishlistSha = meta.sha;
+      const json = JSON.parse(decodeBase64Content(meta.content));
+      state.duelsWishlist = Array.isArray(json.items) ? json.items : (Array.isArray(json) ? json : []);
+      state.duelsWishlistLoaded = true;
+      return state.duelsWishlist;
+    }
+
+    async function saveDuelsWishlist() {
+      const content = JSON.stringify({ items: state.duelsWishlist }, null, 2);
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_wishlist.json`, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Update murderduels_wishlist.json via dashboard [skip ci]',
+          content: utf8ToBase64(content),
+          sha: state.duelsWishlistSha
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Ошибка сохранения хотелок');
+      }
+      const json = await res.json();
+      state.duelsWishlistSha = json.content.sha;
+    }
+
+    function renderDuelsWishlist() {
+      const content = document.getElementById('duels-content');
+      const items = state.duelsWishlist.map(id => getDuelItemById(id)).filter(Boolean);
+      const cards = items.map(it => {
+        const id = getDuelItemId(it);
+        const xBtn = state.duelsEditMode
+          ? `<button class="duels-card-x" onclick="event.stopPropagation(); removeFromWishlist('${escapeJsStr(id)}')">×</button>`
+          : '';
+        const onclickJs = state.duelsEditMode
+          ? `removeFromWishlist('${escapeJsStr(id)}')`
+          : `openDuelItemModal('${escapeJsStr(id)}')`;
+        return duelsCardHtml(it, onclickJs, xBtn);
+      }).join('');
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
+          <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
+          <span class="sub-text" style="margin-left: auto;">В хотелках: ${items.length}</span>
+        </div>
+        <div class="duels-grid">
+          ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
+        </div>
+      `;
+    }
+
+    function toggleDuelsEditMode() {
+      state.duelsEditMode = !state.duelsEditMode;
+      renderDuelsWishlist();
+    }
+
+    async function removeFromWishlist(id) {
+      state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+      try {
+        await saveDuelsWishlist();
+        showToast('Удалено из хотелок', 'success');
+        renderDuelsWishlist();
+      } catch (e) {
+        state.duelsWishlist.push(id);
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    function openDuelsAddMenu() {
+      const available = (state.duelsData || []).filter(it => {
+        const id = getDuelItemId(it);
+        return !state.duelsWishlist.some(x => String(x) === id);
+      });
+
+      const html = `
+        <div class="duels-toolbar" style="padding: 0 0 12px; border-bottom: none;">
+          <div class="search-bar" style="flex: 1;">
+            <input type="text" id="duels-add-search" placeholder="Поиск..." oninput="duelsFilterAddMenu(this.value)">
+          </div>
+          <button class="btn-primary" onclick="openDuelsAddSetMenu()">+ Добавить сет</button>
+        </div>
+        <div class="duels-grid" id="duels-add-grid" style="padding: 0;">
+          ${available.map(it => duelsCardHtml(it, `addToWishlist('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Все предметы уже в хотелках</div>'}
+        </div>
+      `;
+      window._duelsAddAvailable = available;
+      openModal('Добавить в хотелки', html, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`);
+    }
+
+    function duelsFilterAddMenu(q) {
+      const grid = document.getElementById('duels-add-grid');
+      if (!grid) return;
+      const ql = (q || '').toLowerCase().trim();
+      const list = (window._duelsAddAvailable || []).filter(it => !ql || (it.name || '').toLowerCase().includes(ql));
+      grid.innerHTML = list.map(it => duelsCardHtml(it, `addToWishlist('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>';
+    }
+
+    async function addToWishlist(id) {
+      if (state.duelsWishlist.some(x => String(x) === String(id))) return;
+      state.duelsWishlist.push(String(id));
+      try {
+        await saveDuelsWishlist();
+        showToast('Добавлено в хотелки', 'success');
+        window._duelsAddAvailable = (window._duelsAddAvailable || []).filter(it => getDuelItemId(it) !== String(id));
+        const input = document.getElementById('duels-add-search');
+        duelsFilterAddMenu(input ? input.value : '');
+      } catch (e) {
+        state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    function openDuelsAddSetMenu() {
+      closeModal();
+      switchDuelsTab('sets').then(() => {
+        setTimeout(() => openDuelsSetBuilder(null), 150);
+      });
+    }
+
+    /* ---------- СЕТЫ ---------- */
+    async function loadDuelsSets(force) {
+      if (state.duelsSetsLoaded && !force) return state.duelsSets;
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_sets.json?_=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        state.duelsSets = [];
+        state.duelsSetsSha = null;
+        state.duelsSetsLoaded = true;
+        return state.duelsSets;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const meta = await res.json();
+      state.duelsSetsSha = meta.sha;
+      const json = JSON.parse(decodeBase64Content(meta.content));
+      state.duelsSets = Array.isArray(json.sets) ? json.sets : [];
+      state.duelsSetsLoaded = true;
+      return state.duelsSets;
+    }
+
+    async function saveDuelsSets() {
+      const content = JSON.stringify({ sets: state.duelsSets }, null, 2);
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_sets.json`, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Update murderduels_sets.json via dashboard [skip ci]',
+          content: utf8ToBase64(content),
+          sha: state.duelsSetsSha
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Ошибка сохранения сетов');
+      }
+      const json = await res.json();
+      state.duelsSetsSha = json.content.sha;
+    }
+
+    function renderDuelsSets() {
+      const content = document.getElementById('duels-content');
+      const cards = (state.duelsSets || []).map(set => {
+        const imgs = (set.items || []).map(id => {
+          const it = id ? getDuelItemById(id) : null;
+          return it
+            ? `<img src="${escapeHtml(it.image || it.icon || '')}" style="width: 36px; height: 36px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px;" onerror="this.style.opacity=0.3">`
+            : `<span style="width: 36px; height: 36px; border: 1px dashed var(--border-color); border-radius: 4px; display: inline-block;"></span>`;
+        }).join('');
+        return `
+          <div class="duels-card" onclick="viewDuelsSet(${set.id})">
+            <div class="duels-card-name">${escapeHtml(set.name || 'Без названия')}</div>
+            <div style="display: flex; gap: 6px; justify-content: center; padding: 4px 0;">${imgs}</div>
           </div>
         `;
+      }).join('');
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <button class="btn-primary" onclick="openDuelsSetBuilder(null)">+ Создать сет</button>
+          <span class="sub-text" style="margin-left: auto;">Сетов: ${(state.duelsSets || []).length}</span>
+        </div>
+        <div class="duels-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+          ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Сетов нет. Создай первый!</div>'}
+        </div>
+      `;
+    }
+
+    function openDuelsSetBuilder(setId) {
+      const isNew = setId === null || setId === undefined;
+      const set = isNew
+        ? { id: null, name: '', items: [null, null, null] }
+        : state.duelsSets.find(s => s.id === setId);
+      if (!set) return;
+      state._duelsEditingSet = JSON.parse(JSON.stringify(set));
+      state._duelsEditingSet.items = (state._duelsEditingSet.items || []).concat([null, null, null]).slice(0, 3);
+      state._duelsEditingSetIsNew = isNew;
+      renderDuelsSetEditor();
+    }
+
+    function renderDuelsSetEditor() {
+      const set = state._duelsEditingSet;
+      if (!set) { renderDuelsSets(); return; }
+      const content = document.getElementById('duels-content');
+
+      const slotsHtml = set.items.map((itemId, idx) => {
+        const item = itemId ? getDuelItemById(itemId) : null;
+        if (item) {
+          return `
+            <div class="duels-set-slot filled" onclick="openDuelsSetSlotPicker(${idx})">
+              <img src="${escapeHtml(item.image || item.icon || '')}" onerror="this.style.opacity=0.3">
+            </div>
+          `;
+        }
+        return `<div class="duels-set-slot" onclick="openDuelsSetSlotPicker(${idx})">+</div>`;
+      }).join('');
+
+      content.innerHTML = `
+        <div style="padding: 16px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button class="back-btn" onclick="cancelDuelsSetEditor()">← Назад</button>
+          </div>
+          <input type="text" id="duels-set-name" class="note-input-title" placeholder="Название сета..." value="${escapeHtml(set.name || '')}" style="margin-bottom: 16px; width: 100%;">
+          <div class="duels-set-builder">${slotsHtml}</div>
+          <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;">
+            ${!state._duelsEditingSetIsNew ? `<button class="btn-danger" onclick="deleteDuelsSet()">Удалить</button>` : ''}
+            <button class="btn-primary" onclick="saveDuelsSetFromEditor()">Сохранить</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('duels-set-name').addEventListener('input', e => {
+        state._duelsEditingSet.name = e.target.value;
+      });
+    }
+
+    function openDuelsSetSlotPicker(slotIdx) {
+      const used = state._duelsEditingSet.items
+        .filter((x, i) => i !== slotIdx && x)
+        .map(String);
+      const available = (state.duelsData || []).filter(it => !used.includes(getDuelItemId(it)));
+
+      const clearBtn = state._duelsEditingSet.items[slotIdx]
+        ? `<div class="duels-card" onclick="selectDuelsSetSlotItem(${slotIdx}, null)" style="background: rgba(237,66,69,0.1); border-color: rgba(237,66,69,0.4); justify-content: center; align-items: center;"><span style="color: var(--status-banned); font-weight: 600;">Очистить слот</span></div>`
+        : '';
+
+      const html = `
+        <div class="search-bar" style="padding: 0 0 12px; border-bottom: none;">
+          <input type="text" id="duels-slot-search" placeholder="Поиск..." oninput="duelsFilterSlotPicker(this.value)">
+        </div>
+        <div class="duels-grid" id="duels-slot-grid" style="padding: 0;">
+          ${clearBtn}
+          ${available.map(it => duelsCardHtml(it, `selectDuelsSetSlotItem(${slotIdx}, '${escapeJsStr(getDuelItemId(it))}')`)).join('')}
+        </div>
+      `;
+      window._duelsSlotAvailable = available;
+      window._duelsSlotIdx = slotIdx;
+      openModal('Выбор предмета', html, `<button class="btn-refresh" onclick="closeModal()">Отмена</button>`);
+    }
+
+    function duelsFilterSlotPicker(q) {
+      const grid = document.getElementById('duels-slot-grid');
+      if (!grid) return;
+      const ql = (q || '').toLowerCase().trim();
+      const idx = window._duelsSlotIdx;
+      const list = (window._duelsSlotAvailable || []).filter(it => !ql || (it.name || '').toLowerCase().includes(ql));
+      const clearBtn = state._duelsEditingSet.items[idx]
+        ? `<div class="duels-card" onclick="selectDuelsSetSlotItem(${idx}, null)" style="background: rgba(237,66,69,0.1); border-color: rgba(237,66,69,0.4); justify-content: center; align-items: center;"><span style="color: var(--status-banned); font-weight: 600;">Очистить слот</span></div>`
+        : '';
+      grid.innerHTML = clearBtn + (list.map(it => duelsCardHtml(it, `selectDuelsSetSlotItem(${idx}, '${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>');
+    }
+
+    function selectDuelsSetSlotItem(idx, id) {
+      state._duelsEditingSet.items[idx] = id;
+      closeModal();
+      renderDuelsSetEditor();
+    }
+
+    function cancelDuelsSetEditor() {
+      state._duelsEditingSet = null;
+      state._duelsEditingSetIsNew = false;
+      renderDuelsSets();
+    }
+
+    async function saveDuelsSetFromEditor() {
+      const set = state._duelsEditingSet;
+      if (!set) return;
+      const nameInput = document.getElementById('duels-set-name');
+      if (nameInput) set.name = nameInput.value.trim();
+      if (!set.name) { showToast('Введи название сета', 'error'); return; }
+      if (!set.items.some(x => x)) { showToast('Выбери хотя бы один предмет', 'error'); return; }
+
+      if (state._duelsEditingSetIsNew) {
+        const nextId = state.duelsSets.length > 0 ? Math.max(...state.duelsSets.map(s => s.id || 0)) + 1 : 1;
+        set.id = nextId;
+        state.duelsSets.push(set);
       } else {
-        content.innerHTML = `<div class="empty-state">Хотелки в разработке...</div>`;
+        const idx = state.duelsSets.findIndex(s => s.id === set.id);
+        if (idx >= 0) state.duelsSets[idx] = set;
       }
+
+      try {
+        await saveDuelsSets();
+        state._duelsEditingSet = null;
+        state._duelsEditingSetIsNew = false;
+        showToast('Сет сохранён', 'success');
+        renderDuelsSets();
+      } catch (e) {
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteDuelsSet() {
+      if (!state._duelsEditingSet) return;
+      const id = state._duelsEditingSet.id;
+      confirmAction('Удалить этот сет?', async () => {
+        state.duelsSets = state.duelsSets.filter(s => s.id !== id);
+        try {
+          await saveDuelsSets();
+          state._duelsEditingSet = null;
+          state._duelsEditingSetIsNew = false;
+          showToast('Сет удалён', 'success');
+          renderDuelsSets();
+        } catch (e) {
+          showToast('Ошибка: ' + e.message, 'error');
+        }
+      });
+    }
+
+    function viewDuelsSet(id) {
+      const set = state.duelsSets.find(s => s.id === id);
+      if (!set) return;
+      const content = document.getElementById('duels-content');
+      const filled = (set.items || []).filter(Boolean).map(x => getDuelItemById(x)).filter(Boolean);
+      const totalBase = filled.reduce((s, it) => s + (Number(it.basePrice) || 0), 0);
+      const allHaveAvg = filled.every(it => Number(it.salesAvg) > 0);
+      const totalAvg = allHaveAvg ? filled.reduce((s, it) => s + (Number(it.salesAvg) || 0), 0) : -1;
+
+      content.innerHTML = `
+        <div style="padding: 16px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button class="back-btn" onclick="renderDuelsSets()">← Назад к сетам</button>
+            <button class="btn-refresh" onclick="openDuelsSetBuilder(${set.id})" style="margin-left: auto;">Редактировать</button>
+          </div>
+          <div class="duels-view-total">
+            ${escapeHtml(set.name || 'Без названия')}
+            <div style="font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-top: 6px;">
+              Сумма базовая: <strong style="color: var(--text-main);">${formatCoins(totalBase)}</strong>
+              · Средняя: <strong style="color: var(--text-main);">${formatCoins(totalAvg)}</strong>
+            </div>
+          </div>
+          <div class="duels-view-split">
+            ${filled.map(it => {
+              const safeId = getDuelItemId(it).replace(/[^a-z0-9]/gi, '_');
+              return `
+                <div class="duels-set-view-item">
+                  <img src="${escapeHtml(it.image || it.icon || '')}" onerror="this.style.opacity=0.3">
+                  <div class="duels-card-name">${escapeHtml(it.name || '')}</div>
+                  <div class="duels-card-prices">
+                    <span>База: <span class="value">${formatCoins(it.basePrice)}</span></span>
+                    <span>Ср: <span class="value">${formatCoins(it.salesAvg)}</span></span>
+                  </div>
+                  <div class="duels-set-view-chart">
+                    <canvas id="duels-set-canvas-${safeId}"></canvas>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      filled.forEach(it => loadDuelsSetItemHistory(it));
+    }
+
+    async function loadDuelsSetItemHistory(item) {
+      const id = getDuelItemId(item);
+      const safeId = id.replace(/[^a-z0-9]/gi, '_');
+      let history = state.duelsHistoryCache[id];
+      if (!history) {
+        try {
+          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev/item/' + encodeURIComponent(id));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          history = await res.json();
+          state.duelsHistoryCache[id] = history;
+        } catch (e) { return; }
+      }
+      const canvas = document.getElementById('duels-set-canvas-' + safeId);
+      if (!canvas || typeof Chart === 'undefined') return;
+      const sales = (history.sales || []).slice().reverse();
+      if (!sales.length) return;
+      const chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: sales.map((s, i) => s.when || ('#' + (i + 1))),
+          datasets: [{
+            label: 'Цена',
+            data: sales.map(s => Number(s.price) || 0),
+            borderColor: '#5865F2',
+            backgroundColor: 'rgba(88,101,242,0.15)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 4 }, grid: { display: false } },
+            y: { ticks: { color: '#a0a0a0', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+      duelsCharts.push(chart);
     }
     function triggerFailVisual() {
       const overlay = document.getElementById('fail-overlay');
@@ -3350,7 +4212,18 @@
       gameInput: '',      // <--- И ЭТО
       aiModes: null,
       aiModesLoaded: false,
-      aiModesSha: null
+      aiModesSha: null,
+	  duelsData: null,
+      duelsWishlist: [],
+      duelsWishlistSha: null,
+      duelsWishlistLoaded: false,
+      duelsSets: [],
+      duelsSetsSha: null,
+      duelsSetsLoaded: false,
+      duelsSubtab: 'prices',
+      duelsEditMode: false,
+      duelsSearch: '',
+      duelsHistoryCache: {}
     };
 
     const GEMINI_WORKER = "https://gemini-proxy.kmaxim242.workers.dev";
@@ -8714,6 +9587,14 @@ function runPendingConfirm() {
        МОДАЛЬНЫЕ ОКНА
        ========================================================= */
     const modal = document.getElementById('common-modal');
+	let duelsCharts = [];
+
+    function decodeBase64Content(b64) {
+      const raw = atob(b64.replace(/\n/g, ''));
+      return decodeURIComponent(Array.prototype.map.call(raw, c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+    }
     const modalTitle = document.getElementById('modal-title');
     const modalContent = document.getElementById('modal-content');
     const modalActions = document.getElementById('modal-actions');
@@ -8728,6 +9609,10 @@ function runPendingConfirm() {
 
     function closeModal() {
       modal.classList.remove('active');
+      if (typeof duelsCharts !== 'undefined') {
+        duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+        duelsCharts.length = 0;
+      }
     }
 
     modalCloseBtn.addEventListener('click', closeModal);
