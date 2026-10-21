@@ -2918,6 +2918,7 @@
           <button class="nav-btn" data-tab="calc">Калькуляторы</button>
           <button class="nav-btn" data-tab="periodic">Таблица Менделеева</button>
           <button class="nav-btn" data-tab="game">Мини-игра</button>
+		  <button class="nav-btn" data-tab="duels">Дуэли</button>
           <button class="nav-btn" data-tab="audit">Журнал аудита</button>
           <button class="nav-btn" data-tab="datastructure">Структура данных</button>
         </div>
@@ -2971,6 +2972,63 @@
   </div>
 
   <script>
+
+	      // --- ВКЛАДКА ДУЭЛИ ---
+    async function renderDuels() {
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Murder Duels</span>
+          </div>
+          <div style="display: flex; border-bottom: 1px solid var(--border-color);">
+            <button class="btn-refresh" onclick="switchDuelsTab('prices')" style="flex:1; border-radius: 0;">Прайс-лист</button>
+            <button class="btn-refresh" onclick="switchDuelsTab('wishlist')" style="flex:1; border-radius: 0;">Хотелки</button>
+          </div>
+          <div id="duels-content" style="padding: 16px;">
+            Загрузка...
+          </div>
+        </div>
+      `;
+      switchDuelsTab('prices');
+    }
+
+    let duelsData = null;
+    let duelsHistory = null;
+
+    async function switchDuelsTab(tab) {
+      const content = document.getElementById('duels-content');
+      
+      if (!duelsData) {
+        content.innerHTML = '<div class="empty-state">Загрузка цен...</div>';
+        try {
+          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev');
+          duelsData = await res.json();
+        } catch (e) {
+          content.innerHTML = '<div class="empty-state" style="color:red;">Ошибка загрузки цен.</div>';
+          return;
+        }
+      }
+
+      if (tab === 'prices') {
+        content.innerHTML = `
+          <div class="upd-grid">
+            ${duelsData.slice(0, 50).map(item => `
+              <div class="upd-card" style="border-left-color: var(--accent-color); cursor: default;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <img src="${item.image}" style="width: 40px; height: 40px; object-fit: contain; background: #222; border-radius: 6px;">
+                  <div>
+                    <div class="upd-card-title" style="margin-bottom: 0;">${item.name}</div>
+                    <div class="sub-text" style="font-size: 11px;">База: ${item.basePrice.toLocaleString()} | Средняя: ${item.salesAvg ? item.salesAvg.toLocaleString() : '—'}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        content.innerHTML = `<div class="empty-state">Хотелки в разработке...</div>`;
+      }
+    }
     function triggerFailVisual() {
       const overlay = document.getElementById('fail-overlay');
       overlay.innerHTML = ''; // Очищаем предыдущий контент
@@ -5939,6 +5997,15 @@ function runPendingConfirm() {
         case 'game': renderGame(); break;
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
+		case 'duels':
+        if (!state.isAdmin) {
+          showToast('Доступ только для администратора', 'error');
+          state.currentTab = 'notes';
+          render();
+        } else {
+          renderDuels();
+        }
+        break;
       }
       fadeInApp();
     }
