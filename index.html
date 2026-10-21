@@ -3285,6 +3285,7 @@
       calcPercentB: '',
       gameBalls: JSON.parse(localStorage.getItem('md_game_balls')) || [],
 	  gameKills: parseInt(localStorage.getItem('md_game_kills')) || 0,
+	  gamesConfig: null,
 	  pendingBallValue: null,
       questConnected: [],
       questSelectedNode: null,
@@ -3663,9 +3664,25 @@ function runPendingConfirm() {
     }
 
     /* =========================================================
-       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON, USEFUL.JSON
+       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON, USEFUL.JSON, GAMES.JSON
        ========================================================= */
-    async function loadData() {
+        async function loadGamesConfig() {
+      if (state.gamesConfig) return;
+      try {
+        const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/games.json?_=${Date.now()}`, { 
+          headers: { 'Accept': 'application/vnd.github.v3+json' } 
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const content = JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(data.content.replace(/\n/g, '')), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+        state.gamesConfig = content;
+      } catch {
+        // Если файла нет или произошла ошибка, используем дефолтные значения
+        state.gamesConfig = { math_time: 10000, spam_time: 5000, simon_time: 5000, memory_time: 20000, wire_time: 25000 };
+      }
+    }
+	  
+	  async function loadData() {
       const app = document.getElementById('app');
       app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
 
@@ -4144,7 +4161,7 @@ function runPendingConfirm() {
     }
 
     function renderDataStructure() {
-      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json', 'chats.json', 'ai_modes.json'];
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json', 'chats.json', 'ai_modes.json', 'games.json'];
       const selectHtml = `
         <select class="ds-header-select" onchange="dsChangeFile(this.value)">
           ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
@@ -6211,6 +6228,9 @@ function runPendingConfirm() {
        СИСТЕМА КВЕСТОВ (РАНДОМ)
        ========================================================= */
     function startQuest(val) {
+      if (!state.gamesConfig) {
+        await loadGamesConfig(); // Ждем загрузки
+      }
       if (isNaN(val) || val <= 0) { showToast('Введи положительное число', 'error'); return; }
       const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
       if (currentSum + val > 1500) { showToast('Перебор! Сумма не должна превышать 1500', 'error'); return; }
@@ -6261,7 +6281,7 @@ function runPendingConfirm() {
       document.getElementById('quest-body').innerHTML = html;
 
       // Таймер на 4 секунды
-      let mathTimer = setTimeout(() => { triggerFailVisual(); }, 4000);
+	let mathTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.math_time);
 
       window.mathPress = (val) => {
         if (val === 'del') input = input.slice(0, -1);
@@ -6284,7 +6304,7 @@ function runPendingConfirm() {
       document.getElementById('quest-title').innerText = 'Перегрузка системы';
       let clicks = 0;
       const target = 15;
-      let timeLeft = 2.0; // Было 3, стало 2
+     let timeLeft = state.gamesConfig.spam_time / 1000;
       let timer = null;
 
       let html = `
@@ -6354,7 +6374,7 @@ function runPendingConfirm() {
           document.getElementById('simon-status').innerText = 'Твой ход! (3 сек)';
           document.getElementById('simon-status').style.color = 'var(--accent-color)';
           // Таймер на ответ (3 секунды)
-          simonTimer = setTimeout(() => { triggerFailVisual(); }, 3000);
+          simonTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.simon_time);
           return;
         }
         const idx = sequence[i];
@@ -6384,7 +6404,7 @@ function runPendingConfirm() {
       document.getElementById('quest-body').innerHTML = html;
 
       // Таймер на 8 секунд
-      let memTimer = setTimeout(() => { triggerFailVisual(); }, 8000);
+      let memTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.memory_time);
 
       window.memClick = (idx) => {
         if (lock) return;
@@ -6423,26 +6443,30 @@ function runPendingConfirm() {
       let tempPath = null;
 
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Протяни провода (у тебя 5 сек!)</p>
-        <div id="wire-game" style="display: flex; justify-content: space-between; position: relative; padding: 20px 40px; background: #111; border-radius: 12px; border: 1px solid #333; margin-top: 15px; touch-action: none;">
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px; user-select: none;">Протяни провода (времени: ${state.gamesConfig.wire_time / 1000} сек)</p>
+        <div id="wire-game" style="display: flex; justify-content: space-between; position: relative; padding: 20px 40px; background: #111; border-radius: 12px; border: 1px solid #333; margin-top: 15px; touch-action: none; user-select: none;">
           <svg id="wire-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
           <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
-            ${leftColors.map(c => `<div class="wire-node" data-color="${c}" data-side="left" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
+            ${leftColors.map(c => `<div class="wire-node" draggable="false" data-color="${c}" data-side="left" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
           </div>
           <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
-            ${rightColors.map(c => `<div class="wire-node" data-color="${c}" data-side="right" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
+            ${rightColors.map(c => `<div class="wire-node" draggable="false" data-color="${c}" data-side="right" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
           </div>
         </div>
       `;
       document.getElementById('quest-body').innerHTML = html;
 
-      // Таймер на 5 секунд
-      let wireTimer = setTimeout(() => { triggerFailVisual(); }, 5000);
+      // Таймер из конфига
+      let wireTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.wire_time);
 
       const svg = document.getElementById('wire-svg');
       const game = document.getElementById('wire-game');
 
+      // Отключаем стандартное поведение браузера при перетаскивании
+      game.addEventListener('dragstart', e => e.preventDefault());
+
       game.onpointerdown = (e) => {
+        e.preventDefault(); // ОЧЕНЬ ВАЖНО: запрещает браузеру тянуть картинки/ссылки
         const node = e.target.closest('.wire-node');
         if (!node || node.classList.contains('connected')) return;
         activeNode = node;
