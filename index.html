@@ -47,6 +47,37 @@
       min-height: 100vh;
     }
 
+	  /* Широкая модалка для дуэлей */
+.modal-window.duels-wide { max-width: 850px !important; }
+
+/* Сетка предметов (делаем чуть крупнее) */
+.duels-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+
+/* Кнопки диапазонов графиков */
+.duels-range-btns {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.duels-range-btns button {
+  flex: 1;
+  padding: 6px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.duels-range-btns button:hover { background: var(--card-hover); color: var(--text-main); }
+.duels-range-btns button.active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
     @keyframes bgShift {
       0%   { background-position: 0% 50%, 100% 50%; }
       50%  { background-position: 100% 50%, 0% 50%; }
@@ -3319,6 +3350,21 @@
       return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
+    /* ---------- ПАРСЕР ВРЕМЕНИ ---------- */
+    function parseAgoTime(whenStr) {
+      if (!whenStr) return 0;
+      const lower = String(whenStr).toLowerCase();
+      const num = parseInt(lower) || 1;
+      if (lower.includes('sec') || lower.includes('just')) return 0;
+      if (lower.includes('min')) return num;
+      if (lower.includes('hour')) return num * 60;
+      if (lower.includes('day')) return num * 1440;
+      if (lower.includes('week')) return num * 10080;
+      if (lower.includes('month')) return num * 43200;
+      if (lower.includes('year')) return num * 525600;
+      return 0;
+    }
+
     /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
     async function openDuelItemModal(id) {
       const item = getDuelItemById(id);
@@ -3326,6 +3372,9 @@
       const itemId = getDuelItemId(item);
       const name = item.name || itemId;
       const img = item.image || item.icon || '';
+
+      // Сброс диапазона при открытии
+      state.duelsChartRange = 30; 
 
       const bodyHtml = `
         <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
@@ -3343,48 +3392,99 @@
           <button class="duels-modal-tab" id="duels-tab-deals" onclick="duelsShowChart('deals')">Сделки</button>
         </div>
 
+        <div class="duels-range-btns">
+          <button onclick="setDuelsRange(1)" id="duels-range-1">24 часа</button>
+          <button onclick="setDuelsRange(7)" id="duels-range-7">7 дней</button>
+          <button onclick="setDuelsRange(30)" id="duels-range-30" class="active">30 дней</button>
+          <button onclick="setDuelsRange(0)" id="duels-range-0">Всё время</button>
+        </div>
+
         <div class="duels-modal-chart">
           <canvas id="duels-chart-canvas" data-item-id="${escapeHtml(itemId)}" data-mode="price"></canvas>
         </div>
 
         <div>
-          <div class="sub-text" style="font-size: 12px; margin-bottom: 8px;">Последние сделки</div>
+          <div class="sub-text" style="font-size: 12px; margin-bottom: 8px;">История сделок</div>
           <div id="duels-history-list" class="duels-trade-list">
             <div class="empty-state" style="padding: 20px;">Загрузка истории...</div>
           </div>
         </div>
       `;
 
-      openModal(name, bodyHtml, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`);
+      // Передаем true, чтобы модалка стала широкой
+      openModal(name, bodyHtml, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
 
       let history = state.duelsHistoryCache[itemId];
+      
       if (!history) {
         try {
           const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev/item/' + encodeURIComponent(itemId));
           if (!res.ok) throw new Error('HTTP ' + res.status);
-          history = await res.json();
+          const json = await res.json();
+          
+          // Устойчивый парсинг: может прийти массив или объект { sales: [...] }
+          let rawSales = Array.isArray(json) ? json : (json.sales || []);
+          
+          // Парсим время в минуты для сортировки
+          rawSales = rawSales.map(s => ({
+            ...s,
+            _mins: parseAgoTime(s.when || s.time)
+          }));
+          
+          // Сортируем от старых к новым (для графика)
+          rawSales.sort((a, b) => b._mins - a._mins);
+          
+          history = { sales: rawSales };
           state.duelsHistoryCache[itemId] = history;
         } catch (e) {
           const listEl = document.getElementById('duels-history-list');
           if (listEl) listEl.innerHTML = `<div class="empty-state" style="color: var(--status-banned); padding: 12px; font-size: 13px;">Не удалось загрузить историю: ${escapeHtml(e.message)}</div>`;
-          drawDuelsChart(itemId, { sales: [] }, 'price');
           return;
         }
       }
 
-      drawDuelsChart(itemId, history, 'price');
+      // Таймаут нужен, чтобы Chart.js увидел размеры открывшейся модалки
+      setTimeout(() => {
+        drawDuelsChart(itemId, history, 'price');
+      }, 50);
+      
+      renderDuelsHistoryList(history);
+    }
+
+    function setDuelsRange(days) {
+      state.duelsChartRange = days;
+      document.querySelectorAll('.duels-range-btns button').forEach(b => b.classList.remove('active'));
+      document.getElementById(`duels-range-${days}`)?.classList.add('active');
+      
+      const canvas = document.getElementById('duels-chart-canvas');
+      if (!canvas) return;
+      const itemId = canvas.dataset.itemId;
+      const mode = canvas.dataset.mode || 'price';
+      const history = state.duelsHistoryCache[itemId] || { sales: [] };
+      
+      drawDuelsChart(itemId, history, mode);
       renderDuelsHistoryList(history);
     }
 
     function renderDuelsHistoryList(history) {
-      const sales = (history.sales || []).slice(0, 30);
       const listEl = document.getElementById('duels-history-list');
       if (!listEl) return;
-      if (!sales.length) {
-        listEl.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 13px;">Нет сделок</div>';
+
+      let sales = (history.sales || []);
+      
+      // Фильтрация по выбранному диапазону
+      if (state.duelsChartRange > 0) {
+        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+      }
+
+      // Для списка выводим новые сверху
+      const displaySales = [...sales].reverse().slice(0, 40);
+
+      if (!displaySales.length) {
+        listEl.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 13px;">Нет сделок за этот период</div>';
         return;
       }
-      listEl.innerHTML = sales.map(s => `
+      listEl.innerHTML = displaySales.map(s => `
         <div class="duels-trade-row">
           <span class="duels-trade-price">${formatCoins(s.price)}</span>
           <span class="duels-trade-when">${escapeHtml(s.when || s.time || '')}</span>
@@ -3399,7 +3499,13 @@
       const canvas = document.getElementById('duels-chart-canvas');
       if (!canvas || typeof Chart === 'undefined') return;
 
-      const sales = (history.sales || []).slice().reverse();
+      let sales = (history.sales || []);
+      
+      // Фильтрация по диапазону
+      if (state.duelsChartRange > 0) {
+        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+      }
+
       let labels, data, label, type, bgColor;
 
       if (mode === 'price') {
@@ -3409,6 +3515,7 @@
         type = 'line';
         bgColor = 'rgba(88,101,242,0.15)';
       } else {
+        // Группировка по времени для bar chart
         const counts = {};
         sales.forEach(s => {
           const key = s.when || 'неизвестно';
@@ -3440,8 +3547,14 @@
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            x: { 
+              ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, 
+              grid: { color: 'rgba(255,255,255,0.05)' } 
+            },
+            y: { 
+              ticks: { color: '#a0a0a0' }, 
+              grid: { color: 'rgba(255,255,255,0.05)' } 
+            }
           }
         }
       });
@@ -3561,7 +3674,7 @@
         </div>
       `;
       window._duelsAddAvailable = available;
-      openModal('Добавить в хотелки', html, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`);
+      openModal('Добавить в хотелки', html, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
     }
 
     function duelsFilterAddMenu(q) {
@@ -3730,7 +3843,7 @@
       `;
       window._duelsSlotAvailable = available;
       window._duelsSlotIdx = slotIdx;
-      openModal('Выбор предмета', html, `<button class="btn-refresh" onclick="closeModal()">Отмена</button>`);
+      openModal('Выбор предмета', html, `<button class="btn-refresh" onclick="closeModal()">Отмена</button>`, true);
     }
 
     function duelsFilterSlotPicker(q) {
@@ -4222,7 +4335,8 @@
       duelsSubtab: 'prices',
       duelsEditMode: false,
       duelsSearch: '',
-      duelsHistoryCache: {}
+      duelsHistoryCache: {},
+	  duelsChartRange: 30 // По умолчанию 30 дней
     };
 
     const GEMINI_WORKER = "https://gemini-proxy.kmaxim242.workers.dev";
@@ -9599,12 +9713,20 @@ function runPendingConfirm() {
     const modalActions = document.getElementById('modal-actions');
     const modalCloseBtn = document.getElementById('modal-close-btn');
 
-    function openModal(title, content, actionsHtml) {
-      modalTitle.textContent = title;
-      modalContent.innerHTML = content;
-      modalActions.innerHTML = actionsHtml;
-      modal.classList.add('active');
-    }
+function openModal(title, content, actionsHtml, isWide = false) {
+  modalTitle.textContent = title;
+  modalContent.innerHTML = content;
+  modalActions.innerHTML = actionsHtml;
+  
+  const win = modal.querySelector('.modal-window');
+  if (isWide) {
+    win.classList.add('duels-wide');
+  } else {
+    win.classList.remove('duels-wide');
+  }
+  
+  modal.classList.add('active');
+}
 
     function closeModal() {
       modal.classList.remove('active');
