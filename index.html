@@ -3365,6 +3365,38 @@
       return 0;
     }
 
+	      function parseSvgChart(svgString) {
+      if (!svgString) return [];
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, 'image/svg+xml');
+      
+      const yLabels = Array.from(doc.querySelectorAll('.vgraph-ylabel')).map(el => ({
+        y: parseFloat(el.getAttribute('y')),
+        val: parseFloat(el.textContent.replace(/[^\d.]/g, '')) * (el.textContent.includes('K') ? 1000 : 1)
+      }));
+      
+      const dots = Array.from(doc.querySelectorAll('.vgraph-dot')).map(el => ({
+        cx: parseFloat(el.getAttribute('cx')),
+        cy: parseFloat(el.getAttribute('cy'))
+      }));
+
+      if (!dots.length || yLabels.length < 2) return [];
+
+      yLabels.sort((a, b) => a.y - b.y); // Сортируем сверху вниз
+      const topLabel = yLabels[0];
+      const bottomLabel = yLabels[yLabels.length - 1];
+
+      const getPrice = (cy) => {
+        const ratio = (cy - topLabel.y) / (bottomLabel.y - topLabel.y);
+        return bottomLabel.val + ratio * (topLabel.val - bottomLabel.val);
+      };
+
+      return dots.map((dot, index) => ({
+        price: Math.round(getPrice(dot.cy)),
+        label: index === 0 ? 'Начало' : (index === dots.length - 1 ? 'Сейчас' : '')
+      }));
+    }
+
     /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
     async function openDuelItemModal(id) {
       const item = getDuelItemById(id);
@@ -3422,19 +3454,14 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const json = await res.json();
           
-          // Устойчивый парсинг: может прийти массив или объект { sales: [...] }
           let rawSales = Array.isArray(json) ? json : (json.sales || []);
-          
-          // Парсим время в минуты для сортировки
-          rawSales = rawSales.map(s => ({
-            ...s,
-            _mins: parseAgoTime(s.when || s.time)
-          }));
-          
-          // Сортируем от старых к новым (для графика)
+          rawSales = rawSales.map(s => ({ ...s, _mins: parseAgoTime(s.when || s.time) }));
           rawSales.sort((a, b) => b._mins - a._mins);
           
-          history = { sales: rawSales };
+          // Парсим график Value из SVG
+          const chart = json.chartSvg ? parseSvgChart(json.chartSvg) : [];
+          
+          history = { sales: rawSales, chart };
           state.duelsHistoryCache[itemId] = history;
         } catch (e) {
           const listEl = document.getElementById('duels-history-list');
@@ -3496,169 +3523,78 @@
       duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
       duelsCharts.length = 0;
 
-      const canvas = document.getElementById('duels-chart-canvas');
-      if (!canvas || typeof Chart === 'undefined') return;
-
-      let sales = (history.sales || []);
-      
-      // Фильтрация по диапазону
-      if (state.duelsChartRange > 0) {
-        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
-      }
-
-      let labels, data, label, type, bgColor;
-
-      if (mode === 'price') {
-        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
-        data = sales.map(s => Number(s.price) || 0);
-        label = 'Цена сделки';
-        type = 'line';
-        bgColor = 'rgba(88,101,242,0.15)';
-      } else {
-        // Группировка по времени для bar chart
-        const counts = {};
-        sales.forEach(s => {
-          const key = s.when || 'неизвестно';
-          counts[key] = (counts[key] || 0) + 1;
-        });
-        labels = Object.keys(counts);
-        data = Object.values(counts);
-        label = 'Сделок';
-        type = 'bar';
-        bgColor = 'rgba(88,101,242,0.6)';
-      }
-
-      const chart = new Chart(canvas, {
-        type,
-        data: {
-          labels,
-          datasets: [{
-            label,
-            data,
-            borderColor: '#5865F2',
-            backgroundColor: bgColor,
-            tension: 0.3,
-            fill: mode === 'price',
-            pointRadius: 3
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { 
-              ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, 
-              grid: { color: 'rgba(255,255,255,0.05)' } 
-            },
-            y: { 
-              ticks: { color: '#a0a0a0' }, 
-              grid: { color: 'rgba(255,255,255,0.05)' } 
-            }
-          }
-        }
-      });
-      duelsCharts.push(chart);
-
-      canvas.dataset.mode = mode;
-      document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
-      document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
-    }
-
-    function drawDuelsChart(itemId, history, mode) {
-      duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
-      duelsCharts.length = 0;
-
       const container = document.querySelector('.duels-modal-chart');
       if (!container || typeof Chart === 'undefined') return;
 
-      let sales = (history.sales || []);
-      
-      // Фильтрация по выбранному диапазону
-      if (state.duelsChartRange > 0) {
-        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
-      }
+      let labels, data, label, type, bgColor, borderColor, tension, fill, pointRadius, borderRadius;
 
-      // Берем последние 50 сделок для графика, чтобы столбцы не слипались
-      if (sales.length > 50) {
-        sales = sales.slice(-50);
-      }
-
-      // Если данных нет — показываем заглушку
-      if (sales.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
-        return;
-      }
-
-      // Если данные есть, но canvas был удален заглушкой — восстанавливаем его
-      if (!container.querySelector('canvas')) {
-        container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
-      }
-      const canvas = container.querySelector('canvas');
-
-      let labels, data, label, type, bgColor, borderColor;
+      // Скрываем фильтры диапазонов для графика "Value", т.к. он исторический
+      const rangeBtns = document.querySelector('.duels-range-btns');
+      if (rangeBtns) rangeBtns.style.display = mode === 'price' ? 'none' : 'flex';
 
       if (mode === 'price') {
-        // Динамика цены (плавная линия)
-        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
-        data = sales.map(s => Number(s.price) || 0);
-        label = 'Динамика цены';
+        const chartData = history.chart || [];
+        if (chartData.length === 0) {
+          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет данных об истории цены</div>';
+          return;
+        }
+        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        
+        const canvas = container.querySelector('canvas');
+        labels = chartData.map((s, i) => s.label || '#' + (i + 1));
+        data = chartData.map(s => s.price);
+        label = 'История цены (Value)';
         type = 'line';
-        bgColor = 'rgba(88,101,242,0.15)'; // Синий
-        borderColor = '#5865F2';
+        bgColor = 'rgba(241, 196, 15, 0.15)'; // Золотой
+        borderColor = '#f1c40f';
+        tension = 0.3; fill = true; pointRadius = 4;
+
+        const chart = new Chart(canvas, {
+          type, data: { labels, datasets: [{ label, data, borderColor, backgroundColor: bgColor, tension, fill, pointRadius }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Value: ${ctx.parsed.y.toLocaleString()} монет` } } },
+            scales: {
+              x: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+          }
+        });
+        duelsCharts.push(chart);
       } else {
-        // Динамика цен сделок (столбцы)
+        let sales = (history.sales || []);
+        if (state.duelsChartRange > 0) sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+        if (sales.length > 50) sales = sales.slice(-50);
+
+        if (sales.length === 0) {
+          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
+          return;
+        }
+        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+
+        const canvas = container.querySelector('canvas');
         labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
         data = sales.map(s => Number(s.price) || 0);
         label = 'Цена сделки';
         type = 'bar';
         bgColor = 'rgba(67, 181, 129, 0.6)'; // Зеленый
         borderColor = '#43b581';
-      }
+        borderRadius = 4;
 
-      const chart = new Chart(canvas, {
-        type,
-        data: {
-          labels,
-          datasets: [{
-            label,
-            data,
-            borderColor: borderColor,
-            backgroundColor: bgColor,
-            tension: 0.3, // Плавность линии
-            fill: mode === 'price', // Заливка только под линией
-            pointRadius: mode === 'price' ? 3 : 0, // Точки только на линии
-            borderRadius: mode === 'deals' ? 4 : 0 // Закругление столбцов
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { 
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `Цена: ${context.parsed.y.toLocaleString()} монет`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { 
-              ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, 
-              grid: { color: 'rgba(255,255,255,0.05)' } 
-            },
-            y: { 
-              ticks: { color: '#a0a0a0' }, 
-              grid: { color: 'rgba(255,255,255,0.05)' } 
+        const chart = new Chart(canvas, {
+          type, data: { labels, datasets: [{ label, data, borderColor, backgroundColor: bgColor, borderRadius }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Цена: ${ctx.parsed.y.toLocaleString()} монет` } } },
+            scales: {
+              x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
             }
           }
-        }
-      });
-      duelsCharts.push(chart);
+        });
+        duelsCharts.push(chart);
+      }
 
-      canvas.dataset.mode = mode;
       document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
       document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
     }
