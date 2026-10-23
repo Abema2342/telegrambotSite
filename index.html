@@ -3535,74 +3535,57 @@
       const container = document.querySelector('.duels-modal-chart');
       if (!container || typeof Chart === 'undefined') return;
 
-      let labels, data, label, type, bgColor, borderColor, tension, fill, pointRadius, borderRadius;
-
-      // Скрываем фильтры диапазонов для графика "Value", т.к. он исторический
-      const rangeBtns = document.querySelector('.duels-range-btns');
-      if (rangeBtns) rangeBtns.style.display = mode === 'price' ? 'none' : 'flex';
-
-      if (mode === 'price') {
-        const chartData = history.chart || [];
-        if (chartData.length === 0) {
-          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет данных об истории цены</div>';
-          return;
-        }
-        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
-        
-        const canvas = container.querySelector('canvas');
-        labels = chartData.map((s, i) => s.label || '#' + (i + 1));
-        data = chartData.map(s => s.price);
-        label = 'История цены (Value)';
-        type = 'line';
-        bgColor = 'rgba(241, 196, 15, 0.15)'; // Золотой
-        borderColor = '#f1c40f';
-        tension = 0.3; fill = true; pointRadius = 4;
-
-        const chart = new Chart(canvas, {
-          type, data: { labels, datasets: [{ label, data, borderColor, backgroundColor: bgColor, tension, fill, pointRadius }] },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Value: ${ctx.parsed.y.toLocaleString()} монет` } } },
-            scales: {
-              x: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-            }
-          }
-        });
-        duelsCharts.push(chart);
-      } else {
-        let sales = (history.sales || []);
-        if (state.duelsChartRange > 0) sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
-        if (sales.length > 50) sales = sales.slice(-50);
-
-        if (sales.length === 0) {
-          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
-          return;
-        }
-        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
-
-        const canvas = container.querySelector('canvas');
-        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
-        data = sales.map(s => Number(s.price) || 0);
-        label = 'Цена сделки';
-        type = 'bar';
-        bgColor = 'rgba(67, 181, 129, 0.6)'; // Зеленый
-        borderColor = '#43b581';
-        borderRadius = 4;
-
-        const chart = new Chart(canvas, {
-          type, data: { labels, datasets: [{ label, data, borderColor, backgroundColor: bgColor, borderRadius }] },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Цена: ${ctx.parsed.y.toLocaleString()} монет` } } },
-            scales: {
-              x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
-              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-            }
-          }
-        });
-        duelsCharts.push(chart);
+      let sales = (history.sales || []);
+      
+      // Фильтрация по выбранному диапазону
+      if (state.duelsChartRange > 0) {
+        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
       }
+      if (sales.length > 50) sales = sales.slice(-50); // Берем последние 50
+
+      if (sales.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
+        return;
+      }
+
+      if (!container.querySelector('canvas')) {
+        container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+      }
+      const canvas = container.querySelector('canvas');
+
+      const isPrice = mode === 'price';
+      
+      const labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
+      const data = sales.map(s => Number(s.price) || 0);
+
+      const chart = new Chart(canvas, {
+        type: isPrice ? 'line' : 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: isPrice ? 'Динамика цены' : 'Цена сделки',
+            data,
+            borderColor: isPrice ? '#5865F2' : '#43b581',
+            backgroundColor: isPrice ? 'rgba(88,101,242,0.15)' : 'rgba(67, 181, 129, 0.6)',
+            tension: 0.3,
+            fill: isPrice,
+            pointRadius: isPrice ? 3 : 0,
+            borderRadius: isPrice ? 0 : 4
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { 
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => `Цена: ${ctx.parsed.y.toLocaleString()} монет` } }
+          },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+      duelsCharts.push(chart);
 
       document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
       document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
