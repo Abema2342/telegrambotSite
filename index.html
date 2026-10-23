@@ -7465,9 +7465,19 @@ function runPendingConfirm() {
           ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
           ctx.closePath();
 
-          let grad = ctx.createLinearGradient(0, 0, 0, b.r);
-          grad.addColorStop(0, '#ff4b4b');
-          grad.addColorStop(1, '#b30000');
+          // Переливающийся цвет в зависимости от номинала и времени
+          const time = Date.now() / 1000;
+          // Сдвигаем цвет на 35 градусов для каждого удвоения (1, 2, 4, 8...)
+          // И добавляем плавную пульсацию (Math.sin), чтобы шарики "переливались"
+          const baseHue = (Math.log2(b.value || 1) * 35);
+          const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
+          
+          // Радиальный градиент (создает объемный 3D-эффект)
+          let grad = ctx.createRadialGradient(-b.r * 0.2, -b.r * 0.2, b.r * 0.1, 0, 0, b.r);
+          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`); // Светлый блик
+          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`); // Основной цвет
+          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`); // Темная тень
+          
           ctx.fillStyle = grad;
           ctx.fill();
           
