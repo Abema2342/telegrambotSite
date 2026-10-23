@@ -3541,26 +3541,33 @@
           container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет данных об истории цены</div>';
           return;
         }
-        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        
+        if (!container.querySelector('canvas')) {
+          container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        }
         
         const canvas = container.querySelector('canvas');
         const labels = chartData.map(p => p.xlabel || p.label);
         const data = chartData.map(p => p.v);
-        const tooltips = chartData.map(p => p.label); // Полные даты для тултипа
+        const tooltips = chartData.map(p => p.label);
 
         const chart = new Chart(canvas, {
           type: 'line',
           data: { 
             labels, 
             datasets: [{ 
-              label: 'История цены (Value)', 
+              label: 'Цена (Value)', 
               data, 
               borderColor: '#f1c40f', 
               backgroundColor: 'rgba(241, 196, 15, 0.15)', 
-              tension: 0.3, 
+              borderWidth: 2,
+              tension: 0.1, 
               fill: true, 
               pointRadius: 4,
-              pointBackgroundColor: '#f1c40f'
+              pointBackgroundColor: '#f1c40f',
+              pointBorderColor: '#111',
+              pointBorderWidth: 2,
+              pointHoverRadius: 6
             }] 
           },
           options: {
@@ -3568,6 +3575,12 @@
             plugins: { 
               legend: { display: false }, 
               tooltip: { 
+                backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#f1c40f',
+                borderColor: '#2a2a2a',
+                borderWidth: 1,
+                padding: 10,
                 callbacks: { 
                   label: (ctx) => `Value: ${ctx.parsed.y.toLocaleString()} монет`,
                   title: (ctx) => tooltips[ctx[0].dataIndex]
@@ -3575,7 +3588,7 @@
               } 
             },
             scales: {
-              x: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              x: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { display: false } },
               y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
             }
           }
@@ -3590,7 +3603,10 @@
           container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
           return;
         }
-        if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        
+        if (!container.querySelector('canvas')) {
+          container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        }
 
         const canvas = container.querySelector('canvas');
         const labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
