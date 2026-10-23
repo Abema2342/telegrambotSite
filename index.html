@@ -3400,9 +3400,12 @@
     /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
     async function openDuelItemModal(id) {
       const item = getDuelItemById(id);
-      state.currentDuelsItemId = itemId;
       if (!item) { showToast('Предмет не найден', 'error'); return; }
+      
+      // 1. Сначала получаем ID
       const itemId = getDuelItemId(item);
+      state.currentDuelsItemId = itemId;
+      
       const name = item.name || itemId;
       const img = item.image || item.icon || '';
 
@@ -3433,7 +3436,7 @@
         </div>
 
         <div class="duels-modal-chart">
-          <canvas id="duels-chart-canvas" data-item-id="${escapeHtml(itemId)}" data-mode="price"></canvas>
+          <canvas id="duels-chart-canvas"></canvas>
         </div>
 
         <div>
@@ -3444,7 +3447,6 @@
         </div>
       `;
 
-      // Передаем true, чтобы модалка стала широкой
       openModal(name, bodyHtml, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
 
       let history = state.duelsHistoryCache[itemId];
