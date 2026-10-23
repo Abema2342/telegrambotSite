@@ -7115,16 +7115,17 @@ function runPendingConfirm() {
         return [0, JAR_WIDTH];
       }
     }
-
     function renderGame() {
-      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
-      const isFull = currentSum === 1500;
-      const isOver = currentSum > 1500;
+      const jar = state.jars[state.activeJarIndex];
+      if (!jar) return;
 
-      const historyHtml = [...state.gameBalls].reverse().map(b => `
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      const isFull = currentSum === jar.target;
+      const isOver = currentSum > jar.target;
+
+      const historyHtml = [...jar.balls].reverse().map(b => `
         <div class="game-history-item">
           <span>+${b.value}</span>
-          <button onclick="removeGameNumber(${b.id})" title="Удалить">×</button>
         </div>
       `).join('');
 
@@ -7132,37 +7133,41 @@ function runPendingConfirm() {
         <div class="game-layout">
           <div class="game-jar-container">
             <div class="card" style="width: 100%; max-width: 520px;">
-              <div class="card-header">
-                <span class="card-title">Банка (Цель: 1500)</span>
+              
+              <!-- Шапка с переключением банок -->
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn-refresh" onclick="switchJar(-1)">←</button>
+                <div style="text-align: center;">
+                  <input type="text" value="${escapeHtml(jar.name)}" onchange="updateJarName(this.value)" style="background: transparent; border: none; color: var(--text-main); font-size: 16px; font-weight: 600; text-align: center; outline: none; width: 150px;">
+                  <div class="sub-text" style="font-size: 12px;">Цель: <input type="number" value="${jar.target}" onchange="updateJarTarget(this.value)" style="width: 60px; background: transparent; border: none; color: var(--text-secondary); outline: none; border-bottom: 1px dashed #555;"></div>
+                </div>
+                <button class="btn-refresh" onclick="switchJar(1)">→</button>
               </div>
+              <div style="text-align: center; padding-bottom: 8px;">
+                <button class="btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="addNewJar()">+ Новая банка</button>
+              </div>
+
               <div class="game-jar-visual">
                 <canvas id="game-canvas"></canvas>
               </div>
-			  <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+              <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
                 Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})
               </div>
               <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
-                Сумма: <span>${currentSum}</span> / 1500
+                Сумма: <span>${currentSum}</span> / ${jar.target}
               </div>
             </div>
             
             <div class="game-input-area">
-              <input 
-                type="number" 
-                id="game-input" 
-                placeholder="Введи число..." 
-                value="${state.gameInput}"
-                oninput="state.gameInput = this.value"
-                onkeydown="if(event.key==='Enter') addGameNumber()"
-              >
+              <input type="number" id="game-input" placeholder="Сколько шариков добавить?" value="1" min="1">
               <button onclick="addGameNumber()">Добавить</button>
             </div>
             
-            <div class="game-quick-btns">
+            <div class="game-quick-btns" style="margin-top: 8px;">
               <button onclick="quickAddGameNumber(1)">+1</button>
-              <button onclick="quickAddGameNumber(2)">+2</button>
               <button onclick="quickAddGameNumber(5)">+5</button>
               <button onclick="quickAddGameNumber(10)">+10</button>
+              <button onclick="shakeJar()" style="color: var(--accent-color); border-color: var(--accent-color);">Встряхнуть</button>
             </div>
           </div>
 
@@ -7180,8 +7185,41 @@ function runPendingConfirm() {
       `;
 
       initGameCanvas();
-      const input = document.getElementById('game-input');
-      if (input) input.focus();
+    }
+
+    function switchJar(dir) {
+      state.activeJarIndex += dir;
+      if (state.activeJarIndex < 0) state.activeJarIndex = state.jars.length - 1;
+      if (state.activeJarIndex >= state.jars.length) state.activeJarIndex = 0;
+      saveGameState();
+      renderGame();
+    }
+
+    function addNewJar() {
+      const id = Date.now();
+      state.jars.push({ id, name: 'Новая банка', target: 2500, balls: [] });
+      state.activeJarIndex = state.jars.length - 1;
+      saveGameState();
+      renderGame();
+    }
+
+    function updateJarName(val) {
+      state.jars[state.activeJarIndex].name = val.trim() || 'Без названия';
+      saveGameState();
+    }
+
+    function updateJarTarget(val) {
+      state.jars[state.activeJarIndex].target = parseInt(val) || 2500;
+      saveGameState();
+      renderGame();
+    }
+
+    function shakeJar() {
+      const jar = state.jars[state.activeJarIndex];
+      jar.balls.forEach(b => {
+        b.vx += (Math.random() - 0.5) * 25;
+        b.vy += (Math.random() - 0.5) * 25 - 10; // Подкидываем вверх
+      });
     }
 
     function initGameCanvas() {
@@ -7191,18 +7229,18 @@ function runPendingConfirm() {
       canvas.width = JAR_WIDTH;
       canvas.height = JAR_HEIGHT;
       const ctx = canvas.getContext('2d');
-
-      // Розовый фон для банки
       canvas.style.background = 'linear-gradient(to bottom, rgba(255, 182, 193, 0.05), rgba(255, 105, 180, 0.1))';
 
-      state.gameBalls.forEach(b => {
+      const jar = state.jars[state.activeJarIndex];
+
+      jar.balls.forEach(b => {
         if (b.x === undefined) {
           b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
           b.y = -Math.random() * 200;
           b.vx = (Math.random() - 0.5) * 4;
           b.vy = Math.random() * 2;
-          b.r = Math.max(18, Math.min(38, 18 + b.value * 0.15)); 
-          b.mass = Math.max(18, Math.min(38, 18 + b.value * 0.15)) ** 2;
+          b.r = Math.max(18, Math.min(40, 18 + Math.log2(b.value || 1) * 5)); 
+          b.mass = b.r ** 2;
         }
       });
 
@@ -7210,41 +7248,55 @@ function runPendingConfirm() {
 
       function update() {
         if (state.currentTab !== 'game') return;
-
         ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
 
-        // 1. Гравитация и движение
-        for (let b of state.gameBalls) {
+        // 1. Движение
+        for (let b of jar.balls) {
           b.vy += GAME_GRAVITY;
           b.vx *= GAME_FRICTION;
           b.vy *= GAME_FRICTION;
-          if (b.vx > 15) b.vx = 15; if (b.vx < -15) b.vx = -15;
-          if (b.vy > 15) b.vy = 15; if (b.vy < -15) b.vy = -15;
+          if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
+          if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
           b.x += b.vx;
           b.y += b.vy;
         }
 
-        // 2. Разрешаем столкновения
-        for (let iter = 0; iter < 6; iter++) {
-          for (let i = 0; i < state.gameBalls.length; i++) {
-            let b = state.gameBalls[i];
+        // 2. Столкновения и СЛИЯНИЕ
+        for (let iter = 0; iter < 4; iter++) {
+          for (let i = 0; i < jar.balls.length; i++) {
+            let b = jar.balls[i];
+            if (b.isDead) continue;
+
             let [leftWall, rightWall] = getJarBounds(b.y);
             if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
             if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
-            
             if (b.y + b.r > JAR_HEIGHT) { 
               b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
               if (Math.abs(b.vy) < 0.5) b.vy = 0; 
             }
 
-            for (let j = i + 1; j < state.gameBalls.length; j++) {
-              let b2 = state.gameBalls[j];
+            for (let j = i + 1; j < jar.balls.length; j++) {
+              let b2 = jar.balls[j];
+              if (b2.isDead) continue;
+
               let dx = b2.x - b.x;
               let dy = b2.y - b.y;
               let dist = Math.sqrt(dx * dx + dy * dy);
               let minDist = b.r + b2.r;
 
               if (dist < minDist) {
+                // ЛОГИКА СЛИЯНИЯ (1+1=2)
+                if (b.value === b2.value && b.value < 2048) {
+                  b2.value *= 2;
+                  b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
+                  b2.mass = b2.r ** 2;
+                  b2.vx += b.vx * 0.5;
+                  b2.vy += b.vy * 0.5;
+                  b.isDead = true; // Удаляем первый шарик
+                  break; // Выходим из цикла j для этого i
+                } 
+                
+                // Если это разные шарики — обычное физическое столкновение
                 let nx, ny;
                 if (dist === 0) {
                   let angle = Math.random() * Math.PI * 2;
@@ -7264,7 +7316,13 @@ function runPendingConfirm() {
           }
         }
 
-        // 3. Отрисовка банки
+        // Очистка "мертвых" шариков
+        if (jar.balls.some(b => b.isDead)) {
+          jar.balls = jar.balls.filter(b => !b.isDead);
+          saveGameState();
+        }
+
+        // 3. Отрисовка банки (без изменений)
         ctx.strokeStyle = 'rgba(255, 105, 180, 0.3)';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -7279,18 +7337,8 @@ function runPendingConfirm() {
         ctx.lineTo(RIGHT_NECK, 0);
         ctx.stroke();
 
-        // Резьба
-        ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-            let y = 12 + i * 14;
-            ctx.moveTo(LEFT_NECK - 3, y); ctx.lineTo(RIGHT_NECK + 3, y);
-        }
-        ctx.stroke();
-
-        // 4. Отрисовка СЕРДЕЧЕК
-        for (let b of state.gameBalls) {
+        // 4. Отрисовка шариков
+        for (let b of jar.balls) {
           ctx.save();
           ctx.translate(b.x, b.y);
           
@@ -7303,7 +7351,6 @@ function runPendingConfirm() {
           ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
           ctx.closePath();
 
-          // Градиент для сердца
           let grad = ctx.createLinearGradient(0, 0, 0, b.r);
           grad.addColorStop(0, '#ff4b4b');
           grad.addColorStop(1, '#b30000');
@@ -7314,12 +7361,11 @@ function runPendingConfirm() {
           ctx.strokeStyle = 'rgba(0,0,0,0.4)';
           ctx.stroke();
 
-          // Текст
           ctx.fillStyle = '#fff';
           ctx.font = `bold ${Math.floor(b.r * 0.7)}px sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(b.value, 0, b.r * 0.3); // Чуть ниже центра, чтобы влезло в сердце
+          ctx.fillText(b.value, 0, b.r * 0.3);
           
           ctx.restore();
         }
@@ -7327,6 +7373,19 @@ function runPendingConfirm() {
         gamePhysicsLoop = requestAnimationFrame(update);
       }
       update();
+    }
+
+    function addGameNumber() {
+      const inputEl = document.getElementById('game-input');
+      if (!inputEl) return;
+      const count = parseInt(inputEl.value, 10);
+      if (isNaN(count) || count <= 0) return;
+      startQuest(count); // Передаем КОЛИЧЕСТВО шариков
+      inputEl.value = '1'; // Сбрасываем на 1
+    }
+
+    function quickAddGameNumber(count) {
+      startQuest(count);
     }
 
     function getBallColor(val) {
@@ -7353,9 +7412,9 @@ function runPendingConfirm() {
     }
 
     function saveGameState() {
-      // Сохраняем только id и значение, чтобы не забивать память координатами
-      const saveData = state.gameBalls.map(b => ({ id: b.id, value: b.value }));
-      localStorage.setItem('md_game_balls', JSON.stringify(saveData));
+      localStorage.setItem('md_game_jars', JSON.stringify(state.jars));
+      localStorage.setItem('md_active_jar', state.activeJarIndex);
+      localStorage.setItem('md_game_kills', state.gameKills);
     }
 	
 	    /* =========================================================
@@ -7366,20 +7425,24 @@ function runPendingConfirm() {
 	    /* =========================================================
        СИСТЕМА КВЕСТОВ (РАНДОМ)
        ========================================================= */
-    async function startQuest(val) {
-      if (!state.gamesConfig) {
-        await loadGamesConfig(); // Ждем загрузки
+    async function startQuest(count) {
+      if (!state.gamesConfig) await loadGamesConfig();
+      
+      const jar = state.jars[state.activeJarIndex];
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      
+      // Проверяем, не переполним ли (каждый шарик = 1)
+      if (currentSum + count > jar.target) { 
+        showToast('Перебор! Сумма не должна превышать цель', 'error'); 
+        return; 
       }
-      if (isNaN(val) || val <= 0) { showToast('Введи положительное число', 'error'); return; }
-      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
-      if (currentSum + val > 1500) { showToast('Перебор! Сумма не должна превышать 1500', 'error'); return; }
 
-      state.pendingBallValue = val;
+      state.pendingBallCount = count;
       
       const quests = [questMath, questSpam, questSimon, questMemory, questWire];
       const randomQuest = quests[Math.floor(Math.random() * quests.length)];
       
-      document.getElementById('quest-body').innerHTML = ''; // Очищаем
+      document.getElementById('quest-body').innerHTML = ''; 
       document.getElementById('quest-modal').classList.add('active');
       
       randomQuest();
@@ -7387,13 +7450,57 @@ function runPendingConfirm() {
 
     function completeQuest() {
       document.getElementById('quest-modal').classList.remove('active');
-      const val = state.pendingBallValue;
-      state.pendingBallValue = null;
-      pushGameBall(val);
+      
+      // Убираем слушатель клавиатуры, если он был
+      if (window._activeMathKeyListener) {
+        document.removeEventListener('keydown', window._activeMathKeyListener);
+        window._activeMathKeyListener = null;
+      }
+
+      const count = state.pendingBallCount;
+      state.pendingBallCount = null;
+
+      // Кидаем N шариков с задержкой, чтобы они не спавнились друг в друге
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => { pushGameBall(1); }, i * 100);
+      }
     }
 
-    // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
-    // --- 1. МАТЕМАТИЧЕСКИЙ СЕЙФ ---
+    function pushGameBall(val) {
+      const jar = state.jars[state.activeJarIndex];
+      
+      const newBall = {
+        id: Date.now() + Math.random(),
+        value: val,
+        x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
+        y: -50,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 0,
+        r: Math.max(18, Math.min(40, 18 + Math.log2(val) * 5)),
+        mass: Math.max(18, Math.min(40, 18 + Math.log2(val) * 5)) ** 2
+      };
+
+      jar.balls.push(newBall);
+      saveGameState();
+      
+      // Обновляем UI суммы (без вызова полного ререндера, чтобы не дергался Canvas)
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      const sumDisplay = document.querySelector('.game-sum-display');
+      if (sumDisplay) {
+        sumDisplay.innerHTML = `Сумма: <span>${currentSum}</span> / ${jar.target}`;
+        sumDisplay.className = `game-sum-display ${currentSum === jar.target ? 'success' : ''}`;
+      }
+
+      if (currentSum === jar.target) {
+        showToast('Идеально! Банка заполнена!', 'success');
+      }
+      
+      state.gameKills++;
+      localStorage.setItem('md_game_kills', state.gameKills);
+      updateKillsUI();
+    }
+
+    // --- МАТЕМАТИЧЕСКИЙ СЕЙФ (С КЛАВИАТУРОЙ) ---
     function questMath() {
       document.getElementById('quest-title').innerText = 'Взлом кода';
       const ops = ['+', '-', '*'];
@@ -7406,7 +7513,7 @@ function runPendingConfirm() {
 
       let input = '';
       let html = `
-        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (у тебя 4 секунды!):</p>
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (ввод с клавиатуры!):</p>
         <div style="font-size: 28px; font-family: monospace; font-weight: bold; color: var(--accent-color); background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
           ${a} ${op} ${b} = <span id="math-input" style="color: #fff;">_</span>
         </div>
@@ -7419,8 +7526,10 @@ function runPendingConfirm() {
       `;
       document.getElementById('quest-body').innerHTML = html;
 
-      // Таймер на 4 секунды
-	let mathTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.math_time);
+      let mathTimer = setTimeout(() => { 
+        if (window._activeMathKeyListener) document.removeEventListener('keydown', window._activeMathKeyListener);
+        triggerFailVisual(); 
+      }, state.gamesConfig.math_time);
 
       window.mathPress = (val) => {
         if (val === 'del') input = input.slice(0, -1);
@@ -7430,12 +7539,34 @@ function runPendingConfirm() {
             completeQuest();
           } else { 
             clearTimeout(mathTimer);
+            if (window._activeMathKeyListener) document.removeEventListener('keydown', window._activeMathKeyListener);
             triggerFailVisual(); 
           }
         } else if (input.length < 3) input += val;
         const el = document.getElementById('math-input');
         if (el) el.innerText = input || '_';
       };
+
+      // --- СЛУШАТЕЛЬ КЛАВИАТУРЫ ---
+      if (window._activeMathKeyListener) {
+        document.removeEventListener('keydown', window._activeMathKeyListener);
+      }
+      
+      window._activeMathKeyListener = (e) => {
+        if (e.key >= '0' && e.key <= '9') {
+          if (input.length < 3) input += e.key;
+        } else if (e.key === 'Backspace') {
+          input = input.slice(0, -1);
+        } else if (e.key === 'Enter') {
+          window.mathPress('ok');
+          return;
+        }
+        
+        const el = document.getElementById('math-input');
+        if (el) el.innerText = input || '_';
+      };
+      
+      document.addEventListener('keydown', window._activeMathKeyListener);
     }
 
      // --- 2. СПАМ-КНОПКА ---
@@ -7739,32 +7870,7 @@ function runPendingConfirm() {
       }
     }
 
-    function pushGameBall(val) {
-      // Проверки теперь в startQuest, тут только спавн
-      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
-      
-      const newBall = {
-        id: Date.now() + Math.random(),
-        value: val,
-        x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
-        y: -50,
-        vx: (Math.random() - 0.5) * 3,
-        vy: 0,
-        r: Math.max(18, Math.min(38, 18 + val * 0.15)),
-        mass: Math.max(18, Math.min(38, 18 + val * 0.15)) ** 2
-      };
 
-      state.gameBalls.push(newBall);
-      saveGameState();
-      updateGameUI(currentSum + val);
-
-      if (currentSum + val === 1500) {
-        showToast('Идеально! Банка заполнена ровно на 1500!', 'success');
-      }
-      state.gameKills++;
-      localStorage.setItem('md_game_kills', state.gameKills);
-      updateKillsUI(); // Обновляем счетчик на экране
-    }
 
 	      function updateKillsUI() {
       const killEl = document.getElementById('game-kills');
