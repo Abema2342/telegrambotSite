@@ -3565,12 +3565,102 @@
       document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
     }
 
-    function duelsShowChart(mode) {
-      const canvas = document.getElementById('duels-chart-canvas');
-      if (!canvas) return;
-      const itemId = canvas.dataset.itemId;
-      const history = state.duelsHistoryCache[itemId] || { sales: [] };
-      drawDuelsChart(itemId, history, mode);
+    function drawDuelsChart(itemId, history, mode) {
+      duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+      duelsCharts.length = 0;
+
+      const container = document.querySelector('.duels-modal-chart');
+      if (!container || typeof Chart === 'undefined') return;
+
+      let sales = (history.sales || []);
+      
+      // Фильтрация по выбранному диапазону
+      if (state.duelsChartRange > 0) {
+        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+      }
+
+      // Берем последние 50 сделок для графика, чтобы столбцы не слипались
+      if (sales.length > 50) {
+        sales = sales.slice(-50);
+      }
+
+      // Если данных нет — показываем заглушку
+      if (sales.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
+        return;
+      }
+
+      // Если данные есть, но canvas был удален заглушкой — восстанавливаем его
+      if (!container.querySelector('canvas')) {
+        container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+      }
+      const canvas = container.querySelector('canvas');
+
+      let labels, data, label, type, bgColor, borderColor;
+
+      if (mode === 'price') {
+        // Динамика цены (плавная линия)
+        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
+        data = sales.map(s => Number(s.price) || 0);
+        label = 'Динамика цены';
+        type = 'line';
+        bgColor = 'rgba(88,101,242,0.15)'; // Синий
+        borderColor = '#5865F2';
+      } else {
+        // Динамика цен сделок (столбцы)
+        labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
+        data = sales.map(s => Number(s.price) || 0);
+        label = 'Цена сделки';
+        type = 'bar';
+        bgColor = 'rgba(67, 181, 129, 0.6)'; // Зеленый
+        borderColor = '#43b581';
+      }
+
+      const chart = new Chart(canvas, {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            borderColor: borderColor,
+            backgroundColor: bgColor,
+            tension: 0.3, // Плавность линии
+            fill: mode === 'price', // Заливка только под линией
+            pointRadius: mode === 'price' ? 3 : 0, // Точки только на линии
+            borderRadius: mode === 'deals' ? 4 : 0 // Закругление столбцов
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Цена: ${context.parsed.y.toLocaleString()} монет`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { 
+              ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, 
+              grid: { color: 'rgba(255,255,255,0.05)' } 
+            },
+            y: { 
+              ticks: { color: '#a0a0a0' }, 
+              grid: { color: 'rgba(255,255,255,0.05)' } 
+            }
+          }
+        }
+      });
+      duelsCharts.push(chart);
+
+      canvas.dataset.mode = mode;
+      document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
+      document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
     }
 
     /* ---------- ХОТЕЛКИ ---------- */
