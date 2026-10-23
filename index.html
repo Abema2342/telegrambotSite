@@ -206,6 +206,43 @@
       border-color: var(--accent-color);
     }
 
+	  
+	      /* Контейнер для банки и стрелок */
+    .jar-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+    }
+    .jar-wrapper .card {
+      flex: 1;
+      max-width: 760px; /* Ограничиваем ширину самой банки */
+    }
+    
+    /* Стрелки (выносим их чуть больше по размеру) */
+    .jar-nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 22px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .jar-nav-btn:hover {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+      transform: scale(1.05);
+    }
     /* УВЕЛИЧЕННАЯ БАНКА */
     .game-jar-visual {
       position: relative;
@@ -7216,49 +7253,56 @@ function runPendingConfirm() {
 
       document.getElementById('app').innerHTML = `
         <div class="game-layout">
-          <div class="game-jar-container" style="max-width: 800px;">
-            <div class="card" style="width: 100%;">
+          <div class="game-jar-container" style="max-width: 100%;">
+            
+            <!-- Обертка: Стрелка - Банка - Стрелка -->
+            <div class="jar-wrapper">
+              <button class="jar-nav-btn" onclick="switchJar(-1)">←</button>
               
-              <!-- Новая шапка с банками -->
-              <div class="jar-header">
-                <button class="jar-nav-btn" onclick="switchJar(-1)">←</button>
-                <div class="jar-info">
-                  <input type="text" class="jar-name-input" value="${escapeHtml(jar.name)}" onchange="updateJarName(this.value)" title="Нажми, чтобы изменить имя">
-                  <div class="jar-target">
-                    <span>Цель:</span>
-                    <input type="number" class="jar-target-input" value="${jar.target}" onchange="updateJarTarget(this.value)" title="Изменить цель">
+              <div class="card">
+                <!-- Шапка уже без стрелок -->
+                <div class="jar-header">
+                  <div class="jar-info">
+                    <input type="text" class="jar-name-input" value="${escapeHtml(jar.name)}" onchange="updateJarName(this.value)" title="Нажми, чтобы изменить имя">
+                    <div class="jar-target">
+                      <span>Цель:</span>
+                      <input type="number" class="jar-target-input" value="${jar.target}" onchange="updateJarTarget(this.value)" title="Изменить цель">
+                    </div>
                   </div>
                 </div>
-                <button class="jar-nav-btn" onclick="switchJar(1)">→</button>
-              </div>
-              
-              <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;" onclick="addNewJar()">+ Новая банка</button>
-              </div>
+                
+                <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                  <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;" onclick="addNewJar()">+ Новая банка</button>
+                </div>
 
-              <div class="game-jar-visual">
-                <canvas id="game-canvas"></canvas>
+                <div class="game-jar-visual" style="margin: 0 auto;">
+                  <canvas id="game-canvas"></canvas>
+                </div>
+                
+                <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                  Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})
+                </div>
+                <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
+                  Сумма: <span>${currentSum}</span> / ${jar.target}
+                </div>
               </div>
               
-              <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})
-              </div>
-              <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
-                Сумма: <span>${currentSum}</span> / ${jar.target}
-              </div>
+              <button class="jar-nav-btn" onclick="switchJar(1)">→</button>
             </div>
-            
-            <div class="game-input-area" style="max-width: 700px; margin-top: 12px;">
+
+            <!-- Поля ввода под банкой (по центру) -->
+            <div class="game-input-area" style="max-width: 700px; margin: 12px auto 0;">
               <input type="number" id="game-input" placeholder="Сколько шариков добавить?" value="1" min="1">
               <button onclick="addGameNumber()">Добавить</button>
             </div>
             
-            <div class="game-quick-btns" style="max-width: 700px; margin-top: 8px;">
+            <div class="game-quick-btns" style="max-width: 700px; margin: 8px auto 0;">
               <button onclick="quickAddGameNumber(1)">+1</button>
               <button onclick="quickAddGameNumber(5)">+5</button>
               <button onclick="quickAddGameNumber(10)">+10</button>
               <button onclick="shakeJar()" style="color: var(--accent-color); border-color: var(--accent-color);">Встряхнуть</button>
             </div>
+            
           </div>
 
           <div class="card" style="max-height: 850px;">
@@ -7529,7 +7573,7 @@ function runPendingConfirm() {
 
       state.pendingBallCount = count;
       
-      const quests = [questMath, questSpam, questSimon, questMemory, questWire];
+      const quests = [questMath, questSpam, questSimon, questMemory];
       const randomQuest = quests[Math.floor(Math.random() * quests.length)];
       
       document.getElementById('quest-body').innerHTML = ''; 
