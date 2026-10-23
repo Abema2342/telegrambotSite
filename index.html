@@ -3400,6 +3400,7 @@
     /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
     async function openDuelItemModal(id) {
       const item = getDuelItemById(id);
+      state.currentDuelsItemId = itemId;
       if (!item) { showToast('Предмет не найден', 'error'); return; }
       const itemId = getDuelItemId(item);
       const name = item.name || itemId;
@@ -3483,13 +3484,12 @@
       document.querySelectorAll('.duels-range-btns button').forEach(b => b.classList.remove('active'));
       document.getElementById(`duels-range-${days}`)?.classList.add('active');
       
-      const canvas = document.getElementById('duels-chart-canvas');
-      if (!canvas) return;
-      const itemId = canvas.dataset.itemId;
-      const mode = canvas.dataset.mode || 'price';
-      const history = state.duelsHistoryCache[itemId] || { sales: [] };
+      const itemId = state.currentDuelsItemId;
+      if (!itemId) return;
+      const history = state.duelsHistoryCache[itemId] || { sales: [], chart: [] };
       
-      drawDuelsChart(itemId, history, mode);
+      // Фильтры применяются только к сделкам (график цены их скрывает)
+      drawDuelsChart(itemId, history, 'deals');
       renderDuelsHistoryList(history);
     }
 
@@ -3517,6 +3517,13 @@
           <span class="duels-trade-when">${escapeHtml(s.when || s.time || '')}</span>
         </div>
       `).join('');
+    }
+
+	      function duelsShowChart(mode) {
+      const itemId = state.currentDuelsItemId;
+      if (!itemId) return;
+      const history = state.duelsHistoryCache[itemId] || { sales: [], chart: [] };
+      drawDuelsChart(itemId, history, mode);
     }
 
     function drawDuelsChart(itemId, history, mode) {
@@ -4362,6 +4369,7 @@
       duelsEditMode: false,
       duelsSearch: '',
       duelsHistoryCache: {},
+      currentDuelsItemId: null,
 	  duelsChartRange: 30 // По умолчанию 30 дней
     };
 
