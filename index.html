@@ -4298,6 +4298,33 @@
       { key: "OH", name: "Гидроксид", formula: "OH⁻" }
     ];
 
+	      // --- МИГРАЦИЯ СТАРЫХ ШАРИКОВ В НОВЫЕ БАНКИ ---
+    (function migrateOldGame() {
+      const oldBalls = localStorage.getItem('md_game_balls');
+      const newJars = localStorage.getItem('md_game_jars');
+      
+      // Если новые банки еще не создавались, а старые шарики есть
+      if (!newJars && oldBalls) {
+        try {
+          const parsedOld = JSON.parse(oldBalls);
+          if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+            // Создаем первую банку и запихиваем туда старые шарики
+            const firstJar = {
+              id: 1,
+              name: 'Банка 1',
+              target: 2500,
+              balls: parsedOld.map(b => ({ id: b.id, value: b.value }))
+            };
+            localStorage.setItem('md_game_jars', JSON.stringify([firstJar]));
+            localStorage.setItem('md_active_jar', '0');
+            console.log('Старые шарики успешно перенесены в новую систему банок!');
+          }
+        } catch (e) {
+          console.error('Ошибка миграции старых шариков:', e);
+        }
+      }
+    })();
+
     let state = {
       last_updated: null,
       users: {},
