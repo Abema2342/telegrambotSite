@@ -4400,10 +4400,13 @@
       calcPercentMode: 'of',
       calcPercentA: '',
       calcPercentB: '',
-      gameBalls: JSON.parse(localStorage.getItem('md_game_balls')) || [],
+	  jars: JSON.parse(localStorage.getItem('md_game_jars')) || [
+        { id: 1, name: 'Банка 1', target: 2500, balls: [] }
+      ],
+	  activeJarIndex: parseInt(localStorage.getItem('md_active_jar')) || 0,
 	  gameKills: parseInt(localStorage.getItem('md_game_kills')) || 0,
 	  gamesConfig: null,
-	  pendingBallValue: null,
+	  pendingBallCount: null,
       questConnected: [],
       questSelectedNode: null,
       gameInput: '',      // <--- И ЭТО
