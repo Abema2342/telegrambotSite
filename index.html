@@ -3345,7 +3345,20 @@
       failAudio.currentTime = 0; // Сбрасываем, если звук уже играл
       failAudio.play().catch(e => console.log('Браузер заблокировал звук:', e));
     }
-	const popAudio = new Audio('sound/pop.mp3')
+    // --- ЗВУК СЛИЯНИЯ ШАРИКОВ ---
+    const popSoundSrc = 'sounds/pop.mp3'; // Путь к звуку (поменяй, если файл называется иначе)
+
+    function playPopSound() {
+      // Создаем НОВЫЙ объект аудио для каждого слияния
+      // Это позволяет звукам накладываться друг на друга, не обрывая предыдущие
+      const sound = new Audio(popSoundSrc);
+      sound.volume = 0.4; // Громкость (чтобы не оглохнуть при массовом слиянии)
+      
+      sound.play().catch(e => {
+        // Если звука нет или браузер блокирует — просто игнорируем
+      });
+    }
+    // -----------------------------
 
     /* =========================================================
        ВКЛАДКА «ДУЭЛИ» (Murder Duels)
@@ -7418,7 +7431,7 @@ function runPendingConfirm() {
                   b2.vx += b.vx * 0.5;
                   b2.vy += b.vy * 0.5;
                   b.isDead = true; // Удаляем первый шарик
-				  popAudio.play();
+				  playPopAudio();
                   break; // Выходим из цикла j для этого i
                 } 
                 
