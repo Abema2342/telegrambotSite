@@ -3345,6 +3345,7 @@
       failAudio.currentTime = 0; // Сбрасываем, если звук уже играл
       failAudio.play().catch(e => console.log('Браузер заблокировал звук:', e));
     }
+	const popAudio = new Audio('sound/pop.mp3')
 
     /* =========================================================
        ВКЛАДКА «ДУЭЛИ» (Murder Duels)
@@ -7411,6 +7412,7 @@ function runPendingConfirm() {
               if (dist < minDist) {
                 // ЛОГИКА СЛИЯНИЯ (1+1=2)
                 if (b.value === b2.value && b.value < 2048) {
+				  popAudio.play();
                   b2.value *= 2;
                   b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
                   b2.mass = b2.r ** 2;
