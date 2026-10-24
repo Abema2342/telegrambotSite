@@ -7296,7 +7296,7 @@ function runPendingConfirm() {
               </div>
               
               <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})
+                Убийств: ${state.gameKills})
               </div>
               <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
                 Сумма: <span>${currentSum}</span> / ${jar.target}
@@ -8062,7 +8062,7 @@ function runPendingConfirm() {
 	      function updateKillsUI() {
       const killEl = document.getElementById('game-kills');
       if (killEl) {
-        killEl.innerText = `Убийств: ${state.gameKills} (Раунд ${Math.floor(state.gameKills / 300) + 1})`;
+        killEl.innerText = `Убийств: ${state.gameKills})`;
       }
     }
 
