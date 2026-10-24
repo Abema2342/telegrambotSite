@@ -4191,6 +4191,7 @@
       duelsCharts.push(chart);
     }
     function triggerFailVisual() {
+	  playFailSound(); 
       const overlay = document.getElementById('fail-overlay');
       overlay.innerHTML = ''; // Очищаем предыдущий контент
       
