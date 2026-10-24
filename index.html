@@ -7588,7 +7588,7 @@ function runPendingConfirm() {
 
       state.pendingBallCount = count;
       
-      const quests = [questMath, questSpam, questSimon, questMemory];
+      const quests = [questMath, questSpam, questSimon];
       const randomQuest = quests[Math.floor(Math.random() * quests.length)];
       
       document.getElementById('quest-body').innerHTML = ''; 
