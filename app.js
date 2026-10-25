@@ -1366,15 +1366,18 @@ function runPendingConfirm() {
 
     const fabBtn = document.getElementById('fab-theme-btn');
     const fabPanel = document.getElementById('fab-theme-panel');
-    fabBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      fabPanel.classList.toggle('open');
-    });
-    document.addEventListener('click', (e) => {
-      if (fabPanel && !fabPanel.contains(e.target) && e.target !== fabBtn) {
-        fabPanel.classList.remove('open');
-      }
-    });
+    
+    if (fabBtn && fabPanel) {
+      fabBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fabPanel.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (fabPanel && !fabPanel.contains(e.target) && e.target !== fabBtn) {
+          fabPanel.classList.remove('open');
+        }
+      });
+    }
 
     const mediaTypeConfig = {
       photo: { label: 'фото', class: 'badge-media-photo' },
