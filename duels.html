@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Murder Duels — Панель</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ... весь HTML из body (тосты, шапка, модалки и т.д.) ... -->
+  
+  <!-- Подключаем скрипт, но добавляем параметр, чтобы он знал, что мы на странице Дуэлей -->
+  <script src="app.js"></script>
+  <script>
+    // Говорим скрипту, что на этой странице нужно показывать только определенные вкладки
+    window.ALLOWED_TABS = ['duels', 'game'];
+  </script>
+</body>
+</html>
