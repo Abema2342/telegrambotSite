@@ -3248,7 +3248,7 @@
 
     /* ВИДЕО-ФОН */
     .bg-video {
-      position: fixed;
+      position: fixed !important;
       top: 0;
       left: 0;
       width: 100vw;
@@ -3256,7 +3256,7 @@
       object-fit: cover;
       z-index: -3;
       pointer-events: none;
-      opacity: 0.6; /* Делаем видео чуть приглушенным */
+      display: block;
     }
 
     /* ТЁМНЫЙ СЛОЙ ПОВЕРХ ВИДЕО */
