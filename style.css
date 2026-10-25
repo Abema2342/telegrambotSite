@@ -3286,3 +3286,40 @@
       position: relative;
       z-index: 1;
     }
+
+    /* Делаем фон body прозрачным, чтобы видео было видно */
+    body {
+      background-color: transparent !important;
+      background-image: none !important;
+    }
+
+    /* Слой с видео */
+    .bg-video {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -3 !important;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Темный фильтр поверх видео (чтобы текст читался) */
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(13, 13, 13, 0.75); /* 75% затемнения */
+      z-index: -2 !important;
+      pointer-events: none;
+    }
+
+    /* Возвращаем темный фон для самого контента (шапка, карточки) */
+    #dashboard-screen {
+      position: relative;
+      z-index: 1;
+    }
