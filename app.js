@@ -1,0 +1,7007 @@
+
+	      // Предзагружаем звук, чтобы он играл мгновенно
+    const failAudio = new Audio('sounds/fail.mp3'); // Если файл в корне, напиши 'fail.mp3'
+    failAudio.volume = 0.6; // Громкость от 0.0 до 1.0
+
+    function playFailSound() {
+      failAudio.currentTime = 0; // Сбрасываем, если звук уже играл
+      failAudio.play().catch(e => console.log('Браузер заблокировал звук:', e));
+    }
+    // --- ЗВУК СЛИЯНИЯ ШАРИКОВ ---
+    const popSoundSrc = 'sounds/pop.mp3'; // Путь к звуку (поменяй, если файл называется иначе)
+
+    function playPopSound() {
+      // Создаем НОВЫЙ объект аудио для каждого слияния
+      // Это позволяет звукам накладываться друг на друга, не обрывая предыдущие
+      const sound = new Audio(popSoundSrc);
+      sound.volume = 0.4; // Громкость (чтобы не оглохнуть при массовом слиянии)
+      
+      sound.play().catch(e => {
+        // Если звука нет или браузер блокирует — просто игнорируем
+      });
+    }
+    // -----------------------------
+
+    /* =========================================================
+       ВКЛАДКА «ДУЭЛИ» (Murder Duels)
+       ========================================================= */
+    async function renderDuels() {
+      if (!state.duelsSubtab) state.duelsSubtab = 'prices';
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Murder Duels</span>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="duelsRefresh()">Обновить цены</button>
+            </div>
+          </div>
+          <div class="duels-subtabs">
+            <button class="duels-subtab ${state.duelsSubtab === 'prices' ? 'active' : ''}"   data-subtab="prices"   onclick="switchDuelsTab('prices')">Прайс-лист</button>
+            <button class="duels-subtab ${state.duelsSubtab === 'wishlist' ? 'active' : ''}" data-subtab="wishlist" onclick="switchDuelsTab('wishlist')">Хотелки</button>
+            <button class="duels-subtab ${state.duelsSubtab === 'sets' ? 'active' : ''}"     data-subtab="sets"     onclick="switchDuelsTab('sets')">Сеты</button>
+          </div>
+          <div id="duels-content">
+            <div class="empty-state">Загрузка...</div>
+          </div>
+        </div>
+      `;
+      await switchDuelsTab(state.duelsSubtab);
+    }
+
+    function duelsRefresh() {
+      state.duelsData = null;
+      state.duelsHistoryCache = {};
+      switchDuelsTab(state.duelsSubtab || 'prices');
+    }
+
+    async function loadDuelsPrice(force) {
+      if (state.duelsData && !force) return state.duelsData;
+      const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev?_=' + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      state.duelsData = Array.isArray(json) ? json : (json.items || []);
+      return state.duelsData;
+    }
+
+    function getDuelItemId(item) {
+      return String(item.slug || item.id || item.name || '');
+    }
+
+    function getDuelItemById(id) {
+      if (!state.duelsData) return null;
+      const s = String(id);
+      return state.duelsData.find(it => getDuelItemId(it) === s);
+    }
+
+    function formatCoins(n) {
+      if (n === -1 || n === null || n === undefined || isNaN(n)) return '—';
+      return Number(n).toLocaleString('ru-RU');
+    }
+
+    async function switchDuelsTab(tab) {
+      state.duelsSubtab = tab;
+      document.querySelectorAll('.duels-subtab').forEach(b => {
+        b.classList.toggle('active', b.dataset.subtab === tab);
+      });
+      const content = document.getElementById('duels-content');
+      if (!content) return;
+      content.innerHTML = '<div class="empty-state">Загрузка...</div>';
+
+      try {
+        await loadDuelsPrice();
+      } catch (e) {
+        content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка загрузки цен: ${escapeHtml(e.message)}</div>`;
+        return;
+      }
+
+      if (tab === 'prices') renderDuelsPrices();
+      else if (tab === 'wishlist') {
+        try { await loadDuelsWishlist(); renderDuelsWishlist(); }
+        catch (e) { content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка хотелок: ${escapeHtml(e.message)}</div>`; }
+      } else if (tab === 'sets') {
+        try { await loadDuelsSets(); renderDuelsSets(); }
+        catch (e) { content.innerHTML = `<div class="empty-state" style="color: var(--status-banned);">Ошибка сетов: ${escapeHtml(e.message)}</div>`; }
+      }
+    }
+
+    /* ---------- ПРАЙС-ЛИСТ ---------- */
+    function duelsCardHtml(item, onClickJs, extraTopRight) {
+      const id = getDuelItemId(item);
+      const img = item.image || item.icon || '';
+      return `
+        <div class="duels-card" onclick="${onClickJs}">
+          ${extraTopRight || ''}
+          <img class="duels-card-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.style.opacity=0.3">
+          <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
+          <div class="duels-card-prices">
+            <span>База: <span class="value">${formatCoins(item.basePrice)}</span></span>
+            <span>Ср: <span class="value">${formatCoins(item.salesAvg)}</span></span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDuelsPrices() {
+      const content = document.getElementById('duels-content');
+      const q = (state.duelsSearch || '').toLowerCase().trim();
+      const all = state.duelsData || [];
+      const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <div class="search-bar" style="flex: 1;">
+            <input type="text" id="duels-search" placeholder="Поиск по названию..." value="${escapeHtml(state.duelsSearch || '')}" oninput="onDuelsSearchInput(this.value)" />
+          </div>
+          <span class="sub-text" id="duels-price-count">Всего: ${list.length}</span>
+        </div>
+        <div class="duels-grid" id="duels-price-grid">
+          ${list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Нет предметов</div>'}
+        </div>
+      `;
+    }
+
+    function onDuelsSearchInput(val) {
+      state.duelsSearch = val;
+      const q = (val || '').toLowerCase().trim();
+      const all = state.duelsData || [];
+      const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
+      const grid = document.getElementById('duels-price-grid');
+      if (grid) grid.innerHTML = list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>';
+      const counter = document.getElementById('duels-price-count');
+      if (counter) counter.textContent = `Всего: ${list.length}`;
+    }
+
+    function escapeJsStr(s) {
+      return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    /* ---------- ПАРСЕР ВРЕМЕНИ ---------- */
+    function parseAgoTime(whenStr) {
+      if (!whenStr) return 0;
+      const lower = String(whenStr).toLowerCase();
+      const num = parseInt(lower) || 1;
+      if (lower.includes('sec') || lower.includes('just')) return 0;
+      if (lower.includes('min')) return num;
+      if (lower.includes('hour')) return num * 60;
+      if (lower.includes('day')) return num * 1440;
+      if (lower.includes('week')) return num * 10080;
+      if (lower.includes('month')) return num * 43200;
+      if (lower.includes('year')) return num * 525600;
+      return 0;
+    }
+
+	      function parseSvgChart(svgString) {
+      if (!svgString) return [];
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, 'image/svg+xml');
+      
+      const yLabels = Array.from(doc.querySelectorAll('.vgraph-ylabel')).map(el => ({
+        y: parseFloat(el.getAttribute('y')),
+        val: parseFloat(el.textContent.replace(/[^\d.]/g, '')) * (el.textContent.includes('K') ? 1000 : 1)
+      }));
+      
+      const dots = Array.from(doc.querySelectorAll('.vgraph-dot')).map(el => ({
+        cx: parseFloat(el.getAttribute('cx')),
+        cy: parseFloat(el.getAttribute('cy'))
+      }));
+
+      if (!dots.length || yLabels.length < 2) return [];
+
+      yLabels.sort((a, b) => a.y - b.y); // Сортируем сверху вниз
+      const topLabel = yLabels[0];
+      const bottomLabel = yLabels[yLabels.length - 1];
+
+      const getPrice = (cy) => {
+        const ratio = (cy - topLabel.y) / (bottomLabel.y - topLabel.y);
+        return bottomLabel.val + ratio * (topLabel.val - bottomLabel.val);
+      };
+
+      return dots.map((dot, index) => ({
+        price: Math.round(getPrice(dot.cy)),
+        label: index === 0 ? 'Начало' : (index === dots.length - 1 ? 'Сейчас' : '')
+      }));
+    }
+
+    /* ---------- МОДАЛКА ПРЕДМЕТА ---------- */
+    async function openDuelItemModal(id) {
+      const item = getDuelItemById(id);
+      if (!item) { showToast('Предмет не найден', 'error'); return; }
+      
+      // 1. Сначала получаем ID
+      const itemId = getDuelItemId(item);
+      state.currentDuelsItemId = itemId;
+      
+      const name = item.name || itemId;
+      const img = item.image || item.icon || '';
+
+      // Сброс диапазона при открытии
+      state.duelsChartRange = 30; 
+
+      const bodyHtml = `
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+          <img src="${escapeHtml(img)}" style="width: 72px; height: 72px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 6px;" onerror="this.style.opacity=0.3">
+          <div>
+            <div style="font-size: 16px; font-weight: 700;">${escapeHtml(name)}</div>
+            <div class="sub-text" style="font-size: 12px; margin-top: 4px;">
+              База: <strong>${formatCoins(item.basePrice)}</strong> · Средняя: <strong>${formatCoins(item.salesAvg)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="duels-modal-tabs">
+          <button class="duels-modal-tab active" id="duels-tab-price" onclick="duelsShowChart('price')">Цена</button>
+          <button class="duels-modal-tab" id="duels-tab-deals" onclick="duelsShowChart('deals')">Сделки</button>
+        </div>
+
+        <div class="duels-range-btns">
+          <button onclick="setDuelsRange(1)" id="duels-range-1">24 часа</button>
+          <button onclick="setDuelsRange(7)" id="duels-range-7">7 дней</button>
+          <button onclick="setDuelsRange(30)" id="duels-range-30" class="active">30 дней</button>
+          <button onclick="setDuelsRange(0)" id="duels-range-0">Всё время</button>
+        </div>
+
+        <div class="duels-modal-chart">
+          <canvas id="duels-chart-canvas"></canvas>
+        </div>
+
+        <div>
+          <div class="sub-text" style="font-size: 12px; margin-bottom: 8px;">История сделок</div>
+          <div id="duels-history-list" class="duels-trade-list">
+            <div class="empty-state" style="padding: 20px;">Загрузка истории...</div>
+          </div>
+        </div>
+      `;
+
+      openModal(name, bodyHtml, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
+
+      let history = state.duelsHistoryCache[itemId];
+      
+      if (!history) {
+        try {
+          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev/item/' + encodeURIComponent(itemId));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const json = await res.json();
+          
+          let rawSales = Array.isArray(json) ? json : (json.sales || []);
+          rawSales = rawSales.map(s => ({ ...s, _mins: parseAgoTime(s.when || s.time) }));
+          rawSales.sort((a, b) => b._mins - a._mins); // Сортируем от старых к новым
+          
+          history = { sales: rawSales, chart: json.chartData || [] };
+          state.duelsHistoryCache[itemId] = history;
+        } catch (e) {
+          const listEl = document.getElementById('duels-history-list');
+          if (listEl) listEl.innerHTML = `<div class="empty-state" style="color: var(--status-banned); padding: 12px; font-size: 13px;">Не удалось загрузить историю: ${escapeHtml(e.message)}</div>`;
+          return;
+        }
+      }
+
+      // Таймаут нужен, чтобы Chart.js увидел размеры открывшейся модалки
+      setTimeout(() => {
+        drawDuelsChart(itemId, history, 'price');
+      }, 50);
+      
+      renderDuelsHistoryList(history);
+    }
+
+    function setDuelsRange(days) {
+      state.duelsChartRange = days;
+      document.querySelectorAll('.duels-range-btns button').forEach(b => b.classList.remove('active'));
+      document.getElementById(`duels-range-${days}`)?.classList.add('active');
+      
+      const itemId = state.currentDuelsItemId;
+      if (!itemId) return;
+      const history = state.duelsHistoryCache[itemId] || { sales: [], chart: [] };
+      
+      // Фильтры применяются только к сделкам (график цены их скрывает)
+      drawDuelsChart(itemId, history, 'deals');
+      renderDuelsHistoryList(history);
+    }
+
+    function renderDuelsHistoryList(history) {
+      const listEl = document.getElementById('duels-history-list');
+      if (!listEl) return;
+
+      let sales = (history.sales || []);
+      
+      // Фильтрация по выбранному диапазону
+      if (state.duelsChartRange > 0) {
+        sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+      }
+
+      // Для списка выводим новые сверху
+      const displaySales = [...sales].reverse().slice(0, 40);
+
+      if (!displaySales.length) {
+        listEl.innerHTML = '<div class="empty-state" style="padding: 12px; font-size: 13px;">Нет сделок за этот период</div>';
+        return;
+      }
+      listEl.innerHTML = displaySales.map(s => `
+        <div class="duels-trade-row">
+          <span class="duels-trade-price">${formatCoins(s.price)}</span>
+          <span class="duels-trade-when">${escapeHtml(s.when || s.time || '')}</span>
+        </div>
+      `).join('');
+    }
+
+	      function duelsShowChart(mode) {
+      const itemId = state.currentDuelsItemId;
+      if (!itemId) return;
+      const history = state.duelsHistoryCache[itemId] || { sales: [], chart: [] };
+      drawDuelsChart(itemId, history, mode);
+    }
+
+    function drawDuelsChart(itemId, history, mode) {
+      duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+      duelsCharts.length = 0;
+
+      const container = document.querySelector('.duels-modal-chart');
+      if (!container || typeof Chart === 'undefined') return;
+
+      const rangeBtns = document.querySelector('.duels-range-btns');
+      if (rangeBtns) rangeBtns.style.display = mode === 'price' ? 'none' : 'flex';
+
+      if (mode === 'price') {
+        const chartData = history.chart || [];
+        if (chartData.length === 0) {
+          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет данных об истории цены</div>';
+          return;
+        }
+        
+        if (!container.querySelector('canvas')) {
+          container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        }
+        
+        const canvas = container.querySelector('canvas');
+        const labels = chartData.map(p => p.xlabel || p.label);
+        const data = chartData.map(p => p.v);
+        const tooltips = chartData.map(p => p.label);
+
+        const chart = new Chart(canvas, {
+          type: 'line',
+          data: { 
+            labels, 
+            datasets: [{ 
+              label: 'Цена (Value)', 
+              data, 
+              borderColor: '#f1c40f', 
+              backgroundColor: 'rgba(241, 196, 15, 0.15)', 
+              borderWidth: 2,
+              tension: 0.1, 
+              fill: true, 
+              pointRadius: 4,
+              pointBackgroundColor: '#f1c40f',
+              pointBorderColor: '#111',
+              pointBorderWidth: 2,
+              pointHoverRadius: 6
+            }] 
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+              legend: { display: false }, 
+              tooltip: { 
+                backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#f1c40f',
+                borderColor: '#2a2a2a',
+                borderWidth: 1,
+                padding: 10,
+                callbacks: { 
+                  label: (ctx) => `Value: ${ctx.parsed.y.toLocaleString()} монет`,
+                  title: (ctx) => tooltips[ctx[0].dataIndex]
+                } 
+              } 
+            },
+            scales: {
+              x: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { display: false } },
+              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+          }
+        });
+        duelsCharts.push(chart);
+      } else {
+        let sales = (history.sales || []);
+        if (state.duelsChartRange > 0) sales = sales.filter(s => s._mins <= state.duelsChartRange * 1440);
+        if (sales.length > 50) sales = sales.slice(-50);
+
+        if (sales.length === 0) {
+          container.innerHTML = '<div class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 14px;">Нет сделок за выбранный период</div>';
+          return;
+        }
+        
+        if (!container.querySelector('canvas')) {
+          container.innerHTML = '<canvas id="duels-chart-canvas"></canvas>';
+        }
+
+        const canvas = container.querySelector('canvas');
+        const labels = sales.map((s, i) => s.when || ('#' + (i + 1)));
+        const data = sales.map(s => Number(s.price) || 0);
+
+        const chart = new Chart(canvas, {
+          type: 'bar', 
+          data: { labels, datasets: [{ label: 'Цена сделки', data, borderColor: '#43b581', backgroundColor: 'rgba(67, 181, 129, 0.6)', borderRadius: 4 }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Цена: ${ctx.parsed.y.toLocaleString()} монет` } } },
+            scales: {
+              x: { ticks: { color: '#a0a0a0', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+          }
+        });
+        duelsCharts.push(chart);
+      }
+
+      document.getElementById('duels-tab-price')?.classList.toggle('active', mode === 'price');
+      document.getElementById('duels-tab-deals')?.classList.toggle('active', mode === 'deals');
+    }
+
+    /* ---------- ХОТЕЛКИ ---------- */
+    async function loadDuelsWishlist(force) {
+      if (state.duelsWishlistLoaded && !force) return state.duelsWishlist;
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_wishlist.json?_=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        state.duelsWishlist = [];
+        state.duelsWishlistSha = null;
+        state.duelsWishlistLoaded = true;
+        return state.duelsWishlist;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const meta = await res.json();
+      state.duelsWishlistSha = meta.sha;
+      const json = JSON.parse(decodeBase64Content(meta.content));
+      state.duelsWishlist = Array.isArray(json.items) ? json.items : (Array.isArray(json) ? json : []);
+      state.duelsWishlistLoaded = true;
+      return state.duelsWishlist;
+    }
+
+    async function saveDuelsWishlist() {
+      const content = JSON.stringify({ items: state.duelsWishlist }, null, 2);
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_wishlist.json`, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Update murderduels_wishlist.json via dashboard [skip ci]',
+          content: utf8ToBase64(content),
+          sha: state.duelsWishlistSha
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Ошибка сохранения хотелок');
+      }
+      const json = await res.json();
+      state.duelsWishlistSha = json.content.sha;
+    }
+
+    function renderDuelsWishlist() {
+      const content = document.getElementById('duels-content');
+      const items = state.duelsWishlist.map(id => getDuelItemById(id)).filter(Boolean);
+      const cards = items.map(it => {
+        const id = getDuelItemId(it);
+        const xBtn = state.duelsEditMode
+          ? `<button class="duels-card-x" onclick="event.stopPropagation(); removeFromWishlist('${escapeJsStr(id)}')">×</button>`
+          : '';
+        const onclickJs = state.duelsEditMode
+          ? `removeFromWishlist('${escapeJsStr(id)}')`
+          : `openDuelItemModal('${escapeJsStr(id)}')`;
+        return duelsCardHtml(it, onclickJs, xBtn);
+      }).join('');
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
+          <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
+          <span class="sub-text" style="margin-left: auto;">В хотелках: ${items.length}</span>
+        </div>
+        <div class="duels-grid">
+          ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
+        </div>
+      `;
+    }
+
+    function toggleDuelsEditMode() {
+      state.duelsEditMode = !state.duelsEditMode;
+      renderDuelsWishlist();
+    }
+
+    async function removeFromWishlist(id) {
+      state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+      try {
+        await saveDuelsWishlist();
+        showToast('Удалено из хотелок', 'success');
+        renderDuelsWishlist();
+      } catch (e) {
+        state.duelsWishlist.push(id);
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    function openDuelsAddMenu() {
+      const available = (state.duelsData || []).filter(it => {
+        const id = getDuelItemId(it);
+        return !state.duelsWishlist.some(x => String(x) === id);
+      });
+
+      const html = `
+        <div class="duels-toolbar" style="padding: 0 0 12px; border-bottom: none;">
+          <div class="search-bar" style="flex: 1;">
+            <input type="text" id="duels-add-search" placeholder="Поиск..." oninput="duelsFilterAddMenu(this.value)">
+          </div>
+          <button class="btn-primary" onclick="openDuelsAddSetMenu()">+ Добавить сет</button>
+        </div>
+        <div class="duels-grid" id="duels-add-grid" style="padding: 0;">
+          ${available.map(it => duelsCardHtml(it, `addToWishlist('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Все предметы уже в хотелках</div>'}
+        </div>
+      `;
+      window._duelsAddAvailable = available;
+      openModal('Добавить в хотелки', html, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
+    }
+
+    function duelsFilterAddMenu(q) {
+      const grid = document.getElementById('duels-add-grid');
+      if (!grid) return;
+      const ql = (q || '').toLowerCase().trim();
+      const list = (window._duelsAddAvailable || []).filter(it => !ql || (it.name || '').toLowerCase().includes(ql));
+      grid.innerHTML = list.map(it => duelsCardHtml(it, `addToWishlist('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>';
+    }
+
+    async function addToWishlist(id) {
+      if (state.duelsWishlist.some(x => String(x) === String(id))) return;
+      state.duelsWishlist.push(String(id));
+      try {
+        await saveDuelsWishlist();
+        showToast('Добавлено в хотелки', 'success');
+        window._duelsAddAvailable = (window._duelsAddAvailable || []).filter(it => getDuelItemId(it) !== String(id));
+        const input = document.getElementById('duels-add-search');
+        duelsFilterAddMenu(input ? input.value : '');
+      } catch (e) {
+        state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    function openDuelsAddSetMenu() {
+      closeModal();
+      switchDuelsTab('sets').then(() => {
+        setTimeout(() => openDuelsSetBuilder(null), 150);
+      });
+    }
+
+    /* ---------- СЕТЫ ---------- */
+    async function loadDuelsSets(force) {
+      if (state.duelsSetsLoaded && !force) return state.duelsSets;
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_sets.json?_=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        state.duelsSets = [];
+        state.duelsSetsSha = null;
+        state.duelsSetsLoaded = true;
+        return state.duelsSets;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const meta = await res.json();
+      state.duelsSetsSha = meta.sha;
+      const json = JSON.parse(decodeBase64Content(meta.content));
+      state.duelsSets = Array.isArray(json.sets) ? json.sets : [];
+      state.duelsSetsLoaded = true;
+      return state.duelsSets;
+    }
+
+    async function saveDuelsSets() {
+      const content = JSON.stringify({ sets: state.duelsSets }, null, 2);
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/murderduels_sets.json`, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Update murderduels_sets.json via dashboard [skip ci]',
+          content: utf8ToBase64(content),
+          sha: state.duelsSetsSha
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Ошибка сохранения сетов');
+      }
+      const json = await res.json();
+      state.duelsSetsSha = json.content.sha;
+    }
+
+    function renderDuelsSets() {
+      const content = document.getElementById('duels-content');
+      const cards = (state.duelsSets || []).map(set => {
+        const imgs = (set.items || []).map(id => {
+          const it = id ? getDuelItemById(id) : null;
+          return it
+            ? `<img src="${escapeHtml(it.image || it.icon || '')}" style="width: 36px; height: 36px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px;" onerror="this.style.opacity=0.3">`
+            : `<span style="width: 36px; height: 36px; border: 1px dashed var(--border-color); border-radius: 4px; display: inline-block;"></span>`;
+        }).join('');
+        return `
+          <div class="duels-card" onclick="viewDuelsSet(${set.id})">
+            <div class="duels-card-name">${escapeHtml(set.name || 'Без названия')}</div>
+            <div style="display: flex; gap: 6px; justify-content: center; padding: 4px 0;">${imgs}</div>
+          </div>
+        `;
+      }).join('');
+
+      content.innerHTML = `
+        <div class="duels-toolbar">
+          <button class="btn-primary" onclick="openDuelsSetBuilder(null)">+ Создать сет</button>
+          <span class="sub-text" style="margin-left: auto;">Сетов: ${(state.duelsSets || []).length}</span>
+        </div>
+        <div class="duels-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+          ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Сетов нет. Создай первый!</div>'}
+        </div>
+      `;
+    }
+
+    function openDuelsSetBuilder(setId) {
+      const isNew = setId === null || setId === undefined;
+      const set = isNew
+        ? { id: null, name: '', items: [null, null, null] }
+        : state.duelsSets.find(s => s.id === setId);
+      if (!set) return;
+      state._duelsEditingSet = JSON.parse(JSON.stringify(set));
+      state._duelsEditingSet.items = (state._duelsEditingSet.items || []).concat([null, null, null]).slice(0, 3);
+      state._duelsEditingSetIsNew = isNew;
+      renderDuelsSetEditor();
+    }
+
+    function renderDuelsSetEditor() {
+      const set = state._duelsEditingSet;
+      if (!set) { renderDuelsSets(); return; }
+      const content = document.getElementById('duels-content');
+
+      const slotsHtml = set.items.map((itemId, idx) => {
+        const item = itemId ? getDuelItemById(itemId) : null;
+        if (item) {
+          return `
+            <div class="duels-set-slot filled" onclick="openDuelsSetSlotPicker(${idx})">
+              <img src="${escapeHtml(item.image || item.icon || '')}" onerror="this.style.opacity=0.3">
+            </div>
+          `;
+        }
+        return `<div class="duels-set-slot" onclick="openDuelsSetSlotPicker(${idx})">+</div>`;
+      }).join('');
+
+      content.innerHTML = `
+        <div style="padding: 16px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button class="back-btn" onclick="cancelDuelsSetEditor()">← Назад</button>
+          </div>
+          <input type="text" id="duels-set-name" class="note-input-title" placeholder="Название сета..." value="${escapeHtml(set.name || '')}" style="margin-bottom: 16px; width: 100%;">
+          <div class="duels-set-builder">${slotsHtml}</div>
+          <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;">
+            ${!state._duelsEditingSetIsNew ? `<button class="btn-danger" onclick="deleteDuelsSet()">Удалить</button>` : ''}
+            <button class="btn-primary" onclick="saveDuelsSetFromEditor()">Сохранить</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('duels-set-name').addEventListener('input', e => {
+        state._duelsEditingSet.name = e.target.value;
+      });
+    }
+
+    function openDuelsSetSlotPicker(slotIdx) {
+      const used = state._duelsEditingSet.items
+        .filter((x, i) => i !== slotIdx && x)
+        .map(String);
+      const available = (state.duelsData || []).filter(it => !used.includes(getDuelItemId(it)));
+
+      const clearBtn = state._duelsEditingSet.items[slotIdx]
+        ? `<div class="duels-card" onclick="selectDuelsSetSlotItem(${slotIdx}, null)" style="background: rgba(237,66,69,0.1); border-color: rgba(237,66,69,0.4); justify-content: center; align-items: center;"><span style="color: var(--status-banned); font-weight: 600;">Очистить слот</span></div>`
+        : '';
+
+      const html = `
+        <div class="search-bar" style="padding: 0 0 12px; border-bottom: none;">
+          <input type="text" id="duels-slot-search" placeholder="Поиск..." oninput="duelsFilterSlotPicker(this.value)">
+        </div>
+        <div class="duels-grid" id="duels-slot-grid" style="padding: 0;">
+          ${clearBtn}
+          ${available.map(it => duelsCardHtml(it, `selectDuelsSetSlotItem(${slotIdx}, '${escapeJsStr(getDuelItemId(it))}')`)).join('')}
+        </div>
+      `;
+      window._duelsSlotAvailable = available;
+      window._duelsSlotIdx = slotIdx;
+      openModal('Выбор предмета', html, `<button class="btn-refresh" onclick="closeModal()">Отмена</button>`, true);
+    }
+
+    function duelsFilterSlotPicker(q) {
+      const grid = document.getElementById('duels-slot-grid');
+      if (!grid) return;
+      const ql = (q || '').toLowerCase().trim();
+      const idx = window._duelsSlotIdx;
+      const list = (window._duelsSlotAvailable || []).filter(it => !ql || (it.name || '').toLowerCase().includes(ql));
+      const clearBtn = state._duelsEditingSet.items[idx]
+        ? `<div class="duels-card" onclick="selectDuelsSetSlotItem(${idx}, null)" style="background: rgba(237,66,69,0.1); border-color: rgba(237,66,69,0.4); justify-content: center; align-items: center;"><span style="color: var(--status-banned); font-weight: 600;">Очистить слот</span></div>`
+        : '';
+      grid.innerHTML = clearBtn + (list.map(it => duelsCardHtml(it, `selectDuelsSetSlotItem(${idx}, '${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>');
+    }
+
+    function selectDuelsSetSlotItem(idx, id) {
+      state._duelsEditingSet.items[idx] = id;
+      closeModal();
+      renderDuelsSetEditor();
+    }
+
+    function cancelDuelsSetEditor() {
+      state._duelsEditingSet = null;
+      state._duelsEditingSetIsNew = false;
+      renderDuelsSets();
+    }
+
+    async function saveDuelsSetFromEditor() {
+      const set = state._duelsEditingSet;
+      if (!set) return;
+      const nameInput = document.getElementById('duels-set-name');
+      if (nameInput) set.name = nameInput.value.trim();
+      if (!set.name) { showToast('Введи название сета', 'error'); return; }
+      if (!set.items.some(x => x)) { showToast('Выбери хотя бы один предмет', 'error'); return; }
+
+      if (state._duelsEditingSetIsNew) {
+        const nextId = state.duelsSets.length > 0 ? Math.max(...state.duelsSets.map(s => s.id || 0)) + 1 : 1;
+        set.id = nextId;
+        state.duelsSets.push(set);
+      } else {
+        const idx = state.duelsSets.findIndex(s => s.id === set.id);
+        if (idx >= 0) state.duelsSets[idx] = set;
+      }
+
+      try {
+        await saveDuelsSets();
+        state._duelsEditingSet = null;
+        state._duelsEditingSetIsNew = false;
+        showToast('Сет сохранён', 'success');
+        renderDuelsSets();
+      } catch (e) {
+        showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteDuelsSet() {
+      if (!state._duelsEditingSet) return;
+      const id = state._duelsEditingSet.id;
+      confirmAction('Удалить этот сет?', async () => {
+        state.duelsSets = state.duelsSets.filter(s => s.id !== id);
+        try {
+          await saveDuelsSets();
+          state._duelsEditingSet = null;
+          state._duelsEditingSetIsNew = false;
+          showToast('Сет удалён', 'success');
+          renderDuelsSets();
+        } catch (e) {
+          showToast('Ошибка: ' + e.message, 'error');
+        }
+      });
+    }
+
+    function viewDuelsSet(id) {
+      const set = state.duelsSets.find(s => s.id === id);
+      if (!set) return;
+      const content = document.getElementById('duels-content');
+      const filled = (set.items || []).filter(Boolean).map(x => getDuelItemById(x)).filter(Boolean);
+      const totalBase = filled.reduce((s, it) => s + (Number(it.basePrice) || 0), 0);
+      const allHaveAvg = filled.every(it => Number(it.salesAvg) > 0);
+      const totalAvg = allHaveAvg ? filled.reduce((s, it) => s + (Number(it.salesAvg) || 0), 0) : -1;
+
+      content.innerHTML = `
+        <div style="padding: 16px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button class="back-btn" onclick="renderDuelsSets()">← Назад к сетам</button>
+            <button class="btn-refresh" onclick="openDuelsSetBuilder(${set.id})" style="margin-left: auto;">Редактировать</button>
+          </div>
+          <div class="duels-view-total">
+            ${escapeHtml(set.name || 'Без названия')}
+            <div style="font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-top: 6px;">
+              Сумма базовая: <strong style="color: var(--text-main);">${formatCoins(totalBase)}</strong>
+              · Средняя: <strong style="color: var(--text-main);">${formatCoins(totalAvg)}</strong>
+            </div>
+          </div>
+          <div class="duels-view-split">
+            ${filled.map(it => {
+              const safeId = getDuelItemId(it).replace(/[^a-z0-9]/gi, '_');
+              return `
+                <div class="duels-set-view-item">
+                  <img src="${escapeHtml(it.image || it.icon || '')}" onerror="this.style.opacity=0.3">
+                  <div class="duels-card-name">${escapeHtml(it.name || '')}</div>
+                  <div class="duels-card-prices">
+                    <span>База: <span class="value">${formatCoins(it.basePrice)}</span></span>
+                    <span>Ср: <span class="value">${formatCoins(it.salesAvg)}</span></span>
+                  </div>
+                  <div class="duels-set-view-chart">
+                    <canvas id="duels-set-canvas-${safeId}"></canvas>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      filled.forEach(it => loadDuelsSetItemHistory(it));
+    }
+
+    async function loadDuelsSetItemHistory(item) {
+      const id = getDuelItemId(item);
+      const safeId = id.replace(/[^a-z0-9]/gi, '_');
+      let history = state.duelsHistoryCache[id];
+      if (!history) {
+        try {
+          const res = await fetch('https://murderduels-proxy.kmaxim242.workers.dev/item/' + encodeURIComponent(id));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          history = await res.json();
+          state.duelsHistoryCache[id] = history;
+        } catch (e) { return; }
+      }
+      const canvas = document.getElementById('duels-set-canvas-' + safeId);
+      if (!canvas || typeof Chart === 'undefined') return;
+      const sales = (history.sales || []).slice().reverse();
+      if (!sales.length) return;
+      const chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: sales.map((s, i) => s.when || ('#' + (i + 1))),
+          datasets: [{
+            label: 'Цена',
+            data: sales.map(s => Number(s.price) || 0),
+            borderColor: '#5865F2',
+            backgroundColor: 'rgba(88,101,242,0.15)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 4 }, grid: { display: false } },
+            y: { ticks: { color: '#a0a0a0', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+      duelsCharts.push(chart);
+    }
+    function triggerFailVisual() {
+	  playFailSound(); 
+      const overlay = document.getElementById('fail-overlay');
+      overlay.innerHTML = ''; // Очищаем предыдущий контент
+      
+      const isScreamer = Math.random() < 0.5; 
+      
+      overlay.style.display = 'flex';
+      
+      if (false) {
+        // ЖУТКИЙ СКРИМЕР НА ЧИСТОМ CSS (без картинок)
+        overlay.style.background = '#000';
+        overlay.innerHTML = `
+          <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; z-index: 100000;">
+            <div style="font-size: 60px; color: #ed4245; font-weight: 900; font-family: monospace; animation: glitchShake 0.1s infinite; text-align: center; text-shadow: 4px 4px 0 #fff;">
+              СИСТЕМНЫЙ СБОЙ
+            </div>
+            <div style="font-size: 30px; color: #fff; margin-top: 20px; font-family: monospace; animation: glitchShake 0.15s infinite reverse;">
+              ДОСТУП ЗАПРЕЩЕН
+            </div>
+          </div>
+        `;
+        // Эффект красной вспышки
+        overlay.animate([
+          { background: '#000' }, { background: '#f00' }, { background: '#000' }
+        ], { duration: 150, iterations: 4 });
+      } else {
+        // МИЛЫЙ КОТИК
+        overlay.style.background = '#fff';
+        overlay.innerHTML = `
+          <img src="https://cataas.com/cat?width=1000&height=1000&t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover; animation: cutePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+        `;
+      }
+
+      // Через 2 секунды убираем оверлей и закрываем квест
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        document.getElementById('quest-modal').classList.remove('active');
+        showToast('Квест провален! Попробуй ещё раз.', 'error');
+      }, 2000);
+    }
+    /* =========================================================
+       КОНФИГУРАЦИЯ И ПАЛИТРА
+       ========================================================= */
+    const GITHUB_WORKER = "https://github-proxy.kmaxim242.workers.dev";
+    const GITHUB_REPO = "Abema2342/telegrambotdata";
+    const ADMIN_PASSWORD = "77790100";
+
+    const THEME_COLORS = [
+      { name: "Discord Blue", value: "#5865F2" },
+      { name: "Purple",       value: "#9b59b6" },
+      { name: "Green",        value: "#43b581" },
+      { name: "Red",          value: "#ed4245" },
+      { name: "Orange",       value: "#e67e22" },
+      { name: "Yellow",       value: "#f1c40f" },
+      { name: "Pink",         value: "#eb459e" },
+      { name: "Teal",         value: "#1abc9c" }
+    ];
+
+    const VALENCIES = [
+      {symbol: "H", name: "Водород", val: "I", type: "const"},
+      {symbol: "He", name: "Гелий", val: "0", type: "inert"},
+      {symbol: "Li", name: "Литий", val: "I", type: "const"},
+      {symbol: "Be", name: "Бериллий", val: "II", type: "const"},
+      {symbol: "B", name: "Бор", val: "III", type: "const"},
+      {symbol: "C", name: "Углерод", val: "II, IV", type: "var"},
+      {symbol: "N", name: "Азот", val: "I, II, III, IV", type: "var"},
+      {symbol: "O", name: "Кислород", val: "II", type: "const"},
+      {symbol: "F", name: "Фтор", val: "I", type: "const"},
+      {symbol: "Ne", name: "Неон", val: "0", type: "inert"},
+      {symbol: "Na", name: "Натрий", val: "I", type: "const"},
+      {symbol: "Mg", name: "Магний", val: "II", type: "const"},
+      {symbol: "Al", name: "Алюминий", val: "III", type: "const"},
+      {symbol: "Si", name: "Кремний", val: "IV", type: "const"},
+      {symbol: "P", name: "Фосфор", val: "III, V", type: "var"},
+      {symbol: "S", name: "Сера", val: "II, IV, VI", type: "var"},
+      {symbol: "Cl", name: "Хлор", val: "I, III, V, VII", type: "var"},
+      {symbol: "Ar", name: "Аргон", val: "0", type: "inert"},
+      {symbol: "K", name: "Калий", val: "I", type: "const"},
+      {symbol: "Ca", name: "Кальций", val: "II", type: "const"},
+      {symbol: "Sc", name: "Скандий", val: "III", type: "const"},
+      {symbol: "Ti", name: "Титан", val: "II, III, IV", type: "var"},
+      {symbol: "V", name: "Ванадий", val: "II, III, IV, V", type: "var"},
+      {symbol: "Cr", name: "Хром", val: "II, III, VI", type: "var"},
+      {symbol: "Mn", name: "Марганец", val: "II, IV, VII", type: "var"},
+      {symbol: "Fe", name: "Железо", val: "II, III", type: "var"},
+      {symbol: "Co", name: "Кобальт", val: "II, III", type: "var"},
+      {symbol: "Ni", name: "Никель", val: "II, III", type: "var"},
+      {symbol: "Cu", name: "Медь", val: "I, II", type: "var"},
+      {symbol: "Zn", name: "Цинк", val: "II", type: "const"},
+      {symbol: "Ga", name: "Галлий", val: "III", type: "const"},
+      {symbol: "Ge", name: "Германий", val: "II, IV", type: "var"},
+      {symbol: "As", name: "Мышьяк", val: "III, V", type: "var"},
+      {symbol: "Se", name: "Селен", val: "II, IV, VI", type: "var"},
+      {symbol: "Br", name: "Бром", val: "I, III, V, VII", type: "var"},
+      {symbol: "Kr", name: "Криптон", val: "0", type: "inert"},
+      {symbol: "Rb", name: "Рубидий", val: "I", type: "const"},
+      {symbol: "Sr", name: "Стронций", val: "II", type: "const"},
+      {symbol: "Y", name: "Иттрий", val: "III", type: "const"},
+      {symbol: "Zr", name: "Цирконий", val: "IV", type: "const"},
+      {symbol: "Nb", name: "Ниобий", val: "III, V", type: "var"},
+      {symbol: "Mo", name: "Молибден", val: "II, III, IV, VI", type: "var"},
+      {symbol: "Tc", name: "Технеций", val: "IV, VII", type: "var"},
+      {symbol: "Ru", name: "Рутений", val: "II, III, IV, VI, VIII", type: "var"},
+      {symbol: "Rh", name: "Родий", val: "II, III, IV", type: "var"},
+      {symbol: "Pd", name: "Палладий", val: "II, IV", type: "var"},
+      {symbol: "Ag", name: "Серебро", val: "I", type: "const"},
+      {symbol: "Cd", name: "Кадмий", val: "II", type: "const"},
+      {symbol: "In", name: "Индий", val: "III", type: "const"},
+      {symbol: "Sn", name: "Олово", val: "II, IV", type: "var"},
+      {symbol: "Sb", name: "Сурьма", val: "III, V", type: "var"},
+      {symbol: "Te", name: "Теллур", val: "II, IV, VI", type: "var"},
+      {symbol: "I", name: "Йод", val: "I, III, V, VII", type: "var"},
+      {symbol: "Xe", name: "Ксенон", val: "0", type: "inert"},
+      {symbol: "Cs", name: "Цезий", val: "I", type: "const"},
+      {symbol: "Ba", name: "Барий", val: "II", type: "const"},
+      {symbol: "La", name: "Лантан", val: "III", type: "const"},
+      {symbol: "Ce", name: "Церий", val: "III, IV", type: "var"},
+      {symbol: "Hf", name: "Гафний", val: "IV", type: "const"},
+      {symbol: "Ta", name: "Тантал", val: "V", type: "const"},
+      {symbol: "W", name: "Вольфрам", val: "II, III, IV, V, VI", type: "var"},
+      {symbol: "Re", name: "Рений", val: "IV, VII", type: "var"},
+      {symbol: "Os", name: "Осмий", val: "II, III, IV, VI, VIII", type: "var"},
+      {symbol: "Ir", name: "Иридий", val: "III, IV", type: "var"},
+      {symbol: "Pt", name: "Платина", val: "II, IV", type: "var"},
+      {symbol: "Au", name: "Золото", val: "I, III", type: "var"},
+      {symbol: "Hg", name: "Ртуть", val: "I, II", type: "var"},
+      {symbol: "Tl", name: "Таллий", val: "I, III", type: "var"},
+      {symbol: "Pb", name: "Свинец", val: "II, IV", type: "var"},
+      {symbol: "Bi", name: "Висмут", val: "III, V", type: "var"},
+      {symbol: "Po", name: "Полоний", val: "II, IV", type: "var"},
+      {symbol: "At", name: "Астат", val: "I, III, V, VII", type: "var"},
+      {symbol: "Rn", name: "Радон", val: "0", type: "inert"},
+      {symbol: "Fr", name: "Франций", val: "I", type: "const"},
+      {symbol: "Ra", name: "Радий", val: "II", type: "const"},
+      {symbol: "Ac", name: "Актиний", val: "III", type: "const"},
+      {symbol: "Th", name: "Торий", val: "IV", type: "const"},
+      {symbol: "U", name: "Уран", val: "IV, VI", type: "var"}
+    ];
+
+    const ELEMENTS = [
+      { sym: "H", name: "Водород", num: 1, period: 1, group: 1, type: "nonmetal" },
+      { sym: "He", name: "Гелий", num: 2, period: 1, group: 18, type: "noble" },
+      { sym: "Li", name: "Литий", num: 3, period: 2, group: 1, type: "alkali" },
+      { sym: "Be", name: "Бериллий", num: 4, period: 2, group: 2, type: "alkaline" },
+      { sym: "B", name: "Бор", num: 5, period: 2, group: 13, type: "metalloid" },
+      { sym: "C", name: "Углерод", num: 6, period: 2, group: 14, type: "nonmetal" },
+      { sym: "N", name: "Азот", num: 7, period: 2, group: 15, type: "nonmetal" },
+      { sym: "O", name: "Кислород", num: 8, period: 2, group: 16, type: "nonmetal" },
+      { sym: "F", name: "Фтор", num: 9, period: 2, group: 17, type: "halogen" },
+      { sym: "Ne", name: "Неон", num: 10, period: 2, group: 18, type: "noble" },
+      { sym: "Na", name: "Натрий", num: 11, period: 3, group: 1, type: "alkali" },
+      { sym: "Mg", name: "Магний", num: 12, period: 3, group: 2, type: "alkaline" },
+      { sym: "Al", name: "Алюминий", num: 13, period: 3, group: 13, type: "post_transition" },
+      { sym: "Si", name: "Кремний", num: 14, period: 3, group: 14, type: "metalloid" },
+      { sym: "P", name: "Фосфор", num: 15, period: 3, group: 15, type: "nonmetal" },
+      { sym: "S", name: "Сера", num: 16, period: 3, group: 16, type: "nonmetal" },
+      { sym: "Cl", name: "Хлор", num: 17, period: 3, group: 17, type: "halogen" },
+      { sym: "Ar", name: "Аргон", num: 18, period: 3, group: 18, type: "noble" },
+      { sym: "K", name: "Калий", num: 19, period: 4, group: 1, type: "alkali" },
+      { sym: "Ca", name: "Кальций", num: 20, period: 4, group: 2, type: "alkaline" },
+      { sym: "Sc", name: "Скандий", num: 21, period: 4, group: 3, type: "transition" },
+      { sym: "Ti", name: "Титан", num: 22, period: 4, group: 4, type: "transition" },
+      { sym: "V", name: "Ванадий", num: 23, period: 4, group: 5, type: "transition" },
+      { sym: "Cr", name: "Хром", num: 24, period: 4, group: 6, type: "transition" },
+      { sym: "Mn", name: "Марганец", num: 25, period: 4, group: 7, type: "transition" },
+      { sym: "Fe", name: "Железо", num: 26, period: 4, group: 8, type: "transition" },
+      { sym: "Co", name: "Кобальт", num: 27, period: 4, group: 9, type: "transition" },
+      { sym: "Ni", name: "Никель", num: 28, period: 4, group: 10, type: "transition" },
+      { sym: "Cu", name: "Медь", num: 29, period: 4, group: 11, type: "transition" },
+      { sym: "Zn", name: "Цинк", num: 30, period: 4, group: 12, type: "transition" },
+      { sym: "Ga", name: "Галлий", num: 31, period: 4, group: 13, type: "post_transition" },
+      { sym: "Ge", name: "Германий", num: 32, period: 4, group: 14, type: "metalloid" },
+      { sym: "As", name: "Мышьяк", num: 33, period: 4, group: 15, type: "metalloid" },
+      { sym: "Se", name: "Селен", num: 34, period: 4, group: 16, type: "nonmetal" },
+      { sym: "Br", name: "Бром", num: 35, period: 4, group: 17, type: "halogen" },
+      { sym: "Kr", name: "Криптон", num: 36, period: 4, group: 18, type: "noble" },
+      { sym: "Rb", name: "Рубидий", num: 37, period: 5, group: 1, type: "alkali" },
+      { sym: "Sr", name: "Стронций", num: 38, period: 5, group: 2, type: "alkaline" },
+      { sym: "Y", name: "Иттрий", num: 39, period: 5, group: 3, type: "transition" },
+      { sym: "Zr", name: "Цирконий", num: 40, period: 5, group: 4, type: "transition" },
+      { sym: "Nb", name: "Ниобий", num: 41, period: 5, group: 5, type: "transition" },
+      { sym: "Mo", name: "Молибден", num: 42, period: 5, group: 6, type: "transition" },
+      { sym: "Tc", name: "Технеций", num: 43, period: 5, group: 7, type: "transition" },
+      { sym: "Ru", name: "Рутений", num: 44, period: 5, group: 8, type: "transition" },
+      { sym: "Rh", name: "Родий", num: 45, period: 5, group: 9, type: "transition" },
+      { sym: "Pd", name: "Палладий", num: 46, period: 5, group: 10, type: "transition" },
+      { sym: "Ag", name: "Серебро", num: 47, period: 5, group: 11, type: "transition" },
+      { sym: "Cd", name: "Кадмий", num: 48, period: 5, group: 12, type: "transition" },
+      { sym: "In", name: "Индий", num: 49, period: 5, group: 13, type: "post_transition" },
+      { sym: "Sn", name: "Олово", num: 50, period: 5, group: 14, type: "post_transition" },
+      { sym: "Sb", name: "Сурьма", num: 51, period: 5, group: 15, type: "metalloid" },
+      { sym: "Te", name: "Теллур", num: 52, period: 5, group: 16, type: "metalloid" },
+      { sym: "I", name: "Йод", num: 53, period: 5, group: 17, type: "halogen" },
+      { sym: "Xe", name: "Ксенон", num: 54, period: 5, group: 18, type: "noble" },
+      { sym: "Cs", name: "Цезий", num: 55, period: 6, group: 1, type: "alkali" },
+      { sym: "Ba", name: "Барий", num: 56, period: 6, group: 2, type: "alkaline" },
+      { sym: "Hf", name: "Гафний", num: 72, period: 6, group: 4, type: "transition" },
+      { sym: "Ta", name: "Тантал", num: 73, period: 6, group: 5, type: "transition" },
+      { sym: "W", name: "Вольфрам", num: 74, period: 6, group: 6, type: "transition" },
+      { sym: "Re", name: "Рений", num: 75, period: 6, group: 7, type: "transition" },
+      { sym: "Os", name: "Осмий", num: 76, period: 6, group: 8, type: "transition" },
+      { sym: "Ir", name: "Иридий", num: 77, period: 6, group: 9, type: "transition" },
+      { sym: "Pt", name: "Платина", num: 78, period: 6, group: 10, type: "transition" },
+      { sym: "Au", name: "Золото", num: 79, period: 6, group: 11, type: "transition" },
+      { sym: "Hg", name: "Ртуть", num: 80, period: 6, group: 12, type: "transition" },
+      { sym: "Tl", name: "Таллий", num: 81, period: 6, group: 13, type: "post_transition" },
+      { sym: "Pb", name: "Свинец", num: 82, period: 6, group: 14, type: "post_transition" },
+      { sym: "Bi", name: "Висмут", num: 83, period: 6, group: 15, type: "post_transition" },
+      { sym: "Po", name: "Полоний", num: 84, period: 6, group: 16, type: "post_transition" },
+      { sym: "At", name: "Астат", num: 85, period: 6, group: 17, type: "halogen" },
+      { sym: "Rn", name: "Радон", num: 86, period: 6, group: 18, type: "noble" }
+    ];
+
+    const ELEMENT_TYPE_NAMES = {
+      alkali: "Щелочной металл",
+      alkaline: "Щёлочноземельный металл",
+      transition: "Переходный металл",
+      post_transition: "Постпереходный металл",
+      metalloid: "Полуметалл",
+      nonmetal: "Неметалл",
+      halogen: "Галоген",
+      noble: "Благородный газ"
+    };
+
+    const ACID_RESIDUES = [
+      { key: "Cl", name: "Хлорид", formula: "Cl⁻" },
+      { key: "Br", name: "Бромид", formula: "Br⁻" },
+      { key: "I", name: "Йодид", formula: "I⁻" },
+      { key: "S", name: "Сульфид", formula: "S²⁻" },
+      { key: "SO3", name: "Сульфит", formula: "SO₃²⁻" },
+      { key: "SO4", name: "Сульфат", formula: "SO₄²⁻" },
+      { key: "CO3", name: "Карбонат", formula: "CO₃²⁻" },
+      { key: "NO3", name: "Нитрат", formula: "NO₃⁻" },
+      { key: "PO4", name: "Фосфат", formula: "PO₄³⁻" },
+      { key: "OH", name: "Гидроксид", formula: "OH⁻" }
+    ];
+
+	      // --- МИГРАЦИЯ СТАРЫХ ШАРИКОВ В НОВЫЕ БАНКИ ---
+    (function migrateOldGame() {
+      const oldBalls = localStorage.getItem('md_game_balls');
+      const newJars = localStorage.getItem('md_game_jars');
+      
+      // Если новые банки еще не создавались, а старые шарики есть
+      if (!newJars && oldBalls) {
+        try {
+          const parsedOld = JSON.parse(oldBalls);
+          if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+            // Создаем первую банку и запихиваем туда старые шарики
+            const firstJar = {
+              id: 1,
+              name: 'Банка 1',
+              target: 2500,
+              balls: parsedOld.map(b => ({ id: b.id, value: b.value }))
+            };
+            localStorage.setItem('md_game_jars', JSON.stringify([firstJar]));
+            localStorage.setItem('md_active_jar', '0');
+            console.log('Старые шарики успешно перенесены в новую систему банок!');
+          }
+        } catch (e) {
+          console.error('Ошибка миграции старых шариков:', e);
+        }
+      }
+    })();
+
+    let state = {
+      last_updated: null,
+      users: {},
+      isAdmin: false,
+      publicTabs: null,
+      settingsSha: null,
+      messages: [],
+      media: [],
+      notes: [],
+      admins: [],
+      audit: [],
+      currentTab: 'useful',
+      selectedUserId: null,
+      editingNoteId: null,
+      dataSha: null,
+      valenciesSearch: '',
+      gdzSubjects: null,
+      gdzSelectedSubject: null,
+      gdzSelectedChapter: null,
+      gdzSelectedNum: null,
+      gdzSearchLoading: false,
+      periodicSearch: '',
+      periodicSelectedElement: null,
+      chemistryData: null,
+      updates: [],
+      updatesSha: null,
+      updatesLoaded: false,
+      showUpdates: false,
+      editingUpdateId: null,
+      updateStatusFilter: 'all',
+      updateCategoryFilter: 'all',
+      usefulSubjects: null,
+      usefulLoaded: false,
+      usefulSelectedSubjectId: null,
+      usefulSelectedSectionId: null,
+      usefulEditingSectionId: null,
+      usefulSha: null,
+      dsSelectedFile: 'data.json',
+      dsContent: '',
+      dsLoading: false,
+      dsSha: null,
+      searchUsers: '',
+      searchMessages: '',
+      searchMedia: '',
+      searchNotes: '',
+      searchUpdates: '',
+      searchAdmins: '',
+      searchAudit: '',
+      botSubtab: 'users',
+      _botSearchFocused: false,
+      chats: [],
+      chatsLoaded: false,
+      chatsSha: null,
+      currentChatId: null,
+      aiMode: 'spelling',
+      aiSending: false,
+      genSubjectId: null,
+      genTopic: '',
+      genClass: '9',
+      genLength: 'medium',
+      genResult: '',
+      genLoading: false,
+      calcActiveId: 'scientific',
+      calcDisplay: '',
+      calcMolarMetal: 0,
+      calcMolarAcid: 0,
+      calcQuadInput: '',
+      calcQuadResult: null,
+      calcUnitCategory: 'length',
+      calcUnitFrom: 'м',
+      calcUnitTo: 'см',
+      calcUnitValue: '1',
+      calcPercentMode: 'of',
+      calcPercentA: '',
+      calcPercentB: '',
+	  jars: JSON.parse(localStorage.getItem('md_game_jars')) || [
+        { id: 1, name: 'Банка 1', target: 2500, balls: [] }
+      ],
+	  activeJarIndex: parseInt(localStorage.getItem('md_active_jar')) || 0,
+	  gameKills: parseInt(localStorage.getItem('md_game_kills')) || 0,
+	  gamesConfig: null,
+	  pendingBallCount: null,
+      questConnected: [],
+      questSelectedNode: null,
+      gameInput: '',      // <--- И ЭТО
+      aiModes: null,
+      aiModesLoaded: false,
+      aiModesSha: null,
+	  duelsData: null,
+      duelsWishlist: [],
+      duelsWishlistSha: null,
+      duelsWishlistLoaded: false,
+      duelsSets: [],
+      duelsSetsSha: null,
+      duelsSetsLoaded: false,
+      duelsSubtab: 'prices',
+      duelsEditMode: false,
+      duelsSearch: '',
+      duelsHistoryCache: {},
+      currentDuelsItemId: null,
+	  duelsChartRange: 30 // По умолчанию 30 дней
+    };
+
+    const GEMINI_WORKER = "https://gemini-proxy.kmaxim242.workers.dev";
+
+    /* =========================================================
+       ПУБЛИЧНЫЙ РЕЖИМ: НАСТРОЙКИ И ВИДИМОСТЬ ВКЛАДОК
+       ========================================================= */
+    const DEFAULT_PUBLIC_TABS = ['gdz', 'useful', 'valencies', 'periodic'];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/settings.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) {
+          state.publicTabs = DEFAULT_PUBLIC_TABS;
+          return state.publicTabs;
+        }
+
+        const jsonMeta = await response.json();
+        state.settingsSha = jsonMeta.sha;
+
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.publicTabs = Array.isArray(data.public_tabs)
+          ? data.public_tabs
+          : DEFAULT_PUBLIC_TABS;
+
+        return state.publicTabs;
+      } catch (err) {
+        console.warn('Ошибка загрузки settings.json:', err);
+        state.publicTabs = DEFAULT_PUBLIC_TABS;
+        return state.publicTabs;
+      }
+    }
+
+    function applyAdminVisibility() {
+      const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const tab = btn.getAttribute('data-tab');
+        const isPublic = publicTabs.includes(tab);
+
+        if (isPublic) {
+          btn.style.display = '';
+        } else {
+          btn.style.display = state.isAdmin ? '' : 'none';
+        }
+      });
+    }
+
+    function isTabAllowed(tab) {
+      const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
+      if (publicTabs.includes(tab)) return true;
+      return state.isAdmin;
+    }
+
+    /* TOAST & CONFIRM */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    let pendingConfirmAction = null;
+
+    function confirmAction(message, onConfirm) {
+    pendingConfirmAction = onConfirm;
+    openModal(
+      'Подтверждение действия',
+      `<p>${escapeHtml(message)}</p>`,
+      `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="runPendingConfirm()">Да</button>
+      `
+    );
+  }
+
+function runPendingConfirm() {
+  closeModal();
+  if (pendingConfirmAction) {
+    const action = pendingConfirmAction;
+    pendingConfirmAction = null;
+    action();
+  }
+}
+
+    function initThemeColor() {
+      const savedTheme = localStorage.getItem('theme_accent') || '#5865F2';
+      document.documentElement.style.setProperty('--accent-color', savedTheme);
+      buildThemePalette(savedTheme);
+    }
+
+    function buildThemePalette(activeColor) {
+      const panel = document.getElementById('fab-theme-panel');
+      if (!panel) return;
+      panel.innerHTML = THEME_COLORS.map(c => `
+        <div 
+          class="color-swatch ${c.value.toLowerCase() === activeColor.toLowerCase() ? 'selected' : ''}" 
+          style="background: ${c.value};" 
+          title="${c.name}" 
+          onclick="applyThemeColor('${c.value}')">
+        </div>
+      `).join('');
+    }
+
+    function applyThemeColor(val) {
+      document.documentElement.style.setProperty('--accent-color', val);
+      localStorage.setItem('theme_accent', val);
+      buildThemePalette(val);
+    }
+
+    const fabBtn = document.getElementById('fab-theme-btn');
+    const fabPanel = document.getElementById('fab-theme-panel');
+    fabBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fabPanel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (fabPanel && !fabPanel.contains(e.target) && e.target !== fabBtn) {
+        fabPanel.classList.remove('open');
+      }
+    });
+
+    const mediaTypeConfig = {
+      photo: { label: 'фото', class: 'badge-media-photo' },
+      sticker: { label: 'стикер', class: 'badge-media-sticker' },
+      animation: { label: 'гифка', class: 'badge-media-animation' }
+    };
+
+    function getMediaBadgeHtml(type) {
+      const conf = mediaTypeConfig[type] || { label: type || 'медиа', class: 'badge-media-default' };
+      return `<span class="badge ${conf.class}">${escapeHtml(conf.label)}</span>`;
+    }
+
+    function parseMediaFromText(text) {
+      if (!text || typeof text !== 'string') return null;
+      const match = text.match(/^\[(photo|sticker|animation)\]\s*(.+)$/i);
+      if (match) {
+        return {
+          media_type: match[1].toLowerCase(),
+          file_name: match[2].trim()
+        };
+      }
+      return null;
+    }
+
+    function parseChapterNumbers(numbersStr) {
+      if (!numbersStr) return [];
+      const str = String(numbersStr).trim();
+      const rangeMatch = str.match(/^(\d+)\s*-\s*(\d+)$/);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10);
+        const end = parseInt(rangeMatch[2], 10);
+        const res = [];
+        for (let i = start; i <= end; i++) {
+          res.push(i);
+        }
+        return res;
+      }
+      return str.split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => parseInt(s, 10))
+        .filter(n => !isNaN(n));
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr || dateStr === '—') return '—';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderSectionContentView(content) {
+      const escaped = escapeHtml(content || '');
+      const withFormulas = escaped.replace(/\$([^$]+)\$/g, '<span class="formula-inline">$1</span>');
+      return withFormulas.split('\n').map(line => {
+        if (line.trim() === '---') {
+          return '<hr class="useful-divider">';
+        }
+        return `<p>${line}</p>`;
+      }).join('');
+    }
+
+    function insertAtCursor(textarea, text) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+      textarea.value = before + text + after;
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+      const sectionId = state.usefulEditingSectionId;
+      updateSectionContent(sectionId, textarea.value);
+    }
+
+    function insertFormula() {
+      const ta = document.getElementById('useful-edit-content');
+      if (!ta) return;
+      insertAtCursor(ta, '$E=mc^2$');
+    }
+
+    function insertDivider() {
+      const ta = document.getElementById('useful-edit-content');
+      if (!ta) return;
+      insertAtCursor(ta, '\n---\n');
+    }
+
+    function updateSectionContent(sectionId, value) {
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
+      if (!subj || !subj.sections) return;
+      const sec = subj.sections.find(s => String(s.id) === String(sectionId));
+      if (sec) sec.content = value;
+    }
+
+    function utf8ToBase64(str) {
+      return window.btoa(unescape(encodeURIComponent(str)));
+    }
+
+    /* =========================================================
+       СИНХРОНИЗАЦИЯ ЧЕРЕЗ CLOUDFLARE WORKER
+       ========================================================= */
+    async function saveDataToGitHub() {
+      try {
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+
+        let sha = state.dataSha;
+        if (getRes.ok) {
+          const jsonMeta = await getRes.json();
+          sha = jsonMeta.sha;
+          state.dataSha = sha;
+        }
+
+        const exportData = {
+          last_updated: new Date().toISOString(),
+          users: state.users,
+          messages: state.messages,
+          notes: state.notes,
+          admins: state.admins,
+          audit: state.audit
+        };
+
+        const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Update data.json via dashboard [skip ci]`,
+            content: contentBase64,
+            sha: sha
+          })
+        });
+
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          throw new Error(errData.message || 'Ошибка сохранения через Worker');
+        }
+
+        const putSuccess = await putRes.json();
+        state.dataSha = putSuccess.content.sha;
+        showToast("Данные успешно сохранены", "success");
+      } catch (err) {
+        showToast(`Ошибка синхронизации: ${err.message}`, "error");
+      }
+    }
+
+    function deleteMediaFromGitHub(fileName, messageId) {
+      confirmAction(`Удалить файл ${fileName} с GitHub репозитория?`, async () => {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
+
+          if (!getRes.ok) {
+            throw new Error(`Файл media/${fileName} не найден на GitHub или нет доступа`);
+          }
+
+          const fileMeta = await getRes.json();
+
+          const delRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/media/${fileName}`, {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Delete media: ${fileName}`,
+              sha: fileMeta.sha
+            })
+          });
+
+          if (!delRes.ok) {
+            const errData = await delRes.json();
+            throw new Error(errData.message || 'Ошибка удаления медиа');
+          }
+
+          state.messages = state.messages.filter(m => m.id !== messageId);
+          buildMediaCache();
+
+          state.audit.push({
+            admin_id: 0,
+            admin_name: "WebAdmin",
+            action: "del_media",
+            target_id: messageId,
+            target_name: fileName,
+            time: new Date().toISOString()
+          });
+
+          await saveDataToGitHub();
+          render();
+          showToast(`Файл ${fileName} успешно удален!`, 'success');
+        } catch (err) {
+          showToast(`Ошибка при удалении медиа: ${err.message}`, 'error');
+        }
+      });
+    }
+
+    function buildMediaCache() {
+      state.media = [];
+      state.messages.forEach(msg => {
+        const parsed = parseMediaFromText(msg.text);
+        if (parsed) {
+          const defaultUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/media/${parsed.file_name}`;
+          state.media.push({
+            id: msg.id,
+            user_id: msg.user_id,
+            first_name: msg.first_name,
+            file_name: parsed.file_name,
+            media_type: parsed.media_type,
+            time: msg.time,
+            url: msg.url || defaultUrl
+          });
+        }
+      });
+    }
+
+    /* =========================================================
+       ЗАГРУЗКА DATA.JSON, SUBJECTS.JSON, CHEMISTRY.JSON, UPDATES.JSON, USEFUL.JSON, GAMES.JSON
+       ========================================================= */
+        async function loadGamesConfig() {
+      if (state.gamesConfig) return;
+      try {
+        const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/games.json?_=${Date.now()}`, { 
+          headers: { 'Accept': 'application/vnd.github.v3+json' } 
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const content = JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(data.content.replace(/\n/g, '')), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+        state.gamesConfig = content;
+      } catch {
+        // Если файла нет или произошла ошибка, используем дефолтные значения
+        state.gamesConfig = { math_time: 10000, spam_time: 5000, simon_time: 5000, memory_time: 20000, wire_time: 25000 };
+      }
+    }
+	  
+	  async function loadData() {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="empty-state">Загрузка данных...</div>';
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/data.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const jsonMeta = await response.json();
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+
+        state.last_updated = data.last_updated;
+        state.users = data.users || {};
+        state.messages = data.messages || [];
+        state.notes = data.notes || [];
+        state.admins = data.admins || [];
+        state.audit = data.audit || [];
+        state.dataSha = jsonMeta.sha;
+
+        buildMediaCache();
+        render();
+      } catch (err) {
+        app.innerHTML = `
+          <div class="card">
+            <div class="empty-state" style="color: var(--status-banned);">
+              <p style="margin-bottom: 12px; font-size: 15px;">Ошибка загрузки данных.</p>
+              <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-secondary);">${escapeHtml(err.message)}</p>
+              <button class="btn-refresh" onclick="loadData()">Повторить</button>
+            </div>
+          </div>`;
+      }
+    }
+
+    async function loadSubjects() {
+      if (state.gdzSubjects) return state.gdzSubjects;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/subjects.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        state.gdzSubjects = JSON.parse(utf8Content);
+        return state.gdzSubjects;
+      } catch (err) {
+        console.error("Ошибка загрузки subjects.json:", err);
+        return null;
+      }
+    }
+
+    async function loadChemistry() {
+      if (state.chemistryData) return state.chemistryData;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chemistry.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        state.chemistryData = JSON.parse(utf8Content);
+        return state.chemistryData;
+      } catch (err) {
+        console.error("Ошибка загрузки chemistry.json:", err);
+        return null;
+      }
+    }
+
+    function updateBadgeCount() {
+      const btn = document.getElementById('updates-btn');
+      if (!btn) return;
+      const count = (state.updates || []).filter(u => u.status === 'in_progress').length;
+      btn.setAttribute('data-count', String(count));
+    }
+
+    async function loadUpdates() {
+      if (state.updatesLoaded) return state.updates;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.updates = [];
+          state.updatesSha = null;
+          state.updatesLoaded = true;
+          updateBadgeCount();
+          return state.updates;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.updatesSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.updates = Array.isArray(data.updates) ? data.updates : (Array.isArray(data) ? data : []);
+        state.updatesLoaded = true;
+        updateBadgeCount();
+        return state.updates;
+      } catch (err) {
+        console.warn("Ошибка загрузки updates.json:", err);
+        state.updates = [];
+        state.updatesLoaded = true;
+        updateBadgeCount();
+        return null;
+      }
+    }
+
+    async function saveUpdatesToGitHub() {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json?_=${Date.now()}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
+
+          let sha = state.updatesSha;
+          if (getRes.ok) {
+            const jsonMeta = await getRes.json();
+            sha = jsonMeta.sha;
+            state.updatesSha = sha;
+          }
+
+          const exportData = {
+            updates: state.updates
+          };
+
+          const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+          const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/updates.json`, {
+            method: 'PUT',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Update updates.json via dashboard [skip ci]`,
+              content: contentBase64,
+              sha: sha
+            })
+          });
+
+          if (putRes.status === 409 && attempt < maxRetries - 1) {
+            attempt++;
+            await new Promise(r => setTimeout(r, 400));
+            continue;
+          }
+
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            throw new Error(errData.message || 'Ошибка сохранения updates.json');
+          }
+
+          const putSuccess = await putRes.json();
+          state.updatesSha = putSuccess.content.sha;
+          updateBadgeCount();
+          showToast("Обновления сохранены", "success");
+          return;
+        } catch (err) {
+          if (attempt >= maxRetries - 1) {
+            showToast(`Ошибка сохранения обновлений: ${err.message}`, "error");
+            return;
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    }
+
+    /* =========================================================
+       ЗАГРУЗКА И СОХРАНЕНИЕ USEFUL.JSON
+       ========================================================= */
+    async function loadUseful() {
+      if (state.usefulLoaded) return state.usefulSubjects;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.usefulSubjects = [];
+          state.usefulSha = null;
+          state.usefulLoaded = true;
+          return state.usefulSubjects;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.usefulSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.usefulSubjects = Array.isArray(data.subjects) ? data.subjects : (Array.isArray(data) ? data : []);
+        ensureBuiltinSubjects();
+        state.usefulLoaded = true;
+        return state.usefulSubjects;
+      } catch (err) {
+        console.warn("Ошибка загрузки useful.json:", err);
+          state.usefulSubjects = [];
+          ensureBuiltinSubjects();
+          state.usefulSha = null;
+          state.usefulLoaded = true;
+          return state.usefulSubjects;
+      }
+    }
+
+    async function saveUseful() {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json?_=${Date.now()}`, {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+          });
+
+          let sha = state.usefulSha;
+          if (getRes.ok) {
+            const jsonMeta = await getRes.json();
+            sha = jsonMeta.sha;
+            state.usefulSha = sha;
+          }
+
+          const exportData = {
+            subjects: state.usefulSubjects || []
+          };
+
+          const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+          const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/useful.json`, {
+            method: 'PUT',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Update useful.json via dashboard [skip ci]`,
+              content: contentBase64,
+              sha: sha
+            })
+          });
+
+          if (putRes.status === 409 && attempt < maxRetries - 1) {
+            attempt++;
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            throw new Error(errData.message || 'Ошибка сохранения useful.json');
+          }
+
+          const putSuccess = await putRes.json();
+          state.usefulSha = putSuccess.content.sha;
+          showToast("Сохранено", "success");
+          return;
+        } catch (err) {
+          if (attempt >= maxRetries - 1) {
+            showToast(`Ошибка сохранения: ${err.message}`, "error");
+            return;
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+    }
+
+    /* =========================================================
+       РЕДАКТОР СТРУКТУРЫ ДАННЫХ (DATA STRUCTURE)
+       ========================================================= */
+    async function dsLoadFile(fileName) {
+      state.dsSelectedFile = fileName;
+      state.dsLoading = true;
+      state.dsContent = 'Загрузка...';
+      renderDataStructure();
+
+      try {
+        const response = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+
+        if (response.status === 404) {
+          state.dsContent = '/* Файл не найден на сервере */';
+          state.dsSha = null;
+          state.dsLoading = false;
+          renderDataStructure();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const jsonMeta = await response.json();
+        state.dsSha = jsonMeta.sha;
+
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        let parsed = JSON.parse(utf8Content);
+        state.dsContent = JSON.stringify(parsed, null, 2);
+        state.dsLoading = false;
+        renderDataStructure();
+      } catch (err) {
+        state.dsContent = `/* Ошибка загрузки файла: ${err.message} */`;
+        state.dsSha = null;
+        state.dsLoading = false;
+        renderDataStructure();
+      }
+    }
+
+    async function dsSaveFile() {
+      const ta = document.getElementById('ds-textarea');
+      if (!ta) return;
+      const content = ta.value;
+
+      let parsed = null;
+      try {
+        parsed = JSON.parse(content);
+      } catch (err) {
+        showToast(`Невалидный JSON: ${err.message}`, "error");
+        return;
+      }
+
+      const fileName = state.dsSelectedFile;
+      const contentBase64 = utf8ToBase64(JSON.stringify(parsed, null, 2));
+
+      try {
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${fileName}`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Manual edit ${fileName} via dashboard`,
+            content: contentBase64,
+            sha: state.dsSha
+          })
+        });
+
+        if (putRes.status === 409) {
+          showToast("Конфликт SHA, обновите файл", "error");
+          return;
+        }
+
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          throw new Error(errData.message || 'Ошибка сохранения файла');
+        }
+
+        const putSuccess = await putRes.json();
+        state.dsSha = putSuccess.content.sha;
+        state.dsContent = JSON.stringify(parsed, null, 2);
+        showToast("Файл сохранен", "success");
+
+        if (fileName === 'data.json') {
+          await loadData();
+        } else if (fileName === 'subjects.json') {
+          state.gdzSubjects = null;
+          await loadSubjects();
+        } else if (fileName === 'useful.json') {
+          state.usefulLoaded = false;
+          await loadUseful();
+        } else if (fileName === 'updates.json') {
+          state.updatesLoaded = false;
+          await loadUpdates();
+        } else if (fileName === 'chemistry.json') {
+          state.chemistryData = null;
+          await loadChemistry();
+          } else if (fileName === 'settings.json') {
+          state.publicTabs = null;
+          await loadSettings();
+          applyAdminVisibility();
+        } else if (fileName === 'chats.json') {
+          state.chatsLoaded = false;
+          await loadChats();
+          renderAI();
+        } else if (fileName === 'ai_modes.json') {
+          state.aiModesLoaded = false;
+          await loadAiModes();
+          if (state.currentTab === 'ai') renderAI();
+        }
+      } catch (err) {
+        showToast(`Ошибка при сохранении: ${err.message}`, "error");
+      }
+    }
+
+    function dsFormatJSON() {
+      const ta = document.getElementById('ds-textarea');
+      if (!ta) return;
+      try {
+        const parsed = JSON.parse(ta.value);
+        ta.value = JSON.stringify(parsed, null, 2);
+        state.dsContent = ta.value;
+        dsValidate();
+      } catch (err) {
+        showToast(`Невозможно форматировать, невалидный JSON: ${err.message}`, "error");
+      }
+    }
+
+    function dsValidate() {
+      const ta = document.getElementById('ds-textarea');
+      const countsEl = document.getElementById('ds-counts');
+      const statusEl = document.getElementById('ds-status-text');
+      if (!ta || !countsEl || !statusEl) return;
+
+      const val = ta.value;
+      state.dsContent = val;
+
+      const lines = val ? val.split('\n').length : 0;
+      const chars = val.length;
+      countsEl.textContent = `Строк: ${lines} • Символов: ${chars}`;
+
+      try {
+        JSON.parse(val);
+        statusEl.innerHTML = '<span class="ds-valid">JSON валидный</span>';
+      } catch (err) {
+        statusEl.innerHTML = `<span class="ds-invalid">Ошибка: ${escapeHtml(err.message)}</span>`;
+      }
+    }
+
+    function renderDataStructure() {
+      const files = ['data.json', 'subjects.json', 'useful.json', 'updates.json', 'chemistry.json', 'settings.json', 'chats.json', 'ai_modes.json', 'games.json'];
+      const selectHtml = `
+        <select class="ds-header-select" onchange="dsChangeFile(this.value)">
+          ${files.map(f => `<option value="${f}" ${state.dsSelectedFile === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+      `;
+
+      let initialStatusHtml = '';
+      let initialLines = 0;
+      let initialChars = 0;
+
+      if (!state.dsLoading && state.dsContent) {
+        initialLines = state.dsContent.split('\n').length;
+        initialChars = state.dsContent.length;
+        try {
+          JSON.parse(state.dsContent);
+          initialStatusHtml = '<span class="ds-valid">JSON валидный</span>';
+        } catch (err) {
+          initialStatusHtml = `<span class="ds-invalid">Ошибка: ${escapeHtml(err.message)}</span>`;
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Структура данных</span>
+                </div>
+                <div class="header-actions">
+                  ${selectHtml}
+                  <button class="btn-refresh" onclick="dsLoadFile('${state.dsSelectedFile}')">Загрузить</button>
+                  <button class="btn-refresh" onclick="dsFormatJSON()">Форматировать</button>
+                  <button class="btn-primary" onclick="dsSaveFile()">Сохранить</button>
+                </div>
+              </div>
+              <textarea id="ds-textarea" class="ds-textarea" spellcheck="false" oninput="dsValidate()">${escapeHtml(state.dsContent || '')}</textarea>
+              <div class="ds-status-bar">
+                <span id="ds-counts">Строк: ${initialLines} • Символов: ${initialChars}</span>
+                <span id="ds-status-text">${initialStatusHtml}</span>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    function dsChangeFile(val) {
+      dsLoadFile(val);
+    }
+
+        /* =========================================================
+       ДАННЫЕ КАЛЬКУЛЯТОРОВ
+       ========================================================= */
+    const CALCULATORS = [
+      { id: 'scientific', name: 'Научный калькулятор', desc: 'Тригонометрия, логарифмы, степени' },
+      { id: 'molar',      name: 'Молярная масса',      desc: 'Металл + кислотный остаток' },
+      { id: 'quadratic',  name: 'Квадратные уравнения', desc: 'ax² + bx + c = 0' },
+      { id: 'units',      name: 'Перевод единиц',      desc: 'Длина, время, скорость, масса' },
+      { id: 'percent',    name: 'Проценты',            desc: 'Расчёт процентов' }
+    ];
+
+    const MOLAR_METALS = [
+      { sym: 'Li', name: 'Литий',     charge: 1, mass: 6.94 },
+      { sym: 'Na', name: 'Натрий',    charge: 1, mass: 22.99 },
+      { sym: 'K',  name: 'Калий',     charge: 1, mass: 39.10 },
+      { sym: 'Ag', name: 'Серебро',   charge: 1, mass: 107.87 },
+      { sym: 'Mg', name: 'Магний',    charge: 2, mass: 24.31 },
+      { sym: 'Ca', name: 'Кальций',   charge: 2, mass: 40.08 },
+      { sym: 'Ba', name: 'Барий',     charge: 2, mass: 137.33 },
+      { sym: 'Zn', name: 'Цинк',      charge: 2, mass: 65.38 },
+      { sym: 'Fe', name: 'Железо (II)', charge: 2, mass: 55.85 },
+      { sym: 'Cu', name: 'Медь (II)', charge: 2, mass: 63.55 },
+      { sym: 'Al', name: 'Алюминий',  charge: 3, mass: 26.98 },
+      { sym: 'Fe', name: 'Железо (III)', charge: 3, mass: 55.85 }
+    ];
+
+    const MOLAR_ACIDS = [
+      { sym: 'Cl',  name: 'Хлорид',    charge: 1, mass: 35.45, poly: false },
+      { sym: 'Br',  name: 'Бромид',    charge: 1, mass: 79.90, poly: false },
+      { sym: 'I',   name: 'Йодид',     charge: 1, mass: 126.90, poly: false },
+      { sym: 'F',   name: 'Фторид',    charge: 1, mass: 19.00, poly: false },
+      { sym: 'NO3', name: 'Нитрат',    charge: 1, mass: 62.00, poly: true },
+      { sym: 'OH',  name: 'Гидроксид', charge: 1, mass: 17.01, poly: true },
+      { sym: 'SO4', name: 'Сульфат',   charge: 2, mass: 96.06, poly: true },
+      { sym: 'SO3', name: 'Сульфит',   charge: 2, mass: 80.06, poly: true },
+      { sym: 'CO3', name: 'Карбонат',  charge: 2, mass: 60.01, poly: true },
+      { sym: 'S',   name: 'Сульфид',   charge: 2, mass: 32.07, poly: false },
+      { sym: 'PO4', name: 'Фосфат',    charge: 3, mass: 94.97, poly: true }
+    ];
+
+    const UNIT_CATEGORIES = {
+      length: {
+        name: 'Длина',
+        units: {
+          'нм': 1e-9, 'мм': 0.001, 'см': 0.01, 'м': 1, 'км': 1000,
+          'дюйм': 0.0254, 'фут': 0.3048, 'ярд': 0.9144,
+          'миля': 1609.344, 'морск. миля': 1852
+        }
+      },
+      time: {
+        name: 'Время',
+        units: {
+          'мс': 0.001, 'с': 1, 'мин': 60, 'ч': 3600,
+          'сутки': 86400, 'неделя': 604800
+        }
+      },
+      speed: {
+        name: 'Скорость',
+        units: {
+          'м/с': 1, 'км/ч': 1 / 3.6, 'км/с': 1000,
+          'м/мин': 1 / 60, 'миля/ч': 1609.344 / 3600, 'узел': 1852 / 3600
+        }
+      },
+      mass: {
+        name: 'Масса',
+        units: {
+          'мг': 1e-6, 'г': 0.001, 'кг': 1, 'т': 1000,
+          'фунт': 0.45359237, 'унция': 0.0283495
+        }
+      },
+      volume: {
+        name: 'Объём',
+        units: {
+          'мл': 0.001, 'см³': 0.001, 'л': 1, 'м³': 1000
+        }
+      }
+    };
+
+    const SCI_BUTTONS = [
+      { t: 'sin', a: 'sin(', c: 'calc-btn-func' },
+      { t: 'cos', a: 'cos(', c: 'calc-btn-func' },
+      { t: 'tan', a: 'tan(', c: 'calc-btn-func' },
+      { t: 'ln',  a: 'log(',  c: 'calc-btn-func' },
+      { t: 'log', a: 'log10(', c: 'calc-btn-func' },
+
+      { t: 'x²', a: '^2', c: 'calc-btn-func' },
+      { t: 'x³', a: '^3', c: 'calc-btn-func' },
+      { t: '√',  a: 'sqrt(', c: 'calc-btn-func' },
+      { t: '^',  a: '^', c: 'calc-btn-func' },
+      { t: 'π',  a: 'pi', c: 'calc-btn-func' },
+
+      { t: 'C',  a: 'clear', c: 'calc-btn-danger' },
+      { t: '⌫',  a: 'back',  c: 'calc-btn-danger' },
+      { t: '(',  a: '(', c: 'calc-btn-func' },
+      { t: ')',  a: ')', c: 'calc-btn-func' },
+      { t: 'e',  a: 'e', c: 'calc-btn-func' },
+
+      { t: '7', a: '7', c: 'calc-btn-num' },
+      { t: '8', a: '8', c: 'calc-btn-num' },
+      { t: '9', a: '9', c: 'calc-btn-num' },
+      { t: '÷', a: '÷', c: 'calc-btn-op' },
+      { t: '×', a: '×', c: 'calc-btn-op' },
+
+      { t: '4', a: '4', c: 'calc-btn-num' },
+      { t: '5', a: '5', c: 'calc-btn-num' },
+      { t: '6', a: '6', c: 'calc-btn-num' },
+      { t: '−', a: '−', c: 'calc-btn-op' },
+      { t: '+', a: '+', c: 'calc-btn-op' },
+
+      { t: '1', a: '1', c: 'calc-btn-num' },
+      { t: '2', a: '2', c: 'calc-btn-num' },
+      { t: '3', a: '3', c: 'calc-btn-num' },
+      { t: 'x!', a: '!', c: 'calc-btn-func' },
+      { t: '1/x', a: '1/(', c: 'calc-btn-func' },
+
+      { t: '0', a: '0', c: 'calc-btn-num calc-btn-span2' },
+      { t: '.', a: '.', c: 'calc-btn-num' },
+      { t: '=', a: '=', c: 'calc-btn-equal calc-btn-span2' }
+    ];
+
+    
+        /* =========================================================
+       ВСТРОЕННЫЕ ПРЕДМЕТЫ (НЕУДАЛЯЕМЫЕ)
+       ========================================================= */
+    const BUILTIN_SUBJECTS = [
+      { id: 'builtin_math',      name: 'Математика', is_chemistry: false, builtin: true, sections: [] },
+      { id: 'builtin_physics',   name: 'Физика',     is_chemistry: false, builtin: true, sections: [] },
+      { id: 'builtin_chemistry', name: 'Химия',      is_chemistry: true,  builtin: true, sections: [] },
+      { id: 'builtin_biology',   name: 'Биология',   is_chemistry: false, builtin: true, sections: [] }
+    ];
+
+    function ensureBuiltinSubjects() {
+      if (!Array.isArray(state.usefulSubjects)) state.usefulSubjects = [];
+
+      for (const b of BUILTIN_SUBJECTS) {
+        // Проверяем по id И по имени — чтобы не было дубликата,
+        // если предмет с таким же именем уже создан вручную
+        const existsById = state.usefulSubjects.find(s => s.id === b.id);
+        const existsByName = state.usefulSubjects.find(
+          s => (s.name || '').trim().toLowerCase() === b.name.trim().toLowerCase()
+        );
+
+        if (!existsById && !existsByName) {
+          state.usefulSubjects.unshift(JSON.parse(JSON.stringify(b)));
+        }
+      }
+    }
+
+	      const bgVideo = document.getElementById('jellyfish-bg');
+    let isReversing = false;
+
+    bgVideo.addEventListener('loadedmetadata', () => {
+      bgVideo.play();
+    });
+
+    bgVideo.addEventListener('ended', () => {
+      if (!isReversing) {
+        // Дошли до конца — включаем реверс
+        isReversing = true;
+        bgVideo.playbackRate = -1;
+        bgVideo.play();
+      } else {
+        // Отмотали назад до начала — снова вперед
+        isReversing = false;
+        bgVideo.playbackRate = 1;
+        bgVideo.play();
+      }
+    });
+
+    /* =========================================================
+       ЗАГРУЗКА РЕЖИМОВ ИИ
+       ========================================================= */
+    
+    const DEFAULT_AI_MODES = [
+      {
+        id: 'spelling',
+        name: 'Орфография',
+        prompt: 'Ты учитель русского языка. Проверь текст на орфографические, пунктуационные и грамматические ошибки. Выведи: 1) Исправленный текст. 2) Список ошибок. Отвечай кратко. Не используй Markdown и LaTeX.'
+      },
+      {
+        id: 'parsing',
+        name: 'Разбор',
+        prompt: 'Ты учитель русского языка. Сделай разбор слова или предложения. Отвечай кратко. Не используй Markdown и LaTeX.'
+      }
+    ];
+
+    async function loadAiModes() {
+      if (state.aiModesLoaded) return state.aiModes;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/ai_modes.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.aiModes = DEFAULT_AI_MODES;
+          state.aiModesSha = null;
+          state.aiModesLoaded = true;
+          return state.aiModes;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.aiModesSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        const modes = Array.isArray(data.modes) ? data.modes : DEFAULT_AI_MODES;
+        state.aiModes = modes.length > 0 ? modes : DEFAULT_AI_MODES;
+        state.aiModesLoaded = true;
+        return state.aiModes;
+      } catch (err) {
+        console.warn('Ошибка загрузки ai_modes.json:', err);
+        state.aiModes = DEFAULT_AI_MODES;
+        state.aiModesLoaded = true;
+        return state.aiModes;
+      }
+    }
+
+    function getAiMode(modeId) {
+      const modes = state.aiModes || DEFAULT_AI_MODES;
+      return modes.find(m => m.id === modeId) || modes[0];
+    }
+    
+        /* =========================================================
+       AI ПОМОЩНИК
+       ========================================================= */
+    async function loadChats() {
+      if (state.chatsLoaded) return state.chats;
+
+      try {
+        const response = await fetch(
+          `${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`,
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+
+        if (response.status === 404) {
+          state.chats = [];
+          state.chatsSha = null;
+          state.chatsLoaded = true;
+          return state.chats;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const jsonMeta = await response.json();
+        state.chatsSha = jsonMeta.sha;
+        const rawContent = atob(jsonMeta.content.replace(/\n/g, ''));
+        const utf8Content = decodeURIComponent(
+          Array.prototype.map.call(rawContent, c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
+
+        const data = JSON.parse(utf8Content);
+        state.chats = Array.isArray(data.chats) ? data.chats : [];
+        state.chatsLoaded = true;
+        return state.chats;
+      } catch (err) {
+        console.warn('Ошибка загрузки chats.json:', err);
+        state.chats = [];
+        state.chatsLoaded = true;
+        return state.chats;
+      }
+    }
+    async function saveChats() {
+      try {
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+
+        let sha = state.chatsSha;
+        if (getRes.ok) {
+          const jsonMeta = await getRes.json();
+          sha = jsonMeta.sha;
+          state.chatsSha = sha;
+        }
+
+        const exportData = { chats: state.chats };
+        const contentBase64 = utf8ToBase64(JSON.stringify(exportData, null, 2));
+
+        const putRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/chats.json`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Update chats.json via dashboard [skip ci]`,
+            content: contentBase64,
+            sha: sha
+          })
+        });
+
+        if (putRes.status === 409) {
+          await new Promise(r => setTimeout(r, 500));
+          return saveChats();
+        }
+
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          throw new Error(errData.message || 'Ошибка сохранения чатов');
+        }
+
+        const putSuccess = await putRes.json();
+        state.chatsSha = putSuccess.content.sha;
+      } catch (err) {
+        showToast(`Ошибка сохранения чатов: ${err.message}`, 'error');
+      }
+    }
+
+    function getCurrentChat() {
+      if (!state.currentChatId) return null;
+      return state.chats.find(c => c.id === state.currentChatId);
+    }
+
+    function createNewChat() {
+      const mode = state.aiMode;
+      const nextId = state.chats.length > 0 ? Math.max(...state.chats.map(c => c.id || 0)) + 1 : 1;
+      const now = new Date().toISOString();
+
+      const newChat = {
+        id: nextId,
+        mode: mode,
+        title: 'Новый чат',
+        messages: [],
+        created_at: now,
+        updated_at: now
+      };
+
+      state.chats.unshift(newChat);
+      state.currentChatId = nextId;
+      renderAI();
+    }
+
+    function selectChat(chatId) {
+      state.currentChatId = chatId;
+      const chat = state.chats.find(c => c.id === chatId);
+      if (chat) state.aiMode = chat.mode || 'spelling';
+      renderAI();
+    }
+
+    function confirmDeleteChat(chatId) {
+      confirmAction('Удалить этот чат без возможности восстановления?', () => {
+        deleteChat(chatId);
+      });
+    }
+
+    async function deleteChat(chatId) {
+      state.chats = state.chats.filter(c => c.id !== chatId);
+      if (state.currentChatId === chatId) {
+        state.currentChatId = null;
+      }
+      renderAI();
+      await saveChats();
+    }
+
+    function setAiMode(mode) {
+      state.aiMode = mode;
+      const chat = getCurrentChat();
+      if (chat) {
+        chat.mode = mode;
+        chat.updated_at = new Date().toISOString();
+        saveChats();
+      }
+      renderAI();
+    }
+
+      async function sendAiMessage() {
+      const input = document.getElementById('ai-input');
+      if (!input || state.aiSending) return;
+
+      const text = input.value.trim();
+      if (!text) return;
+
+      let chat = getCurrentChat();
+      if (!chat) {
+        createNewChat();
+        chat = getCurrentChat();
+      }
+
+      const now = new Date().toISOString();
+
+      chat.messages.push({
+        role: 'user',
+        text: text,
+        time: now
+      });
+
+      if (chat.title === 'Новый чат') {
+        chat.title = text.length > 40 ? text.substring(0, 40) + '...' : text;
+      }
+
+      chat.updated_at = now;
+      chat.mode = state.aiMode;
+
+      input.value = '';
+      state.aiSending = true;
+      renderAI();
+
+      const modeConfig = getAiMode(state.aiMode);
+
+      try {
+        const response = await fetch(GEMINI_WORKER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            systemPrompt: modeConfig.prompt,
+            history: chat.messages.slice(0, -1).map(m => ({
+              role: m.role,
+              text: m.text
+            }))
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.error || `HTTP ${response.status}`;
+
+          if (errMsg.includes('high demand') || errMsg.includes('Spikes in demand')) {
+            throw new Error('Сервер временно перегружен. Попробуйте ещё раз через минуту или попробуйте позже.');
+          }
+          if (errMsg.includes('API key not valid') || errMsg.includes('API_KEY_INVALID')) {
+            throw new Error('Неверный API-ключ. Проверьте ключ в секретах Cloudflare.');
+          }
+          if (errMsg.includes('quota') || errMsg.includes('rate limit') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+            throw new Error('Лимит запросов исчерпан. Попробуйте позже.');
+          }
+          if (errMsg.includes('no longer available')) {
+            throw new Error('Модель больше недоступна. Обновите код Worker\'а.');
+          }
+          if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+            throw new Error('Нет соединения с сервером. Проверьте интернет.');
+          }
+
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        const aiText = data.text || 'Пустой ответ от Gemini';
+
+        chat.messages.push({
+          role: 'ai',
+          text: aiText,
+          time: new Date().toISOString()
+        });
+        chat.updated_at = new Date().toISOString();
+      } catch (err) {
+        chat.messages.push({
+          role: 'ai',
+          text: `Ошибка: ${err.message}`,
+          time: new Date().toISOString()
+        });
+      } finally {
+        state.aiSending = false;
+        render();
+        await saveChats();
+      }
+    }
+
+    function renderAI() {
+      const chat = getCurrentChat();
+
+      const modes = state.aiModes || DEFAULT_AI_MODES;
+      const modesHtml = modes.map(m => `
+        <button class="ai-mode-btn ${state.aiMode === m.id ? 'active' : ''}" onclick="setAiMode('${escapeHtml(m.id)}')">
+          ${escapeHtml(m.name)}
+        </button>
+      `).join('');
+
+      let chatMessagesHtml = '';
+      if (!chat) {
+        chatMessagesHtml = '<div class="empty-state">Выбери чат слева или создай новый</div>';
+      } else if (chat.messages.length === 0) {
+        chatMessagesHtml = '<div class="empty-state">Напиши сообщение, чтобы начать</div>';
+      } else {
+        chatMessagesHtml = chat.messages.map(m => `
+          <div class="ai-msg ${m.role === 'user' ? 'user' : 'ai'}">
+            ${escapeHtml(m.text)}
+            <div class="ai-msg-time">${formatDate(m.time)}</div>
+          </div>
+        `).join('');
+      }
+
+      if (state.aiSending) {
+        chatMessagesHtml += '<div class="ai-loading">Gemini думает...</div>';
+      }
+
+      const sortedChats = [...state.chats].sort((a, b) =>
+        new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
+      );
+
+      const chatsListHtml = sortedChats.length === 0
+        ? '<div class="empty-state">Нет чатов</div>'
+        : sortedChats.map(c => {
+            const modeName = getAiMode(c.mode).name;
+            return `
+              <div class="ai-chat-item ${state.currentChatId === c.id ? 'active' : ''}" onclick="selectChat(${c.id})">
+                <div style="flex: 1; min-width: 0;">
+                  <div class="ai-chat-item-title">${escapeHtml(c.title || 'Без названия')}</div>
+                  <div class="ai-chat-item-mode">${escapeHtml(modeName)} · ${formatDate(c.updated_at)}</div>
+                </div>
+                <button class="ai-chat-item-delete" onclick="event.stopPropagation(); confirmDeleteChat(${c.id})" title="Удалить">×</button>
+              </div>
+            `;
+          }).join('');
+
+
+      document.getElementById('app').innerHTML = `
+        <div class="ai-layout">
+          <div class="ai-left">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Режим</span>
+                <span class="sub-text" style="font-size: 11px;">${state.isAdmin ? 'admin' : 'user'}</span>
+              </div>
+              <div style="padding: 12px;">
+                <div class="ai-mode-buttons">${modesHtml}</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Сообщение</span>
+                <button class="btn-primary" onclick="createNewChat()" style="padding: 4px 10px; font-size: 12px;">+ Новый</button>
+              </div>
+              <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <textarea id="ai-input" class="ai-input" placeholder="Введи текст для проверки..." ${!chat ? 'disabled' : ''}></textarea>
+                <button class="btn-primary ai-send" onclick="sendAiMessage()" ${!chat || state.aiSending ? 'disabled' : ''}>
+                  ${state.aiSending ? 'Отправка...' : 'Отправить'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-right">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">${chat ? escapeHtml(chat.title) : 'Ответ'}</span>
+              </div>
+              <div class="ai-chat-box">${chatMessagesHtml}</div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">История чатов</span>
+              </div>
+              <div class="ai-chat-list">${chatsListHtml}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const inputEl = document.getElementById('ai-input');
+      if (inputEl && chat && !state.aiSending) {
+        inputEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendAiMessage();
+          }
+        });
+      }
+
+      // Автоскролл чата вниз
+      const chatBox = document.querySelector('.ai-chat-box');
+      if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+
+        /* =========================================================
+       ВКЛАДКА "БОТ" (объединяет Пользователей, Сообщений, Админов)
+       ========================================================= */
+    function renderBot() {
+      const subtab = state.botSubtab || 'users';
+
+      const tabsHtml = `
+        <div class="bot-subtabs">
+          <button class="bot-subtab ${subtab === 'users' ? 'active' : ''}" onclick="setBotSubtab('users')">
+            Пользователи
+          </button>
+          <button class="bot-subtab ${subtab === 'messages' ? 'active' : ''}" onclick="setBotSubtab('messages')">
+            Сообщения
+          </button>
+          <button class="bot-subtab ${subtab === 'admins' ? 'active' : ''}" onclick="setBotSubtab('admins')">
+            Админы
+          </button>
+        </div>
+      `;
+
+      const placeholders = {
+        users: 'Поиск по имени, username или ID...',
+        messages: 'Поиск по имени, тексту или User ID...',
+        admins: 'Поиск админов по имени или ID...'
+      };
+
+      const searchValues = {
+        users: state.searchUsers || '',
+        messages: state.searchMessages || '',
+        admins: state.searchAdmins || ''
+      };
+
+      const searchHtml = `
+        <div class="search-bar">
+          <input type="text" id="bot-search-input"
+            placeholder="${placeholders[subtab]}"
+            value="${escapeHtml(searchValues[subtab])}"
+            oninput="onBotSearchInput(this.value)" />
+        </div>
+      `;
+
+      let bodyHtml = '';
+      if (subtab === 'users') bodyHtml = buildUsersTable();
+      else if (subtab === 'messages') bodyHtml = buildMessagesTable();
+      else if (subtab === 'admins') bodyHtml = buildAdminsTable();
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Бот</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              ${tabsHtml}
+              ${searchHtml}
+              ${bodyHtml}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+
+      const input = document.getElementById('bot-search-input');
+      if (input && state._botSearchFocused) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+
+    function setBotSubtab(tab) {
+      state.botSubtab = tab;
+      state._botSearchFocused = false;
+      renderBot();
+    }
+
+    function onBotSearchInput(value) {
+      state._botSearchFocused = true;
+      if (state.botSubtab === 'users') state.searchUsers = value;
+      else if (state.botSubtab === 'messages') state.searchMessages = value;
+      else if (state.botSubtab === 'admins') state.searchAdmins = value;
+      renderBot();
+    }
+
+    function buildUsersTable() {
+      const userIds = Object.keys(state.users);
+      const q = (state.searchUsers || '').toLowerCase().trim();
+
+      let filteredIds = userIds;
+      if (q) {
+        filteredIds = userIds.filter(id => {
+          const u = state.users[id];
+          return id.includes(q) ||
+            (u.first_name || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q);
+        });
+      }
+
+      let rows = filteredIds.map(id => {
+        const u = state.users[id];
+        return `
+          <tr class="clickable" onclick="openProfile('${id}')">
+            <td>${escapeHtml(u.first_name || '—')}</td>
+            <td><code>${id}</code></td>
+            <td>${formatDate(u.last_message)}</td>
+            <td>${u.requests ?? 0}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${filteredIds.length} из ${userIds.length}</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Ник</th><th>ID</th><th>Последнее сообщение</th><th>Запросов</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="4" class="empty-state">Нет пользователей</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildMessagesTable() {
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+
+      if (q) {
+        list = list.filter(m =>
+          (m.first_name || '').toLowerCase().includes(q) ||
+          (m.text || '').toLowerCase().includes(q) ||
+          String(m.user_id).includes(q)
+        );
+      }
+
+      let rows = list.map((m, index) => {
+        const text = m.text || '';
+        const parsed = parseMediaFromText(text);
+        let cellContent = parsed
+          ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+          : escapeHtml(text.length > 100 ? text.substring(0, 100) + '...' : text);
+
+        return `
+          <tr class="clickable" onclick="openMessageModal(${index})">
+            <td class="col-id">${m.id !== undefined ? `#${m.id}` : '—'}</td>
+            <td>${escapeHtml(m.first_name || '—')}</td>
+            <td><code>${m.user_id}</code></td>
+            <td class="truncate">${cellContent}</td>
+            <td>${formatDate(m.time)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${list.length}</div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Ник</th><th>User ID</th><th>Текст</th><th>Время</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5" class="empty-state">Нет сообщений</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildAdminsTable() {
+      const q = (state.searchAdmins || '').toLowerCase().trim();
+      let list = state.admins || [];
+
+      if (q) {
+        list = list.filter(admin => {
+          const user = state.users[String(admin.id)];
+          const name = user ? user.first_name : '';
+          return String(admin.id).includes(q) || name.toLowerCase().includes(q);
+        });
+      }
+
+      let rows = list.map(admin => {
+        const user = state.users[String(admin.id)];
+        const name = user ? user.first_name : '—';
+        return `
+          <tr class="${user ? 'clickable' : ''}" ${user ? `onclick="openProfile('${admin.id}')"` : ''}>
+            <td>${escapeHtml(name)}</td>
+            <td><code>${admin.id}</code></td>
+            <td>${formatDate(admin.appointed_at)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="sub-text" style="padding: 8px 16px;">Всего: ${list.length}</div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Ник</th><th>ID</th><th>Назначен</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="3" class="empty-state">Список админов пуст</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+    
+    /* =========================================================
+       АВТОРИЗАЦИЯ
+       ========================================================= */
+        /* =========================================================
+       АВТОРИЗАЦИЯ И МОДАЛКА ВХОДА
+       ========================================================= */
+    function openLoginModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p class="sub-text">Введите пароль администратора</p>
+          <input type="password" id="login-modal-password" class="form-input" placeholder="Пароль" style="margin-bottom: 0;" autofocus />
+          <div id="login-modal-error" style="color: var(--status-banned); font-size: 13px; display: none;">Неверный пароль</div>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="submitLoginModal()">Войти</button>
+      `;
+      openModal('Вход', content, actions);
+
+      setTimeout(() => {
+        const input = document.getElementById('login-modal-password');
+        if (input) {
+          input.focus();
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitLoginModal();
+          });
+        }
+      }, 50);
+    }
+
+    function submitLoginModal() {
+      const input = document.getElementById('login-modal-password');
+      const errEl = document.getElementById('login-modal-error');
+      if (!input) return;
+
+      if (input.value.trim() === ADMIN_PASSWORD) {
+        state.isAdmin = true;
+        localStorage.setItem('admin_auth', 'true');
+        const authBtnEl = document.getElementById('auth-btn');
+        if (authBtnEl) authBtnEl.textContent = 'Выйти';
+        closeModal();
+        applyAdminVisibility();
+        render();
+        showToast('Вы вошли как администратор', 'success');
+      } else {
+        if (errEl) errEl.style.display = 'block';
+      }
+    }
+
+    const authBtn = document.getElementById('auth-btn');
+    if (authBtn) {
+      authBtn.addEventListener('click', () => {
+        if (state.isAdmin) {
+          state.isAdmin = false;
+          localStorage.removeItem('admin_auth');
+          authBtn.textContent = 'Вход';
+          applyAdminVisibility();
+
+          if (!isTabAllowed(state.currentTab)) {
+            state.currentTab = 'useful';
+            document.querySelectorAll('.nav-btn').forEach(b => {
+              b.classList.toggle('active', b.getAttribute('data-tab') === 'useful');
+            });
+          }
+
+          render();
+          showToast('Вы вышли', 'info');
+        } else {
+          openLoginModal();
+        }
+      });
+    }
+
+    async function checkAuth() {
+      await loadSettings();
+
+      const savedAuth = localStorage.getItem('admin_auth') === 'true';
+      state.isAdmin = savedAuth;
+
+      const authBtnEl = document.getElementById('auth-btn');
+      if (authBtnEl) {
+        authBtnEl.textContent = state.isAdmin ? 'Выйти' : 'Вход';
+      }
+
+      applyAdminVisibility();
+
+      if (!isTabAllowed(state.currentTab)) {
+        state.currentTab = 'useful';
+        document.querySelectorAll('.nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === 'useful');
+        });
+      }
+
+      loadData();
+      loadUpdates();
+    }
+    
+    /* =========================================================
+       КНОПКА ОБНОВЛЕНИЙ
+       ========================================================= */
+    const updatesBtn = document.getElementById('updates-btn');
+    if (updatesBtn) {
+      updatesBtn.addEventListener('click', async () => {
+        if (!state.isAdmin) {
+          showToast('Обновления доступны только администратору', 'info');
+          return;
+        }
+        state.showUpdates = true;
+        state.editingUpdateId = null;
+        if (!state.updatesLoaded) {
+          await loadUpdates();
+        }
+        render();
+      });
+    }
+    
+    /* =========================================================
+       НАВИГАЦИЯ И РОУТИНГ
+       ========================================================= */
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!isTabAllowed(btn.getAttribute('data-tab'))) {
+          showToast('Эта вкладка доступна только администратору', 'error');
+          return;
+        }
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentTab = btn.getAttribute('data-tab');
+        state.selectedUserId = null;
+        state.editingNoteId = null;
+        state.showUpdates = false;
+        state.editingUpdateId = null;
+
+        if (state.currentTab === 'gdz' && !state.gdzSubjects) {
+          state.gdzSearchLoading = true;
+          render();
+          await loadSubjects();
+          state.gdzSearchLoading = false;
+        }
+
+        if (state.currentTab === 'datastructure') {
+          if (!state.dsContent) {
+            await dsLoadFile(state.dsSelectedFile || 'data.json');
+          }
+        }
+
+        render();
+      });
+    });
+
+        /* =========================================================
+       ВКЛАДКА «КАЛЬКУЛЯТОРЫ»
+       ========================================================= */
+    function setCalcActive(id) {
+      state.calcActiveId = id;
+      renderCalc();
+    }
+
+    function renderCalc() {
+      document.getElementById('app').innerHTML = `
+        <div class="calc-layout">
+          <div class="calc-main">
+            ${renderActiveCalculator()}
+          </div>
+          <div class="calc-sidebar">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Инструменты</span>
+              </div>
+              <div class="calc-list">
+                ${CALCULATORS.map(c => `
+                  <div class="calc-list-item ${state.calcActiveId === c.id ? 'active' : ''}" onclick="setCalcActive('${c.id}')">
+                    <div class="calc-list-name">${escapeHtml(c.name)}</div>
+                    <div class="calc-list-desc">${escapeHtml(c.desc)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActiveCalculator() {
+      switch (state.calcActiveId) {
+        case 'scientific': return renderCalcScientific();
+        case 'molar':      return renderCalcMolar();
+        case 'quadratic':  return renderCalcQuadratic();
+        case 'units':      return renderCalcUnits();
+        case 'percent':    return renderCalcPercent();
+        default:           return renderCalcScientific();
+      }
+    }
+
+        function renderCalcScientific() {
+      const buttonsHtml = SCI_BUTTONS.map(b => `
+        <button class="calc-btn ${b.c}" onclick="calcPress('${b.a.replace(/'/g, "\\'")}')">${escapeHtml(b.t)}</button>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="sci-display">${escapeHtml(state.calcDisplay)}</div>
+          <div class="sci-buttons">${buttonsHtml}</div>
+        </div>
+      `;
+    }
+
+    function updateSciDisplay() {
+      const el = document.querySelector('.sci-display');
+      if (el) el.textContent = state.calcDisplay;
+    }
+
+    function calcPress(action) {
+      if (action === 'clear') {
+        state.calcDisplay = '';
+      } else if (action === 'back') {
+        state.calcDisplay = state.calcDisplay.slice(0, -1);
+      } else if (action === '=') {
+        calcEvaluate();
+        return;
+      } else {
+        state.calcDisplay += action;
+      }
+      updateSciDisplay();
+    }
+
+    function calcEvaluate() {
+      let expr = state.calcDisplay
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/π/g, 'pi');
+
+      if (!expr.trim()) return;
+
+      try {
+        const result = math.evaluate(expr);
+        state.calcDisplay = math.format(result, { precision: 12 });
+      } catch (err) {
+        showToast('Ошибка: ' + err.message, 'error');
+      }
+      updateSciDisplay();
+    }
+
+
+        function renderCalcMolar() {
+      const metal = MOLAR_METALS[state.calcMolarMetal] || MOLAR_METALS[0];
+      const acid  = MOLAR_ACIDS[state.calcMolarAcid]   || MOLAR_ACIDS[0];
+
+      // LCM — наименьшее общее кратное
+      const gcd = (a, b) => b ? gcd(b, a % b) : a;
+      const lcm = (a, b) => a * b / gcd(a, b);
+
+      const total = lcm(metal.charge, acid.charge);
+      const metalCount = total / metal.charge;
+      const acidCount  = total / acid.charge;
+
+      let formula = '';
+      formula += metal.sym + (metalCount > 1 ? metalCount : '');
+      if (acidCount > 1 && acid.poly) {
+        formula += '(' + acid.sym + ')' + acidCount;
+      } else {
+        formula += acid.sym + (acidCount > 1 ? acidCount : '');
+      }
+
+      const metalMass = metal.mass * metalCount;
+      const acidMass  = acid.mass  * acidCount;
+      const totalMass = metalMass + acidMass;
+
+      const metalsHtml = MOLAR_METALS.map((m, i) => `
+        <option value="${i}" ${state.calcMolarMetal === i ? 'selected' : ''}>${escapeHtml(m.name)} (${m.sym})</option>
+      `).join('');
+
+      const acidsHtml = MOLAR_ACIDS.map((a, i) => `
+        <option value="${i}" ${state.calcMolarAcid === i ? 'selected' : ''}>${escapeHtml(a.name)} (${a.sym})</option>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Молярная масса</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Металл</label>
+              <select class="calc-select" onchange="state.calcMolarMetal = parseInt(this.value); updateMolarResult();">
+                ${metalsHtml}
+              </select>
+            </div>
+            <div>
+              <label>Кислотный остаток</label>
+              <select class="calc-select" onchange="state.calcMolarAcid = parseInt(this.value); updateMolarResult();">
+                ${acidsHtml}
+              </select>
+            </div>
+
+            <div class="calc-result-box">
+              <div class="calc-result-label">Формула соединения</div>
+              <div class="calc-result-value">${escapeHtml(formula)}</div>
+              <div class="calc-result-label" style="margin-top: 16px;">Молярная масса</div>
+              <div class="calc-result-value">${totalMass.toFixed(2)} г/моль</div>
+              <div class="calc-result-sub">${metal.sym}: ${metalMass.toFixed(2)} × ${metalCount} + ${acid.sym}: ${acid.mass.toFixed(2)} × ${acidCount}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+        function updateMolarResult() {
+      const box = document.getElementById('molar-result-box');
+      if (!box) return;
+
+      const metal = MOLAR_METALS[state.calcMolarMetal] || MOLAR_METALS[0];
+      const acid  = MOLAR_ACIDS[state.calcMolarAcid]   || MOLAR_ACIDS[0];
+
+      const gcd = (a, b) => b ? gcd(b, a % b) : a;
+      const lcm = (a, b) => a * b / gcd(a, b);
+
+      const total = lcm(metal.charge, acid.charge);
+      const metalCount = total / metal.charge;
+      const acidCount  = total / acid.charge;
+
+      let formula = '';
+      formula += metal.sym + (metalCount > 1 ? metalCount : '');
+      if (acidCount > 1 && acid.poly) {
+        formula += '(' + acid.sym + ')' + acidCount;
+      } else {
+        formula += acid.sym + (acidCount > 1 ? acidCount : '');
+      }
+
+      const metalMass = metal.mass * metalCount;
+      const acidMass  = acid.mass  * acidCount;
+      const totalMass = metalMass + acidMass;
+
+      box.innerHTML = `
+            <div class="calc-result-box" id="molar-result-box">
+              <div class="calc-result-label">Формула соединения</div>
+              <div class="calc-result-value">${escapeHtml(formula)}</div>
+              <div class="calc-result-label" style="margin-top: 16px;">Молярная масса</div>
+              <div class="calc-result-value">${totalMass.toFixed(2)} г/моль</div>
+              <div class="calc-result-sub">${metal.sym}: ${metalMass.toFixed(2)} × ${metalCount} + ${acid.sym}: ${acid.mass.toFixed(2)} × ${acidCount}</div>
+            </div>
+      `;
+    }
+
+    function renderCalcQuadratic() {
+      const input = state.calcQuadInput || '';
+      let resultHtml = '';
+
+      if (state.calcQuadResult !== null) {
+        const r = state.calcQuadResult;
+        if (r.error) {
+          resultHtml = `<div class="calc-result-box"><div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(r.error)}</div></div>`;
+        } else if (r.a === 0 && r.b === 0 && r.c === 0) {
+          resultHtml = `<div class="calc-result-box"><div class="calc-result-value">x — любое число</div></div>`;
+        } else if (r.a === 0) {
+          const x = -r.c / r.b;
+          resultHtml = `<div class="calc-result-box">
+            <div class="calc-result-label">Линейное уравнение, корень:</div>
+            <div class="calc-result-value">x = ${formatNum(x)}</div>
+          </div>`;
+        } else {
+          const D = r.b * r.b - 4 * r.a * r.c;
+          let solutionHtml = '';
+
+          if (D > 0) {
+            const x1 = (-r.b + Math.sqrt(D)) / (2 * r.a);
+            const x2 = (-r.b - Math.sqrt(D)) / (2 * r.a);
+            solutionHtml = `
+              <div class="calc-result-value">x₁ = ${formatNum(x1)}</div>
+              <div class="calc-result-value" style="margin-top: 4px;">x₂ = ${formatNum(x2)}</div>
+            `;
+          } else if (D === 0) {
+            const x = -r.b / (2 * r.a);
+            solutionHtml = `<div class="calc-result-value">x = ${formatNum(x)} (двойной)</div>`;
+          } else {
+            solutionHtml = `<div class="calc-result-value" style="font-size: 14px; color: var(--text-secondary);">Нет действительных корней</div>`;
+          }
+
+          resultHtml = `
+            <div class="calc-result-box">
+              <div class="calc-result-label">Коэффициенты: a = ${formatNum(r.a)}, b = ${formatNum(r.b)}, c = ${formatNum(r.c)}</div>
+              <div class="calc-result-label" style="margin-top: 8px;">Дискриминант</div>
+              <div class="calc-result-value">D = ${formatNum(D)}</div>
+              <div class="calc-result-label" style="margin-top: 12px;">Корни</div>
+              ${solutionHtml}
+            </div>
+          `;
+        }
+      }
+
+      setTimeout(() => updateQuadResult(), 0);
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Квадратные уравнения</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Уравнение (например: x²-5x+6 или x²-9 или 2x²+3x-4)</label>
+              <input type="text" class="calc-select" placeholder="x²+5x+6" value="${escapeHtml(input)}"
+                     oninput="state.calcQuadInput = this.value">
+            </div>
+            <button class="btn-primary" onclick="solveQuadratic()" style="align-self: flex-start;">Решить</button>
+            <div class="calc-result-box" id="quad-result-box">
+              ${state.calcQuadResult !== null ? (state.calcQuadResult.error
+                ? `<div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(state.calcQuadResult.error)}</div>`
+                : ``
+              ) : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function solveQuadratic() {
+      const raw = (state.calcQuadInput || '').trim();
+      if (!raw) {
+        state.calcQuadResult = { error: 'Введи уравнение' };
+        updateQuadResult();
+        return;
+      }
+
+      // Убираем =X
+      let s = raw.replace(/\s+/g, '');
+      const eqParts = s.split('=');
+      if (eqParts.length === 2) {
+        const left = eqParts[0];
+        const right = eqParts[1];
+        const rightNum = parseFloat(right);
+        if (!isNaN(rightNum) && rightNum !== 0) {
+          s = left + (rightNum > 0 ? '-' + rightNum : '+' + Math.abs(rightNum));
+        } else {
+          s = left;
+        }
+      }
+
+      // Нормализация
+      s = s.replace(/x²/g, 'x^2').replace(/x2/g, 'x^2').replace(/X/g, 'x');
+
+      let a = 0, b = 0, c = 0;
+
+      // a
+      let m = s.match(/([+-]?\d*\.?\d*)\*?x\^2/);
+      if (m) {
+        a = m[1] === '' || m[1] === '+' ? 1 : m[1] === '-' ? -1 : parseFloat(m[1]);
+      }
+
+      // убираем x^2 из строки
+      let rest = s.replace(/([+-]?\d*\.?\d*)\*?x\^2/, '');
+
+      // b
+      m = rest.match(/([+-]?\d*\.?\d*)\*?x(?!\^)/);
+      if (m) {
+        b = m[1] === '' || m[1] === '+' ? 1 : m[1] === '-' ? -1 : parseFloat(m[1]);
+        rest = rest.replace(/([+-]?\d*\.?\d*)\*?x(?!\^)/, '');
+      }
+
+      // c
+      m = rest.match(/[+-]?\d+\.?\d*/);
+      if (m) {
+        c = parseFloat(m[0]);
+      }
+
+      if (isNaN(a) || isNaN(b) || isNaN(c)) {
+        state.calcQuadResult = { error: 'Не удалось разобрать уравнение' };
+        updateQuadResult();
+        return;
+      }
+
+      state.calcQuadResult = { a, b, c };
+      updateQuadResult();
+    }
+
+        function updateQuadResult() {
+      const box = document.getElementById('quad-result-box');
+      if (!box || state.calcQuadResult === null) return;
+
+      const r = state.calcQuadResult;
+
+      if (r.error) {
+        box.innerHTML = `<div class="calc-result-value" style="color: var(--status-banned); font-size: 14px;">${escapeHtml(r.error)}</div>`;
+        return;
+      }
+
+      if (r.a === 0 && r.b === 0 && r.c === 0) {
+        box.innerHTML = `<div class="calc-result-value">x — любое число</div>`;
+        return;
+      }
+
+      if (r.a === 0) {
+        const x = -r.c / r.b;
+        box.innerHTML = `
+          <div class="calc-result-label">Линейное уравнение, корень:</div>
+          <div class="calc-result-value">x = ${formatNum(x)}</div>
+        `;
+        return;
+      }
+
+      const D = r.b * r.b - 4 * r.a * r.c;
+      let solutionHtml = '';
+
+      if (D > 0) {
+        const x1 = (-r.b + Math.sqrt(D)) / (2 * r.a);
+        const x2 = (-r.b - Math.sqrt(D)) / (2 * r.a);
+        solutionHtml = `
+          <div class="calc-result-value">x₁ = ${formatNum(x1)}</div>
+          <div class="calc-result-value" style="margin-top: 4px;">x₂ = ${formatNum(x2)}</div>
+        `;
+      } else if (D === 0) {
+        const x = -r.b / (2 * r.a);
+        solutionHtml = `<div class="calc-result-value">x = ${formatNum(x)} (двойной)</div>`;
+      } else {
+        solutionHtml = `<div class="calc-result-value" style="font-size: 14px; color: var(--text-secondary);">Нет действительных корней</div>`;
+      }
+
+      box.innerHTML = `
+        <div class="calc-result-label">Коэффициенты: a = ${formatNum(r.a)}, b = ${formatNum(r.b)}, c = ${formatNum(r.c)}</div>
+        <div class="calc-result-label" style="margin-top: 8px;">Дискриминант</div>
+        <div class="calc-result-value">D = ${formatNum(D)}</div>
+        <div class="calc-result-label" style="margin-top: 12px;">Корни</div>
+        ${solutionHtml}
+      `;
+    }
+
+    function formatNum(x) {
+      if (!isFinite(x)) return '∞';
+      const rounded = Math.round(x * 1e6) / 1e6;
+      return String(rounded);
+    }
+
+        function renderCalcUnits() {
+      const cat = UNIT_CATEGORIES[state.calcUnitCategory] || UNIT_CATEGORIES.length;
+      const unitKeys = Object.keys(cat.units);
+
+      // Если выбранные единицы не из этой категории — сбрасываем
+      if (!cat.units[state.calcUnitFrom]) state.calcUnitFrom = unitKeys[0];
+      if (!cat.units[state.calcUnitTo])   state.calcUnitTo   = unitKeys[1] || unitKeys[0];
+
+      const value = parseFloat(state.calcUnitValue) || 0;
+      const inBase = value * cat.units[state.calcUnitFrom];
+      const result = inBase / cat.units[state.calcUnitTo];
+
+      const catsHtml = Object.entries(UNIT_CATEGORIES).map(([k, v]) => `
+        <option value="${k}" ${state.calcUnitCategory === k ? 'selected' : ''}>${escapeHtml(v.name)}</option>
+      `).join('');
+
+      const unitsFromHtml = unitKeys.map(u => `
+        <option value="${u}" ${state.calcUnitFrom === u ? 'selected' : ''}>${escapeHtml(u)}</option>
+      `).join('');
+
+      const unitsToHtml = unitKeys.map(u => `
+        <option value="${u}" ${state.calcUnitTo === u ? 'selected' : ''}>${escapeHtml(u)}</option>
+      `).join('');
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Перевод единиц</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Категория</label>
+              <select class="calc-select" onchange="state.calcUnitCategory = this.value; state.calcUnitFrom = ''; state.calcUnitTo = ''; renderCalc();">
+                ${catsHtml}
+              </select>
+            </div>
+
+            <div class="calc-row">
+              <div>
+                <label>Из</label>
+                <select class="calc-select" onchange="state.calcUnitFrom = this.value; updateUnitsResult();" style="margin-bottom: 8px;">
+                  ${unitsFromHtml}
+                </select>
+                <input type="number" class="calc-select" placeholder="Значение"
+                       value="${escapeHtml(state.calcUnitValue)}"
+                       oninput="state.calcUnitValue = this.value; updateUnitsResult();">
+              </div>
+              <div>
+                <label>В</label>
+                <select class="calc-select" onchange="state.calcUnitTo = this.value; updateUnitsResult();">
+                  ${unitsToHtml}
+                </select>
+              </div>
+            </div>
+
+            <div class="calc-result-box" id="units-result-box">
+              <div class="calc-result-label">Результат</div>
+              <div class="calc-result-value">${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+              <div class="calc-result-sub">${formatNum(value)} ${escapeHtml(state.calcUnitFrom)} = ${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+        function updateUnitsResult() {
+      const box = document.getElementById('units-result-box');
+      if (!box) return;
+
+      const cat = UNIT_CATEGORIES[state.calcUnitCategory] || UNIT_CATEGORIES.length;
+      if (!cat.units[state.calcUnitFrom] || !cat.units[state.calcUnitTo]) return;
+
+      const value = parseFloat(state.calcUnitValue) || 0;
+      const inBase = value * cat.units[state.calcUnitFrom];
+      const result = inBase / cat.units[state.calcUnitTo];
+
+      box.innerHTML = `
+        <div class="calc-result-label">Результат</div>
+        <div class="calc-result-value">${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+        <div class="calc-result-sub">${formatNum(value)} ${escapeHtml(state.calcUnitFrom)} = ${formatNum(result)} ${escapeHtml(state.calcUnitTo)}</div>
+      `;
+    }
+
+    function renderCalcPercent() {
+      const a = parseFloat(state.calcPercentA) || 0;
+      const b = parseFloat(state.calcPercentB) || 0;
+
+      const modes = [
+        { id: 'of',     name: 'X% от Y' },
+        { id: 'is',     name: 'X — это сколько % от Y' },
+        { id: 'add',    name: 'Увеличить X на Y%' },
+        { id: 'sub',    name: 'Уменьшить X на Y%' }
+      ];
+
+      const modeHtml = modes.map(m => `
+        <option value="${m.id}" ${state.calcPercentMode === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>
+      `).join('');
+
+      let labelA = 'Число X', labelB = 'Число Y';
+      if (state.calcPercentMode === 'of')    { labelA = 'Процент X'; labelB = 'Число Y'; }
+      if (state.calcPercentMode === 'is')    { labelA = 'Число X';  labelB = 'Число Y'; }
+      if (state.calcPercentMode === 'add')   { labelA = 'Число X';  labelB = 'Процент Y'; }
+      if (state.calcPercentMode === 'sub')   { labelA = 'Число X';  labelB = 'Процент Y'; }
+
+      let resultHtml = '';
+      let resultValue = '';
+
+      if (state.calcPercentMode === 'of') {
+        const res = a * b / 100;
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)}% от ${formatNum(b)} = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'is') {
+        if (b === 0) {
+          resultValue = '—';
+          resultHtml = `<div class="calc-result-sub">Нельзя делить на ноль</div>`;
+        } else {
+          const res = a / b * 100;
+          resultValue = formatNum(res) + '%';
+          resultHtml = `<div class="calc-result-sub">${formatNum(a)} — это ${formatNum(res)}% от ${formatNum(b)}</div>`;
+        }
+      } else if (state.calcPercentMode === 'add') {
+        const res = a * (1 + b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} + ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'sub') {
+        const res = a * (1 - b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} − ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      }
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Проценты</span>
+          </div>
+          <div class="calc-form">
+            <div>
+              <label>Режим</label>
+              <select class="calc-select" onchange="state.calcPercentMode = this.value; renderCalc();">
+                ${modeHtml}
+              </select>
+            </div>
+
+            <div class="calc-row">
+              <div>
+                <label>${escapeHtml(labelA)}</label>
+                <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentA)}"
+                       oninput="state.calcPercentA = this.value; updatePercentResult();">
+              </div>
+              <div>
+                <label>${escapeHtml(labelB)}</label>
+                <input type="number" class="calc-select" value="${escapeHtml(state.calcPercentB)}"
+                       oninput="state.calcPercentB = this.value; updatePercentResult();">
+              </div>
+            </div>
+
+            <div class="calc-result-box" id="percent-result-box">
+              <div class="calc-result-label">Результат</div>
+              <div class="calc-result-value">${resultValue}</div>
+              ${resultHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+        function updatePercentResult() {
+      const box = document.getElementById('percent-result-box');
+      if (!box) return;
+
+      const a = parseFloat(state.calcPercentA) || 0;
+      const b = parseFloat(state.calcPercentB) || 0;
+
+      let resultValue = '';
+      let resultHtml = '';
+
+      if (state.calcPercentMode === 'of') {
+        const res = a * b / 100;
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)}% от ${formatNum(b)} = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'is') {
+        if (b === 0) {
+          resultValue = '—';
+          resultHtml = `<div class="calc-result-sub">Нельзя делить на ноль</div>`;
+        } else {
+          const res = a / b * 100;
+          resultValue = formatNum(res) + '%';
+          resultHtml = `<div class="calc-result-sub">${formatNum(a)} — это ${formatNum(res)}% от ${formatNum(b)}</div>`;
+        }
+      } else if (state.calcPercentMode === 'add') {
+        const res = a * (1 + b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} + ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      } else if (state.calcPercentMode === 'sub') {
+        const res = a * (1 - b / 100);
+        resultValue = formatNum(res);
+        resultHtml = `<div class="calc-result-sub">${formatNum(a)} − ${formatNum(b)}% = ${formatNum(res)}</div>`;
+      }
+
+      box.innerHTML = `
+        <div class="calc-result-label">Результат</div>
+        <div class="calc-result-value">${resultValue}</div>
+        ${resultHtml}
+      `;
+    }
+
+
+    /* =========================================================
+       БОКОВЫЕ ВИДЖЕТЫ
+       ========================================================= */
+    function renderLeftWidgets() {
+      if (!state.isAdmin) return '';
+      const msgCountByUser = {};
+      (state.messages || []).forEach(m => {
+        const uid = String(m.user_id);
+        msgCountByUser[uid] = (msgCountByUser[uid] || 0) + 1;
+      });
+
+      let topUid = null;
+      let topCount = -1;
+      for (const uid in msgCountByUser) {
+        if (msgCountByUser[uid] > topCount) {
+          topCount = msgCountByUser[uid];
+          topUid = uid;
+        }
+      }
+
+      let topUser = null;
+      let topUserName = '—';
+      let topUserNotesCount = 0;
+
+      if (topUid) {
+        topUser = state.users[topUid];
+        if (topUser) {
+          topUserName = topUser.first_name || 'Без имени';
+        } else {
+          const m = state.messages.find(x => String(x.user_id) === topUid);
+          topUserName = m ? (m.first_name || 'Без имени') : 'ID ' + topUid;
+        }
+        topUserNotesCount = (state.notes || []).filter(n => String(n.author_id) === String(topUid)).length;
+      } else {
+        topCount = 0;
+      }
+
+      const topLetter = topUserName !== '—' ? (topUserName[0] || '?').toUpperCase() : '?';
+
+      const now = new Date();
+      const mskNow = new Date(now.getTime() + (3 * 3600 * 1000));
+      const mskTodayStart = new Date(Date.UTC(mskNow.getUTCFullYear(), mskNow.getUTCMonth(), mskNow.getUTCDate(), 0, 0, 0));
+      const todayStartEpoch = mskTodayStart.getTime() - (3 * 3600 * 1000);
+
+      const isToday = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return !isNaN(d.getTime()) && d.getTime() >= todayStartEpoch;
+      };
+
+      const todayMessages = (state.messages || []).filter(m => isToday(m.time)).length;
+      const todayUsers = Object.values(state.users || {}).filter(u => isToday(u.first_seen)).length;
+      const todayMedia = (state.media || []).filter(m => isToday(m.time)).length;
+      const todayNotes = (state.notes || []).filter(n => isToday(n.created_at)).length;
+
+      return `
+        <div class="card-widget">
+          <div class="card-widget-header">Топ пользователь</div>
+          <div class="card-widget-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--accent-color); color: #fff; font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; border: 2px solid var(--border-color); flex-shrink: 0;">
+              ${escapeHtml(topLetter)}
+            </div>
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 2px;">${escapeHtml(topUserName)}</div>
+            <div style="color: var(--text-secondary); font-family: monospace; font-size: 11px; margin-bottom: 6px;">ID: ${topUid || '—'}</div>
+            <div style="font-size: 12px; color: var(--text-main);">
+              Сообщений: <strong>${topCount}</strong> • Заметок: <strong>${topUserNotesCount}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-widget">
+          <div class="card-widget-header">Активность сегодня</div>
+          <div class="card-widget-body" style="display: flex; flex-direction: column; justify-content: center;">
+            <div class="widget-row"><span class="label">Сообщений:</span><span class="value">${todayMessages}</span></div>
+            <div class="widget-row"><span class="label">Новых юзеров:</span><span class="value">${todayUsers}</span></div>
+            <div class="widget-row"><span class="label">Медиа:</span><span class="value">${todayMedia}</span></div>
+            <div class="widget-row"><span class="label">Заметок:</span><span class="value">${todayNotes}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRightWidgets() {
+      if (!state.isAdmin) return '';
+      const last10Messages = (state.messages || []).slice(-10).reverse();
+      let lastMessagesHtml = '';
+      if (last10Messages.length === 0) {
+        lastMessagesHtml = '<div style="color: var(--text-secondary); padding: 8px 0;">Нет сообщений</div>';
+      } else {
+        lastMessagesHtml = last10Messages.map(m => {
+          const rawText = m.text || '';
+          const preview = rawText.length > 60 ? rawText.substring(0, 60) + '...' : rawText;
+          return `
+            <div style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div><strong>${escapeHtml(m.first_name || '—')}</strong>: <span style="color: var(--text-secondary);">${escapeHtml(preview)}</span></div>
+              <div class="widget-item-sub">${formatDate(m.time)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const actionText = {
+        'ban': 'забанил',
+        'unban': 'разбанил',
+        'add_admin': 'назначил админом',
+        'del_admin': 'снял с админа',
+        'del_media': 'удалил медиа',
+        'del_user_media': 'удалил все медиа'
+      };
+
+      const last10Audit = (state.audit || []).slice(-10).reverse();
+      let lastAuditHtml = '';
+      if (last10Audit.length === 0) {
+        lastAuditHtml = '<div style="color: var(--text-secondary); padding: 8px 0;">Записей аудита нет</div>';
+      } else {
+        lastAuditHtml = last10Audit.map(a => {
+          const act = actionText[a.action] || a.action;
+          return `
+            <div style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <div><strong>${escapeHtml(a.admin_name || 'Admin')}</strong> ${act} <strong>${escapeHtml(a.target_name || 'Объект')}</strong></div>
+              <div class="widget-item-sub">${formatDate(a.time)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="card-widget">
+          <div class="card-widget-header">Последние сообщения</div>
+          <div class="card-widget-body">${lastMessagesHtml}</div>
+        </div>
+
+        <div class="card-widget">
+          <div class="card-widget-header">Последние действия</div>
+          <div class="card-widget-body">${lastAuditHtml}</div>
+        </div>
+      `;
+    }
+    
+    function render() {
+      const header = document.getElementById('main-header');
+      const app = document.getElementById('app');
+
+      // Плавное исчезновение перед сменой контента
+      if (app) {
+        app.style.opacity = '0';
+        app.style.transform = 'translateY(4px)';
+        app.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+      }
+
+      const fadeInApp = () => {
+        if (app) {
+          requestAnimationFrame(() => {
+            app.style.opacity = '1';
+            app.style.transform = 'translateY(0)';
+          });
+        }
+      };
+
+      if (state.showUpdates) {
+        if (state.editingUpdateId !== null) {
+          header.style.display = 'none';
+          renderUpdateEditor(state.editingUpdateId);
+        } else {
+          header.style.display = 'none';
+          renderUpdatesScreen();
+        }
+        fadeInApp();
+        return;
+      }
+
+      if (state.genSubjectId !== null) {
+        renderGenerateScreen();
+        fadeInApp();
+        return;
+      }
+
+      if (state.editingNoteId !== null) {
+        header.style.display = 'none';
+        renderNoteEditor(state.editingNoteId);
+        fadeInApp();
+        return;
+      } else {
+        header.style.display = 'block';
+      }
+
+      if (state.selectedUserId) {
+        renderUserProfile(state.selectedUserId);
+        fadeInApp();
+        return;
+      }
+      
+      switch (state.currentTab) {
+        case 'bot': renderBot(); break;
+        case 'notes': renderNotes(); break;
+        case 'gdz': renderGdz(); break;
+        case 'useful':
+          if (!state.usefulLoaded) {
+            document.getElementById('app').innerHTML = '<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>';
+            loadUseful().then(() => renderUseful());
+          } else {
+            renderUseful();
+          }
+          break;
+        case 'audit': renderAudit(); break;
+        case 'valencies': renderValencies(); break;
+        case 'ai':
+          if (!state.chatsLoaded || !state.aiModesLoaded) {
+            document.getElementById('app').innerHTML = '<div class="empty-state loading-shimmer" style="height: 180px; margin: 24px;">.</div>';
+            Promise.all([loadChats(), loadAiModes()]).then(() => {
+              if (state.currentTab === 'ai' && !state.showUpdates) {
+                renderAI();
+              } else {
+                render();
+              }
+            });
+          } else {
+            renderAI();
+          }
+          break;
+        case 'calc': renderCalc(); break;
+        case 'game': renderGame(); break;
+        case 'periodic': renderPeriodic(); break;
+        case 'datastructure': renderDataStructure(); break;
+		case 'duels':
+        if (!state.isAdmin) {
+          showToast('Доступ только для администратора', 'error');
+          state.currentTab = 'notes';
+          render();
+        } else {
+          renderDuels();
+        }
+        break;
+      }
+      fadeInApp();
+    }
+
+        /* =========================================================
+       МИНИ-ИГРА: БАНКА С ШАРИКАМИ (ФИЗИКА)
+       ========================================================= */
+    let gamePhysicsLoop = null;
+    const GAME_GRAVITY = 0.3;
+    const GAME_FRICTION = 0.9;  // Чем меньше, тем быстрее останавливаются
+    const GAME_BOUNCE = 0.05;   // Почти не отскакивают от пола и стен
+    const JAR_WIDTH = 700;
+    const JAR_HEIGHT = 800;
+    
+    const NECK_WIDTH = 540; 
+    const NECK_HEIGHT = 80; 
+    const SHOULDER_HEIGHT = 240; 
+    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
+    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
+
+    // Умная функция, которая говорит физике: "на этой высоте стенки вот тут"
+    function getJarBounds(y) {
+      if (y < NECK_HEIGHT) {
+        // В горлышке
+        return [LEFT_NECK, RIGHT_NECK];
+      } else if (y < SHOULDER_HEIGHT) {
+        // На плечиках (плавно расширяются от горла к телу банки)
+        let progress = (y - NECK_HEIGHT) / (SHOULDER_HEIGHT - NECK_HEIGHT);
+        let left = LEFT_NECK - (LEFT_NECK * progress);
+        let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * progress);
+        return [left, right];
+      } else {
+        // В основной части банки
+        return [0, JAR_WIDTH];
+      }
+    }
+    function renderGame() {
+      const jar = state.jars[state.activeJarIndex];
+      if (!jar) return;
+
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      const isFull = currentSum === jar.target;
+      const isOver = currentSum > jar.target;
+
+      document.getElementById('app').innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+          
+          <div class="jar-wrapper" style="max-width: 900px; margin-top: 20px;">
+            <button class="jar-nav-btn" onclick="switchJar(-1)">←</button>
+            
+            <div class="card" style="flex: 1;">
+              <!-- Шапка с названием и целью -->
+              <div class="jar-header">
+                <div class="jar-info">
+                  <input type="text" class="jar-name-input" value="${escapeHtml(jar.name)}" onchange="updateJarName(this.value)" title="Нажми, чтобы изменить имя">
+                  <div class="jar-target">
+                    <span>Цель:</span>
+                    <input type="number" class="jar-target-input" value="${jar.target}" onchange="updateJarTarget(this.value)" title="Изменить цель">
+                  </div>
+                </div>
+              </div>
+              
+              <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;" onclick="addNewJar()">+ Новая банка</button>
+              </div>
+
+              <div class="game-jar-visual">
+                <canvas id="game-canvas"></canvas>
+              </div>
+              
+              <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
+                Убийств: ${state.gameKills})
+              </div>
+              <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
+                Сумма: <span>${currentSum}</span> / ${jar.target}
+              </div>
+            </div>
+            
+            <button class="jar-nav-btn" onclick="switchJar(1)">→</button>
+          </div>
+
+          <!-- Поля ввода под банкой -->
+          <div class="game-input-area" style="max-width: 700px; margin-top: 16px;">
+            <input type="number" id="game-input" placeholder="Сколько шариков добавить?" value="1" min="1">
+            <button onclick="addGameNumber()">Добавить</button>
+          </div>
+          
+          <div class="game-quick-btns" style="max-width: 700px; margin-top: 8px;">
+            <button onclick="quickAddGameNumber(1)">+1</button>
+            <button onclick="quickAddGameNumber(5)">+5</button>
+            <button onclick="quickAddGameNumber(10)">+10</button>
+            <button onclick="shakeJar()" style="color: var(--accent-color); border-color: var(--accent-color);">Встряхнуть</button>
+          </div>
+          
+        </div>
+      `;
+
+      initGameCanvas();
+    }
+
+    function switchJar(dir) {
+      state.activeJarIndex += dir;
+      if (state.activeJarIndex < 0) state.activeJarIndex = state.jars.length - 1;
+      if (state.activeJarIndex >= state.jars.length) state.activeJarIndex = 0;
+      saveGameState();
+      renderGame();
+    }
+
+    function addNewJar() {
+      const id = Date.now();
+      state.jars.push({ id, name: 'Новая банка', target: 2500, balls: [] });
+      state.activeJarIndex = state.jars.length - 1;
+      saveGameState();
+      renderGame();
+    }
+
+    function updateJarName(val) {
+      state.jars[state.activeJarIndex].name = val.trim() || 'Без названия';
+      saveGameState();
+    }
+
+    function updateJarTarget(val) {
+      state.jars[state.activeJarIndex].target = parseInt(val) || 2500;
+      saveGameState();
+      renderGame();
+    }
+
+    function shakeJar() {
+      const jar = state.jars[state.activeJarIndex];
+      jar.balls.forEach(b => {
+        b.vx += (Math.random() - 0.5) * 25;
+        b.vy += (Math.random() - 0.5) * 25 - 10; // Подкидываем вверх
+      });
+    }
+
+    function initGameCanvas() {
+      const canvas = document.getElementById('game-canvas');
+      if (!canvas) return;
+      
+      canvas.width = JAR_WIDTH;
+      canvas.height = JAR_HEIGHT;
+      const ctx = canvas.getContext('2d');
+      canvas.style.background = 'linear-gradient(to bottom, rgba(255, 182, 193, 0.05), rgba(255, 105, 180, 0.1))';
+
+      const jar = state.jars[state.activeJarIndex];
+
+      jar.balls.forEach(b => {
+        if (b.x === undefined) {
+          b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
+          b.y = -Math.random() * 200;
+          b.vx = (Math.random() - 0.5) * 4;
+          b.vy = Math.random() * 2;
+          b.r = Math.max(24, Math.min(55, 24 + Math.log2(b.value || 1) * 6)); 
+          b.mass = b.r ** 2;
+        }
+      });
+
+      if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
+
+      function update() {
+        if (state.currentTab !== 'game') return;
+        ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
+
+        // 1. Движение
+        for (let b of jar.balls) {
+          b.vy += GAME_GRAVITY;
+          b.vx *= GAME_FRICTION;
+          b.vy *= GAME_FRICTION;
+          if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
+          if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
+          b.x += b.vx;
+          b.y += b.vy;
+        }
+
+        // 2. Столкновения и СЛИЯНИЕ
+        for (let iter = 0; iter < 4; iter++) {
+          for (let i = 0; i < jar.balls.length; i++) {
+            let b = jar.balls[i];
+            if (b.isDead) continue;
+
+            let [leftWall, rightWall] = getJarBounds(b.y);
+            if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
+            if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
+            if (b.y + b.r > JAR_HEIGHT) { 
+              b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
+              if (Math.abs(b.vy) < 0.5) b.vy = 0; 
+            }
+
+            for (let j = i + 1; j < jar.balls.length; j++) {
+              let b2 = jar.balls[j];
+              if (b2.isDead) continue;
+
+              let dx = b2.x - b.x;
+              let dy = b2.y - b.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              let minDist = b.r + b2.r;
+
+              if (dist < minDist) {
+                // ЛОГИКА СЛИЯНИЯ (1+1=2)
+                if (b.value === b2.value) {
+                  b2.value *= 2;
+                  b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
+                  b2.mass = b2.r ** 2;
+                  b2.vx += b.vx * 0.5;
+                  b2.vy += b.vy * 0.5;
+                  b.isDead = true; // Удаляем первый шарик
+				  playPopSound();
+                  break; // Выходим из цикла j для этого i
+                } 
+                
+                // Если это разные шарики — обычное физическое столкновение
+                let nx, ny;
+                if (dist === 0) {
+                  let angle = Math.random() * Math.PI * 2;
+                  nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
+                } else {
+                  nx = dx / dist; ny = dy / dist;
+                }
+                let overlap = minDist - dist;
+                b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
+                b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
+                
+                let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
+                b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
+                b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
+              }
+            }
+          }
+        }
+
+        // Очистка "мертвых" шариков
+        if (jar.balls.some(b => b.isDead)) {
+          jar.balls = jar.balls.filter(b => !b.isDead);
+          saveGameState();
+        }
+
+        // 3. Отрисовка банки (без изменений)
+        ctx.strokeStyle = 'rgba(255, 105, 180, 0.3)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(LEFT_NECK, 0); ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
+        ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
+        ctx.lineTo(0, JAR_HEIGHT - 40);
+        ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
+        ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
+        ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
+        ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
+        ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
+        ctx.lineTo(RIGHT_NECK, 0);
+        ctx.stroke();
+
+        // 4. Отрисовка шариков
+        for (let b of jar.balls) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          
+          ctx.beginPath();
+          const topCurveHeight = b.r * 0.3;
+          ctx.moveTo(0, topCurveHeight);
+          ctx.bezierCurveTo(0, 0, -b.r / 2, 0, -b.r / 2, topCurveHeight);
+          ctx.bezierCurveTo(-b.r / 2, (b.r + topCurveHeight) / 2, 0, (b.r + topCurveHeight) / 2, 0, b.r);
+          ctx.bezierCurveTo(0, (b.r + topCurveHeight) / 2, b.r / 2, (b.r + topCurveHeight) / 2, b.r / 2, topCurveHeight);
+          ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
+          ctx.closePath();
+
+          // Переливающийся цвет в зависимости от номинала и времени
+          const time = Date.now() / 1000;
+          // Сдвигаем цвет на 35 градусов для каждого удвоения (1, 2, 4, 8...)
+          // И добавляем плавную пульсацию (Math.sin), чтобы шарики "переливались"
+          const baseHue = (Math.log2(b.value || 1) * 35);
+          const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
+          
+          // Радиальный градиент (создает объемный 3D-эффект)
+          let grad = ctx.createRadialGradient(-b.r * 0.2, -b.r * 0.2, b.r * 0.1, 0, 0, b.r);
+          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`); // Светлый блик
+          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`); // Основной цвет
+          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`); // Темная тень
+          
+          ctx.fillStyle = grad;
+          ctx.fill();
+          
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.stroke();
+
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.floor(b.r * 0.7)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(b.value, 0, b.r * 0.3);
+          
+          ctx.restore();
+        }
+
+        gamePhysicsLoop = requestAnimationFrame(update);
+      }
+      update();
+    }
+
+    function addGameNumber() {
+      const inputEl = document.getElementById('game-input');
+      if (!inputEl) return;
+      const count = parseInt(inputEl.value, 10);
+      if (isNaN(count) || count <= 0) return;
+      startQuest(count); // Передаем КОЛИЧЕСТВО шариков
+      inputEl.value = '1'; // Сбрасываем на 1
+    }
+
+    function quickAddGameNumber(count) {
+      startQuest(count);
+    }
+
+    function getBallColor(val) {
+      if (val >= 100) return '#ed4245'; // Красный
+      if (val >= 50) return '#e67e22';  // Оранжевый
+      if (val >= 20) return '#5865F2';  // Синий
+      return '#43b581';                 // Зелёный
+    }
+
+    function addGameNumber() {
+      const inputEl = document.getElementById('game-input');
+      if (!inputEl) return;
+
+      const val = parseInt(inputEl.value, 10);
+      startQuest(val);
+      
+      if (!isNaN(val) && val > 0) {
+        inputEl.value = '';
+      }
+    }
+
+    function quickAddGameNumber(val) {
+      startQuest(val);
+    }
+
+    function saveGameState() {
+      localStorage.setItem('md_game_jars', JSON.stringify(state.jars));
+      localStorage.setItem('md_active_jar', state.activeJarIndex);
+      localStorage.setItem('md_game_kills', state.gameKills);
+    }
+	
+	    /* =========================================================
+       КВЕСТ: СОЕДИНИ ПРОВОДА
+       ========================================================= */
+    const WIRE_COLORS = ['#ed4245', '#5865F2', '#43b581', '#e67e22']; // Красный, Синий, Зеленый, Оранжевый
+	
+	    /* =========================================================
+       СИСТЕМА КВЕСТОВ (РАНДОМ)
+       ========================================================= */
+    async function startQuest(count) {
+      if (!state.gamesConfig) await loadGamesConfig();
+      
+      const jar = state.jars[state.activeJarIndex];
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      
+      // Проверяем, не переполним ли (каждый шарик = 1)
+      if (currentSum + count > jar.target) { 
+        showToast('Перебор! Сумма не должна превышать цель', 'error'); 
+        return; 
+      }
+
+      state.pendingBallCount = count;
+      
+      const quests = [questMath, questSpam, questSimon];
+      const randomQuest = quests[Math.floor(Math.random() * quests.length)];
+      
+      document.getElementById('quest-body').innerHTML = ''; 
+      document.getElementById('quest-modal').classList.add('active');
+      
+      randomQuest();
+    }
+
+    function completeQuest() {
+      document.getElementById('quest-modal').classList.remove('active');
+      
+      // Убираем слушатель клавиатуры, если он был
+      if (window._activeMathKeyListener) {
+        document.removeEventListener('keydown', window._activeMathKeyListener);
+        window._activeMathKeyListener = null;
+      }
+
+      const count = state.pendingBallCount;
+      state.pendingBallCount = null;
+
+      // Кидаем N шариков с задержкой, чтобы они не спавнились друг в друге
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => { pushGameBall(1); }, i * 100);
+      }
+    }
+
+    function pushGameBall(val) {
+      const jar = state.jars[state.activeJarIndex];
+      
+      const newBall = {
+        id: Date.now() + Math.random(),
+        value: val,
+        x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
+        y: -50,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 0,
+        r: Math.max(24, Math.min(55, 24 + Math.log2(val) * 6)),
+        mass: Math.max(24, Math.min(55, 24 + Math.log2(val) * 6)) ** 2
+      };
+
+      jar.balls.push(newBall);
+      saveGameState();
+      
+      // Обновляем UI суммы (без вызова полного ререндера, чтобы не дергался Canvas)
+      const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
+      const sumDisplay = document.querySelector('.game-sum-display');
+      if (sumDisplay) {
+        sumDisplay.innerHTML = `Сумма: <span>${currentSum}</span> / ${jar.target}`;
+        sumDisplay.className = `game-sum-display ${currentSum === jar.target ? 'success' : ''}`;
+      }
+
+      if (currentSum === jar.target) {
+        showToast('Идеально! Банка заполнена!', 'success');
+      }
+      
+      state.gameKills++;
+      localStorage.setItem('md_game_kills', state.gameKills);
+      updateKillsUI();
+    }
+
+    // --- МАТЕМАТИЧЕСКИЙ СЕЙФ (С КЛАВИАТУРОЙ И СЛОЖНЫМИ ПРИМЕРАМИ) ---
+    function questMath() {
+      document.getElementById('quest-title').innerText = 'Взлом кода';
+      
+      // Выбираем тип примера
+      const types = ['add', 'sub', 'mul', 'square', 'root', 'mix'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      
+      let questionText = '';
+      let answer = 0;
+
+      if (type === 'add') {
+        const a = Math.floor(Math.random() * 50) + 20;
+        const b = Math.floor(Math.random() * 50) + 20;
+        questionText = `${a} + ${b}`;
+        answer = a + b;
+      } 
+      else if (type === 'sub') {
+        const a = Math.floor(Math.random() * 60) + 40;
+        const b = Math.floor(Math.random() * 30) + 10;
+        questionText = `${a} − ${b}`; // Используем красивый минус
+        answer = a - b;
+      } 
+      else if (type === 'mul') {
+        const a = Math.floor(Math.random() * 12) + 3; // от 3 до 14
+        const b = Math.floor(Math.random() * 12) + 3;
+        questionText = `${a} × ${b}`;
+        answer = a * b;
+      } 
+      else if (type === 'square') {
+        const a = Math.floor(Math.random() * 12) + 4; // от 4 до 15
+        questionText = `${a}²`;
+        answer = a * a;
+      } 
+      else if (type === 'root') {
+        const a = Math.floor(Math.random() * 12) + 4; // от 4 до 15
+        questionText = `√${a * a}`; // Квадратный корень из точного квадрата
+        answer = a;
+      } 
+      else if (type === 'mix') {
+        // Пример вида: a × b + c
+        const a = Math.floor(Math.random() * 8) + 2;
+        const b = Math.floor(Math.random() * 5) + 2;
+        const c = Math.floor(Math.random() * 30) + 10;
+        questionText = `${a} × ${b} + ${c}`;
+        answer = a * b + c;
+      }
+
+      let input = '';
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 10px;">Реши пример (ввод с клавиатуры!):</p>
+        <div style="font-size: 28px; font-family: monospace; font-weight: bold; color: var(--accent-color); background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+          <span>${questionText} =</span> 
+          <span id="math-input" style="color: #fff;">_</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 280px; margin: 0 auto;">
+          ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="mathPress('${n}')" style="padding: 16px; font-size: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; border-radius: 8px; cursor: pointer;">${n}</button>`).join('')}
+          <button onclick="mathPress('del')" style="padding: 16px; font-size: 18px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #ed4245; border-radius: 8px; cursor: pointer;">←</button>
+          <button onclick="mathPress('0')" style="padding: 16px; font-size: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; border-radius: 8px; cursor: pointer;">0</button>
+          <button onclick="mathPress('ok')" style="padding: 16px; font-size: 16px; background: rgba(67, 181, 129, 0.2); border: 1px solid #43b581; color: #43b581; border-radius: 8px; cursor: pointer;">OK</button>
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      let mathTimer = setTimeout(() => { 
+        if (window._activeMathKeyListener) document.removeEventListener('keydown', window._activeMathKeyListener);
+        triggerFailVisual(); 
+      }, state.gamesConfig.math_time);
+
+      window.mathPress = (val) => {
+        if (val === 'del') input = input.slice(0, -1);
+        else if (val === 'ok') {
+          if (parseInt(input) === answer) {
+            clearTimeout(mathTimer);
+            completeQuest();
+          } else { 
+            clearTimeout(mathTimer);
+            if (window._activeMathKeyListener) document.removeEventListener('keydown', window._activeMathKeyListener);
+            triggerFailVisual(); 
+          }
+        } else if (input.length < 4) input += val; // Увеличил до 4 символов на случай больших ответов
+        const el = document.getElementById('math-input');
+        if (el) el.innerText = input || '_';
+      };
+
+      // --- СЛУШАТЕЛЬ КЛАВИАТУРЫ ---
+      if (window._activeMathKeyListener) {
+        document.removeEventListener('keydown', window._activeMathKeyListener);
+      }
+      
+      window._activeMathKeyListener = (e) => {
+        if (e.key >= '0' && e.key <= '9') {
+          if (input.length < 4) input += e.key;
+        } else if (e.key === 'Backspace') {
+          input = input.slice(0, -1);
+        } else if (e.key === 'Enter') {
+          window.mathPress('ok');
+          return;
+        }
+        
+        const el = document.getElementById('math-input');
+        if (el) el.innerText = input || '_';
+      };
+      
+      document.addEventListener('keydown', window._activeMathKeyListener);
+    }
+
+     // --- 2. СПАМ-КНОПКА ---
+    function questSpam() {
+      document.getElementById('quest-title').innerText = 'Перегрузка системы';
+      let clicks = 0;
+      const target = 15;
+     let timeLeft = state.gamesConfig.spam_time / 1000;
+      let timer = null;
+
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Нажми на кнопку <b style="color: #fff;">15 раз</b> за 2 секунды!</p>
+        <div id="spam-timer" style="font-size: 32px; font-weight: 900; color: #5865F2; margin-bottom: 20px; font-family: monospace;">2.0s</div>
+        <button id="spam-btn" style="width: 160px; height: 160px; border-radius: 50%; background: linear-gradient(145deg, #ff4757, #c0392b); color: white; font-size: 36px; font-weight: 900; font-family: 'Inter', sans-serif; border: 6px solid #2a1a1a; cursor: pointer; margin: 0 auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5); transition: all 0.1s; outline: none;">0/15</button>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      const btn = document.getElementById('spam-btn');
+      const timerEl = document.getElementById('spam-timer');
+
+      btn.onclick = () => {
+        if (timer === null) {
+          timer = setInterval(() => {
+            timeLeft -= 0.1;
+            if (timeLeft < 0) timeLeft = 0;
+            timerEl.innerText = timeLeft.toFixed(1) + 's';
+            if (timeLeft <= 0.8) timerEl.style.color = '#ed4245';
+            if (timeLeft <= 0) { clearInterval(timer); triggerFailVisual(); }
+          }, 100);
+        }
+        clicks++;
+        btn.innerText = clicks + "/15";
+        btn.style.transform = 'translateY(8px)'; btn.style.boxShadow = '0 2px 0 #7a1c1e, 0 5px 10px rgba(0,0,0,0.5)';
+        setTimeout(() => { btn.style.transform = 'translateY(0)'; btn.style.boxShadow = '0 10px 0 #7a1c1e, 0 15px 20px rgba(0,0,0,0.5)'; }, 50);
+        if (clicks >= target) { clearInterval(timer); completeQuest(); }
+      };
+    }
+
+    // --- 3. САЙМОН ГОВОРИТ ---
+    function questSimon() {
+      document.getElementById('quest-title').innerText = 'Повтори сигнал';
+      const colors = ['#ed4245', '#5865F2', '#43b581', '#f1c40f'];
+      let sequence = [];
+      for(let i=0; i<3; i++) sequence.push(Math.floor(Math.random()*4));
+      let userIndex = 0;
+      let lock = true;
+      let simonTimer = null;
+
+      let html = `
+        <p id="simon-status" style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Смотри и запоминай...</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 260px; margin: 0 auto;">
+          ${colors.map((c, i) => `<div id="simon-${i}" onclick="simonClick(${i})" style="height: 100px; border-radius: 12px; background: ${c}; opacity: 0.3; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;"></div>`).join('')}
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      window.simonClick = (idx) => {
+        if (lock) return;
+        const el = document.getElementById(`simon-${idx}`);
+        el.style.opacity = '1'; el.style.transform = 'scale(1.05)';
+        setTimeout(() => { el.style.opacity = '0.3'; el.style.transform = 'scale(1)'; }, 200);
+
+        if (idx === sequence[userIndex]) {
+          userIndex++;
+          if (userIndex === sequence.length) { clearTimeout(simonTimer); completeQuest(); }
+        } else {
+          clearTimeout(simonTimer); triggerFailVisual();
+        }
+      };
+
+      let i = 0;
+      const playSeq = () => {
+        if (i >= sequence.length) {
+          lock = false;
+          document.getElementById('simon-status').innerText = 'Твой ход! (3 сек)';
+          document.getElementById('simon-status').style.color = 'var(--accent-color)';
+          // Таймер на ответ (3 секунды)
+          simonTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.simon_time);
+          return;
+        }
+        const idx = sequence[i];
+        const el = document.getElementById(`simon-${idx}`);
+        el.style.opacity = '1'; el.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+          el.style.opacity = '0.3'; el.style.transform = 'scale(1)'; i++; setTimeout(playSeq, 200);
+        }, 400);
+      };
+      setTimeout(playSeq, 600);
+    }
+
+    // --- 4. МЕМОРИ (НАЙДИ ПАРУ) ---
+    function questMemory() {
+      document.getElementById('quest-title').innerText = 'Поиск совпадений (3х3)';
+      const icons = ['🍎', '🍌', '🍇', '🍒', '🍎', '🍌', '🍇', '🍒', '🃏'].sort(() => Math.random() - 0.5);
+      let opened = [];
+      let matched = 0;
+      let lock = false;
+
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px;">Найди пары (у тебя 8 сек!)</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto;">
+          ${icons.map((icon, i) => `<div id="mem-${i}" data-icon="${icon}" onclick="memClick(${i})" style="height: 80px; border-radius: 8px; background: #2a2a2a; border: 2px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; color: transparent; transition: all 0.2s; user-select: none;"></div>`).join('')}
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      // Таймер на 8 секунд
+      let memTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.memory_time);
+
+      window.memClick = (idx) => {
+        if (lock) return;
+        const card = document.getElementById(`mem-${idx}`);
+        if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+        card.style.background = 'var(--accent-color)'; card.style.borderColor = 'var(--accent-color)'; card.style.color = '#fff';
+        card.classList.add('flipped'); card.innerText = card.dataset.icon;
+        opened.push(card);
+
+        if (opened.length === 2) {
+          lock = true;
+          if (opened[0].dataset.icon === opened[1].dataset.icon) {
+            opened[0].style.background = 'rgba(67, 181, 129, 0.2)'; opened[0].style.borderColor = '#43b581'; opened[0].style.color = '#43b581'; opened[0].classList.add('matched');
+            opened[1].style.background = 'rgba(67, 181, 129, 0.2)'; opened[1].style.borderColor = '#43b581'; opened[1].style.color = '#43b581'; opened[1].classList.add('matched');
+            matched++; opened = []; lock = false;
+            
+            if (matched === 4) { clearTimeout(memTimer); completeQuest(); }
+          } else {
+            setTimeout(() => {
+              opened.forEach(c => { c.style.background = '#2a2a2a'; c.style.borderColor = '#444'; c.style.color = 'transparent'; c.classList.remove('flipped'); c.innerText = ''; });
+              opened = []; lock = false;
+            }, 600); // Ускорил закрытие карт с 800 до 600мс
+          }
+        }
+      };
+    }
+    // --- 5. ПРОВОДА (СТАРАЯ ИГРА, АДАПТИРОВАННАЯ) ---
+    function questWire() {
+      document.getElementById('quest-title').innerText = 'Взлом проводов';
+      const WIRE_COLORS = ['#ed4245', '#5865F2', '#43b581', '#e67e22'];
+      const leftColors = [...WIRE_COLORS].sort(() => Math.random() - 0.5);
+      const rightColors = [...leftColors].sort(() => Math.random() - 0.5);
+      let connected = 0;
+      let activeNode = null;
+      let tempPath = null;
+
+      let html = `
+        <p style="color: #a0a0a0; font-size: 14px; margin-bottom: 20px; user-select: none;">Протяни провода (времени: ${state.gamesConfig.wire_time / 1000} сек)</p>
+        <div id="wire-game" style="display: flex; justify-content: space-between; position: relative; padding: 20px 40px; background: #111; border-radius: 12px; border: 1px solid #333; margin-top: 15px; touch-action: none; user-select: none;">
+          <svg id="wire-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
+          <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
+            ${leftColors.map(c => `<div class="wire-node" draggable="false" data-color="${c}" data-side="left" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 20px; z-index: 2;">
+            ${rightColors.map(c => `<div class="wire-node" draggable="false" data-color="${c}" data-side="right" style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.5); cursor: grab; background: ${c}; box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5);"></div>`).join('')}
+          </div>
+        </div>
+      `;
+      document.getElementById('quest-body').innerHTML = html;
+
+      // Таймер из конфига
+      let wireTimer = setTimeout(() => { triggerFailVisual(); }, state.gamesConfig.wire_time);
+
+      const svg = document.getElementById('wire-svg');
+      const game = document.getElementById('wire-game');
+
+      // Отключаем стандартное поведение браузера при перетаскивании
+      game.addEventListener('dragstart', e => e.preventDefault());
+
+      game.onpointerdown = (e) => {
+        e.preventDefault(); // ОЧЕНЬ ВАЖНО: запрещает браузеру тянуть картинки/ссылки
+        const node = e.target.closest('.wire-node');
+        if (!node || node.classList.contains('connected')) return;
+        activeNode = node;
+        
+        tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tempPath.setAttribute('stroke', node.dataset.color);
+        tempPath.setAttribute('stroke-width', '6');
+        tempPath.setAttribute('fill', 'none');
+        tempPath.setAttribute('stroke-dasharray', '10,5');
+        svg.appendChild(tempPath);
+      };
+
+      game.onpointermove = (e) => {
+        if (!activeNode || !tempPath) return;
+        const gRect = game.getBoundingClientRect();
+        const lRect = activeNode.getBoundingClientRect();
+        const x1 = lRect.left + lRect.width/2 - gRect.left;
+        const y1 = lRect.top + lRect.height/2 - gRect.top;
+        const x2 = e.clientX - gRect.left;
+        const y2 = e.clientY - gRect.top;
+        tempPath.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+      };
+
+      game.onpointerup = (e) => {
+        if (!activeNode) return;
+        const targetNode = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wire-node');
+        
+        if (tempPath) { tempPath.remove(); tempPath = null; }
+
+        if (targetNode && targetNode !== activeNode && !targetNode.classList.contains('connected')) {
+          if (activeNode.dataset.side !== targetNode.dataset.side && activeNode.dataset.color === targetNode.dataset.color) {
+            activeNode.classList.add('connected');
+            targetNode.classList.add('connected');
+            activeNode.style.opacity = '0.4'; targetNode.style.opacity = '0.4';
+            activeNode.style.cursor = 'default'; targetNode.style.cursor = 'default';
+
+            const gRect = game.getBoundingClientRect();
+            const lRect = activeNode.getBoundingClientRect();
+            const rRect = targetNode.getBoundingClientRect();
+            const x1 = lRect.left + lRect.width/2 - gRect.left;
+            const y1 = lRect.top + lRect.height/2 - gRect.top;
+            const x2 = rRect.left + rRect.width/2 - gRect.left;
+            const y2 = rRect.top + rRect.height/2 - gRect.top;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+            path.setAttribute('stroke', activeNode.dataset.color);
+            path.setAttribute('stroke-width', '6');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(path);
+
+            connected++;
+            if (connected === 4) { clearTimeout(wireTimer); completeQuest(); }
+          }
+        }
+        activeNode = null;
+      };
+    }
+
+    function handleWireClick(node) {
+      if (node.classList.contains('connected')) return;
+
+      const side = node.getAttribute('data-side');
+      const color = node.getAttribute('data-color');
+
+      // Если кликнули по той же стороне - просто меняем выделение
+      if (!state.questSelectedNode) {
+        // Если это левая сторона, начинаем с нее. Если правая - ничего не делаем.
+        if (side === 'left') {
+          node.classList.add('selected');
+          state.questSelectedNode = node;
+        }
+        return;
+      }
+
+      // Если кликнули по второй ноде
+      if (side === 'right') {
+        const leftColor = state.questSelectedNode.getAttribute('data-color');
+        if (leftColor === color) {
+          // УСПЕХ! Соединяем.
+          connectWires(state.questSelectedNode, node);
+          state.questSelectedNode = null;
+        } else {
+          // ОШИБКА! Трясем
+          node.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 200 });
+          showToast('Неверный контакт!', 'error');
+        }
+      } else {
+        // Кликнули по другой левой ноде
+        state.questSelectedNode.classList.remove('selected');
+        state.questSelectedNode = node;
+        node.classList.add('selected');
+      }
+    }
+
+    function connectWires(leftNode, rightNode) {
+      leftNode.classList.remove('selected');
+      leftNode.classList.add('connected');
+      rightNode.classList.add('connected');
+      state.questConnected.push(leftNode.getAttribute('data-color'));
+
+      // Рисуем линию
+      const svg = document.getElementById('wire-svg');
+      const gameRect = document.getElementById('wire-game').getBoundingClientRect();
+      const lRect = leftNode.getBoundingClientRect();
+      const rRect = rightNode.getBoundingClientRect();
+
+      const x1 = lRect.left + lRect.width / 2 - gameRect.left;
+      const y1 = lRect.top + lRect.height / 2 - gameRect.top;
+      const x2 = rRect.left + rRect.width / 2 - gameRect.left;
+      const y2 = rRect.top + rRect.height / 2 - gameRect.top;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`);
+      path.setAttribute('stroke', leftNode.getAttribute('data-color'));
+      path.classList.add('wire-path');
+      svg.appendChild(path);
+
+      // Проверяем, все ли соединены
+      if (state.questConnected.length === 4) {
+        document.getElementById('quest-status').innerText = 'Доступ разрешен!';
+        document.getElementById('quest-status').style.color = '#43b581';
+        
+        setTimeout(() => {
+          document.getElementById('quest-modal').classList.remove('active');
+          const val = state.pendingBallValue;
+          state.pendingBallValue = null;
+          pushGameBall(val);
+        }, 800);
+      }
+    }
+
+
+
+	      function updateKillsUI() {
+      const killEl = document.getElementById('game-kills');
+      if (killEl) {
+        killEl.innerText = `Убийств: ${state.gameKills})`;
+      }
+    }
+
+    function removeGameNumber(id) {
+      state.gameBalls = state.gameBalls.filter(b => b.id !== id);
+      saveGameState(); // <-- ДОБАВИЛИ СОХРАНЕНИЕ
+      const currentSum = state.gameBalls.reduce((acc, b) => acc + b.value, 0);
+      updateGameUI(currentSum);
+    }
+
+    function updateGameUI(newSum) {
+      // Обновляем сумму
+      const sumDisplay = document.querySelector('.game-sum-display');
+      if (sumDisplay) {
+        sumDisplay.className = `game-sum-display ${newSum === 1500 ? 'success' : ''}`;
+        sumDisplay.innerHTML = `Сумма: <span>${newSum}</span> / 1500`;
+      }
+      
+      // Обновляем историю
+      const historyHtml = [...state.gameBalls].reverse().map(b => `
+        <div class="game-history-item">
+          <span>+${b.value}</span>
+          <button onclick="removeGameNumber(${b.id})" title="Удалить">×</button>
+        </div>
+      `).join('');
+      const historyContainer = document.getElementById('game-history');
+      if (historyContainer) {
+        historyContainer.innerHTML = historyHtml || '<div class="empty-state" style="padding: 20px;">Пока пусто</div>';
+      }
+    }
+
+    /* =========================================================
+       РАЗДЕЛ: ПОЛЕЗНОЕ
+       ========================================================= */
+    function renderUseful() {
+      const subjects = state.usefulSubjects || [];
+      let cardHeaderHtml = '';
+      let cardBodyHtml = '';
+
+      if (state.usefulSelectedSubjectId === null) {
+        cardHeaderHtml = `
+          <div>
+            <span class="card-title">Полезное</span>
+            <span class="sub-text" style="margin-left: 8px;">Полезные материалы по предметам</span>
+          </div>
+          <div class="header-actions">
+            <button class="btn-primary" onclick="openNewSubjectModal()">+ Создать предмет</button>
+          </div>
+        `;
+
+        if (subjects.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Нет предметов</div>';
+        } else {
+          const cardsHtml = subjects.map(s => {
+            const subtitle = s.is_chemistry ? 'Химия' : `Разделов: ${(s.sections || []).length}`;
+            return `
+              <div class="note-card" onclick="selectUsefulSubject('${s.id}')">
+                <div class="note-card-header">
+                  <span class="note-card-title">${escapeHtml(s.name || 'Без названия')}</span>
+                </div>
+                <div class="note-card-preview" style="margin-bottom: 0;">${escapeHtml(subtitle)}</div>
+              </div>
+            `;
+          }).join('');
+
+          cardBodyHtml = `<div class="notes-grid">${cardsHtml}</div>`;
+        }
+      } else {
+        const subj = subjects.find(s => String(s.id) === String(state.usefulSelectedSubjectId));
+        if (!subj) {
+          state.usefulSelectedSubjectId = null;
+          state.usefulSelectedSectionId = null;
+          state.usefulEditingSectionId = null;
+          renderUseful();
+          return;
+        }
+
+        if (subj.is_chemistry) {
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="startGenerate('${subj.id}')">Сгенерировать параграф</button>
+            </div>
+          `;
+          cardBodyHtml = `
+            <div style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('valencies')">
+                Валентности
+              </button>
+              <button class="btn-primary" style="padding: 16px; font-size: 16px; justify-content: center;" onclick="switchToTab('periodic')">
+                Таблица Менделеева
+              </button>
+            </div>
+          `;
+        } else if (state.usefulEditingSectionId !== null) {
+          const sec = (subj.sections || []).find(s => String(s.id) === String(state.usefulEditingSectionId));
+          if (!sec) {
+            state.usefulEditingSectionId = null;
+            renderUseful();
+            return;
+          }
+
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="cancelEditSection()">← Отмена</button>
+              <span class="card-title">Редактирование параграфа</span>
+            </div>
+          `;
+
+          cardBodyHtml = `
+            <div class="useful-edit-form">
+              <input type="text" id="edit-section-title" class="note-input-title" placeholder="Название параграфа..." value="${escapeHtml(sec.title || '')}">
+              <div class="useful-toolbar">
+                <button type="button" class="btn-refresh" onclick="insertFormula()">+ Формула</button>
+                <button type="button" class="btn-refresh" onclick="insertDivider()">+ Разделитель</button>
+              </div>
+              <textarea id="useful-edit-content" class="note-input-text"
+                        placeholder="Пиши текст. Формулы в $долларах$, разделитель — три дефиса ---."
+                        oninput="updateSectionContent('${sec.id}', this.value)">${escapeHtml(sec.content || '')}</textarea>
+              <div class="note-editor-toolbar">
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn-primary" onclick="saveSectionEdit('${sec.id}')">Сохранить</button>
+                  <button class="btn-refresh" onclick="cancelEditSection()">Отмена</button>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (state.usefulSelectedSectionId !== null) {
+          const sec = (subj.sections || []).find(s => String(s.id) === String(state.usefulSelectedSectionId));
+          if (!sec) {
+            state.usefulSelectedSectionId = null;
+            renderUseful();
+            return;
+          }
+
+          const dateText = sec.last_modified && sec.last_modified !== sec.created_at
+            ? `Изменено: ${formatDate(sec.last_modified)}`
+            : (sec.created_at ? `Создано: ${formatDate(sec.created_at)}` : '');
+
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToSectionsList()">← Назад к параграфам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+          `;
+
+          cardBodyHtml = `
+            <div class="useful-view-header">
+              <div class="useful-view-title">${escapeHtml(sec.title || 'Без названия')}</div>
+              ${dateText ? `<div class="useful-view-dates">${dateText}</div>` : ''}
+            </div>
+            <div class="useful-section-content-view">
+              ${renderSectionContentView(sec.content)}
+            </div>
+            <div class="useful-view-actions">
+              <button class="btn-primary" onclick="startEditSection('${sec.id}')">Редактировать</button>
+              <button class="btn-danger" onclick="confirmDeleteSection('${sec.id}')">Удалить</button>
+            </div>
+          `;
+        } else {
+          cardHeaderHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="backToUsefulSubjects()">← Назад к предметам</button>
+              <span class="card-title">${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-refresh" onclick="startGenerate('${subj.id}')">Сгенерировать параграф</button>
+              <button class="btn-primary" onclick="createSection()">+ Добавить параграф</button>
+            </div>
+          `;
+
+          const sections = subj.sections || [];
+          if (sections.length === 0) {
+            cardBodyHtml = '<div class="empty-state">Нет параграфов. Нажмите «+ Добавить параграф» или «Сгенерировать параграф».</div>';
+          } else {
+            const cardsHtml = sections.map(sec => {
+              const previewText = sec.content ? escapeHtml(sec.content.replace(/\$([^$]+)\$/g, '$1')) : 'Пустой параграф...';
+              const dateText = sec.last_modified || sec.created_at ? formatDate(sec.last_modified || sec.created_at) : '';
+
+              return `
+                <div class="useful-card" onclick="viewSection('${sec.id}')">
+                  <div>
+                    <div class="useful-card-title">${escapeHtml(sec.title || 'Без названия')}</div>
+                    <div class="useful-card-preview">${previewText}</div>
+                  </div>
+                  <div class="useful-card-date">${dateText}</div>
+                </div>
+              `;
+            }).join('');
+
+            cardBodyHtml = `<div class="useful-grid">${cardsHtml}</div>`;
+          }
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">${cardHeaderHtml}</div>
+              ${cardBodyHtml}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+        /* =========================================================
+       ГЕНЕРАЦИЯ ПАРАГРАФА ЧЕРЕЗ GEMINI
+       ========================================================= */
+    function startGenerate(subjectId) {
+      // Приводим к строке — чтобы работало и с числами, и со строками
+      state.genSubjectId = String(subjectId);
+      state.genTopic = '';
+      state.genResult = '';
+      state.genClass = '9';
+      state.genLength = 'medium';
+      state.genLoading = false;
+      render();
+    }
+
+    function cancelGenerate() {
+      state.genSubjectId = null;
+      state.genTopic = '';
+      state.genResult = '';
+      state.genLoading = false;
+      render();
+    }
+
+    function setGenClass(c) {
+      state.genClass = c;
+      renderGenerateScreen();
+    }
+
+    function setGenLength(l) {
+      state.genLength = l;
+      renderGenerateScreen();
+    }
+
+    async function sendGeneratePrompt() {
+      if (state.genLoading) return;
+
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
+      if (!subj) return;
+
+      const topic = (state.genTopic || '').trim();
+      if (!topic) {
+        showToast('Введи тему параграфа', 'error');
+        return;
+      }
+
+      const lengthNames = {
+        small: 'маленькая (100–150 слов)',
+        medium: 'средняя (150–250 слов)',
+        large: 'большая (250+ слов)'
+      };
+
+      const lengthText = lengthNames[state.genLength] || lengthNames.medium;
+
+      const userPrompt =
+        `Сгенерируй учебный параграф.\n` +
+        `Предмет: ${subj.name}\n` +
+        `Класс: ${state.genClass}\n` +
+        `Длина: ${lengthText}\n` +
+        `Тема: ${topic}\n\n` +
+        `Структура:\n` +
+        `- Определение или формулировка\n` +
+        `- 2-3 ключевых факта или примера\n` +
+        `- Формула (если уместно) — оформи как $...$\n` +
+        `- Итог: что нужно запомнить\n\n` +
+        `Не используй Markdown (** и *). Не используй LaTeX, кроме $...$ для формул.\n` +
+        `Разделитель между смысловыми блоками: ---`;
+
+      const systemPrompt =
+        'Ты помогаешь школьнику с учёбой. Пишешь понятным языком, без лишних слов. ' +
+        'Строго следуешь структуре из запроса. Не используешь Markdown и LaTeX (кроме $...$ для формул).';
+
+      state.genLoading = true;
+      renderGenerateScreen();
+
+      try {
+        const response = await fetch(GEMINI_WORKER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userPrompt,
+            systemPrompt: systemPrompt,
+            history: []
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.error || `HTTP ${response.status}`;
+
+          if (errMsg.includes('high demand') || errMsg.includes('Spikes in demand')) {
+            throw new Error('Сервер временно перегружен. Попробуй ещё раз через минуту.');
+          }
+          if (errMsg.includes('quota') || errMsg.includes('rate limit')) {
+            throw new Error('Лимит запросов исчерпан. Попробуй позже.');
+          }
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        state.genResult = data.text || '';
+        state.genLoading = false;
+        renderGenerateScreen();
+        showToast('Параграф сгенерирован', 'success');
+      } catch (err) {
+        state.genLoading = false;
+        renderGenerateScreen();
+        showToast(`Ошибка: ${err.message}`, 'error');
+      }
+    }
+
+    async function saveGeneratedParagraph() {
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
+      if (!subj) return;
+
+      const content = (state.genResult || '').trim();
+      if (!content) {
+        showToast('Пустой параграф не сохраняется', 'error');
+        return;
+      }
+
+      const title = (state.genTopic || '').trim() || 'Без названия';
+      const now = new Date().toISOString();
+
+      subj.sections = subj.sections || [];
+      const nextId = subj.sections.length > 0
+        ? Math.max(...subj.sections.map(s => (typeof s.id === 'number' ? s.id : 0))) + 1
+        : 1;
+
+      subj.sections.push({
+        id: nextId,
+        title: title,
+        content: content,
+        created_at: now,
+        last_modified: now
+      });
+
+      state.genSubjectId = null;
+      state.genTopic = '';
+      state.genResult = '';
+      state.genLoading = false;
+
+      await saveUseful();
+      render();
+      showToast('Параграф добавлен', 'success');
+    }
+
+    function renderGenerateScreen() {
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === state.genSubjectId);
+      if (!subj) {
+        state.genSubjectId = null;
+        render();
+        return;
+      }
+
+      const classesHtml = ['9', '10', '11'].map(c => `
+        <button class="gen-opt-btn ${state.genClass === c ? 'active' : ''}" onclick="setGenClass('${c}')">${c} класс</button>
+      `).join('');
+
+      const lengthsHtml = [
+        { id: 'small',  name: 'Маленькая' },
+        { id: 'medium', name: 'Средняя' },
+        { id: 'large',  name: 'Большая' }
+      ].map(l => `
+        <button class="gen-opt-btn ${state.genLength === l.id ? 'active' : ''}" onclick="setGenLength('${l.id}')">${l.name}</button>
+      `).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="cancelGenerate()">← Назад</button>
+              <span class="card-title">Генерация параграфа — ${escapeHtml(subj.name || 'Предмет')}</span>
+            </div>
+          </div>
+
+          <div class="gen-top-row">
+            <div class="gen-prompt-cell">
+              <label class="sub-text" style="margin-bottom: 6px; display: block;">Тема параграфа</label>
+              <input type="text" id="gen-topic" class="form-input"
+                placeholder="Например: Теорема Пифагора"
+                value="${escapeHtml(state.genTopic)}"
+                oninput="state.genTopic = this.value"
+                style="margin-bottom: 0;">
+            </div>
+            <div class="gen-params-cell">
+              <label class="sub-text" style="margin-bottom: 6px; display: block;">Класс</label>
+              <div class="gen-btn-row">${classesHtml}</div>
+              <label class="sub-text" style="margin-top: 12px; margin-bottom: 6px; display: block;">Длина</label>
+              <div class="gen-btn-row">${lengthsHtml}</div>
+            </div>
+          </div>
+
+          <div class="gen-preview-cell">
+            <label class="sub-text" style="margin-bottom: 6px; display: block;">Предпросмотр (можно редактировать перед публикацией)</label>
+            <textarea id="gen-result" class="note-input-text"
+              placeholder="Здесь появится сгенерированный параграф..."
+              oninput="state.genResult = this.value">${escapeHtml(state.genResult)}</textarea>
+          </div>
+
+          <div class="gen-actions">
+            <button class="btn-primary" onclick="sendGeneratePrompt()" ${state.genLoading ? 'disabled' : ''}>
+              ${state.genLoading ? 'Генерация...' : (state.genResult ? 'Сгенерировать заново' : 'Сгенерировать')}
+            </button>
+            <button class="btn-primary" onclick="saveGeneratedParagraph()" ${!state.genResult || state.genLoading ? 'disabled' : ''}>Опубликовать</button>
+            <button class="btn-refresh" onclick="cancelGenerate()">Отмена</button>
+          </div>
+        </div>
+      `;
+    }
+
+
+    function selectUsefulSubject(id) {
+      state.usefulSelectedSubjectId = String(id);
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function backToUsefulSubjects() {
+      state.usefulSelectedSubjectId = null;
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function viewSection(id) {
+      state.usefulSelectedSectionId = id;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function backToSectionsList() {
+      state.usefulSelectedSectionId = null;
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function startEditSection(id) {
+      state.usefulEditingSectionId = id;
+      renderUseful();
+    }
+
+    function cancelEditSection() {
+      state.usefulEditingSectionId = null;
+      renderUseful();
+    }
+
+    function createSection() {
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
+      if (!subj) return;
+      subj.sections = subj.sections || [];
+      const nextId = subj.sections.length > 0 ? Math.max(...subj.sections.map(s => s.id || 0)) + 1 : 1;
+      const now = new Date().toISOString();
+      const newSec = {
+        id: nextId,
+        title: "",
+        content: "",
+        created_at: now,
+        last_modified: now
+      };
+      subj.sections.push(newSec);
+      state.usefulSelectedSectionId = nextId;
+      state.usefulEditingSectionId = nextId;
+      renderUseful();
+    }
+
+    async function saveSectionEdit(id) {
+      const titleInput = document.getElementById('edit-section-title');
+      const contentInput = document.getElementById('useful-edit-content');
+      if (!titleInput || !contentInput) return;
+
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
+      if (!subj || !subj.sections) return;
+
+      const sec = subj.sections.find(s => String(s.id) === String(id));
+      if (!sec) return;
+
+      sec.title = title || "Без названия";
+      sec.content = content;
+      sec.last_modified = new Date().toISOString();
+
+      state.usefulEditingSectionId = null;
+      state.usefulSelectedSectionId = id;
+
+      await saveUseful();
+      renderUseful();
+    }
+
+    function confirmDeleteSection(sectionId) {
+      confirmAction("Вы уверены, что хотите удалить этот параграф без возможности восстановления?", () => {
+        deleteSection(sectionId);
+      });
+    }
+
+    async function deleteSection(sectionId) {
+      const subj = (state.usefulSubjects || []).find(s => String(s.id) === String(state.usefulSelectedSubjectId));
+      if (!subj || !subj.sections) return;
+      subj.sections = subj.sections.filter(s => String(s.id) !== String(sectionId));
+      state.usefulEditingSectionId = null;
+      state.usefulSelectedSectionId = null;
+      await saveUseful();
+      renderUseful();
+    }
+
+    function switchToTab(tabName) {
+      const targetBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+      if (targetBtn) {
+        targetBtn.click();
+      }
+    }
+
+    function openNewSubjectModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label class="sub-text" style="display: block; margin-bottom: 6px;">Название предмета</label>
+            <input type="text" id="new-subject-name" class="form-input" placeholder="Например, Физика" style="margin-bottom: 0;" />
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="new-subject-is-chemistry" style="width: 16px; height: 16px; cursor: pointer;" />
+            <span>Это химия?</span>
+          </label>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="createNewSubject()">Создать</button>
+      `;
+      openModal("Новый предмет", content, actions);
+    }
+
+    async function createNewSubject() {
+      const nameInput = document.getElementById('new-subject-name');
+      const chemInput = document.getElementById('new-subject-is-chemistry');
+      if (!nameInput) return;
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        showToast("Введите название предмета", "error");
+        return;
+      }
+
+      const isChemistry = chemInput ? chemInput.checked : false;
+      state.usefulSubjects = state.usefulSubjects || [];
+      const nextId = state.usefulSubjects.length > 0 ? Math.max(...state.usefulSubjects.map(s => s.id || 0)) + 1 : 1;
+
+      state.usefulSubjects.push({
+        id: nextId,
+        name: name,
+        is_chemistry: isChemistry,
+        sections: []
+      });
+
+      closeModal();
+      await saveUseful();
+      renderUseful();
+    }
+
+    /* =========================================================
+       РАЗДЕЛ: ОБНОВЛЕНИЯ
+       ========================================================= */
+    const UPDATE_STATUS_NAMES = {
+      done: 'Сделано',
+      in_progress: 'В процессе',
+      not_done: 'Не сделано'
+    };
+
+    function renderUpdatesScreen() {
+      const rawUpdates = state.updates || [];
+      const getCategory = (u) => (u && u.category) ? u.category : 'other';
+
+      const byCategory = (state.updateCategoryFilter === 'all')
+        ? rawUpdates
+        : rawUpdates.filter(u => getCategory(u) === state.updateCategoryFilter);
+
+      const statusCounts = {
+        all: byCategory.length,
+        done: byCategory.filter(u => u.status === 'done').length,
+        in_progress: byCategory.filter(u => u.status === 'in_progress').length,
+        not_done: byCategory.filter(u => u.status === 'not_done').length
+      };
+
+      const byStatus = (state.updateStatusFilter === 'all')
+        ? rawUpdates
+        : rawUpdates.filter(u => u.status === state.updateStatusFilter);
+
+      const categoryCounts = {
+        all: byStatus.length,
+        bot: byStatus.filter(u => getCategory(u) === 'bot').length,
+        site: byStatus.filter(u => getCategory(u) === 'site').length,
+        other: byStatus.filter(u => getCategory(u) === 'other').length
+      };
+
+      let filtered = rawUpdates;
+      if (state.updateStatusFilter !== 'all') {
+        filtered = filtered.filter(u => u.status === state.updateStatusFilter);
+      }
+      if (state.updateCategoryFilter !== 'all') {
+        filtered = filtered.filter(u => getCategory(u) === state.updateCategoryFilter);
+      }
+
+      const q = (state.searchUpdates || '').toLowerCase().trim();
+      if (q) {
+        filtered = filtered.filter(u => (u.title || '').toLowerCase().includes(q) || (u.text || '').toLowerCase().includes(q));
+      }
+
+      filtered = [...filtered].sort((a, b) => {
+        const aDone = a.status === 'done';
+        const bDone = b.status === 'done';
+
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
+
+        if (aDone && bDone) {
+          const aTime = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const bTime = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          return bTime - aTime;
+        }
+
+        const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bCreated - aCreated;
+      });
+
+      // Функция: ближайшая суббота >= даты
+      function getSaturdayForDate(dateStr) {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return null;
+
+        // 6 = суббота (0 = воскресенье, 1 = понедельник, ...)
+        const day = d.getDay();
+        const diff = (6 - day + 7) % 7; // сколько дней до ближайшей субботы включительно
+
+        const sat = new Date(d);
+        sat.setDate(d.getDate() + diff);
+        sat.setHours(23, 59, 59, 999);
+
+        return sat;
+      }
+
+      // Сортируем: по last_modified (убывание)
+            // Сортируем: сначала невыполненные, потом выполненные
+      const sorted = [...filtered].sort((a, b) => {
+        const aDone = a.status === 'done';
+        const bDone = b.status === 'done';
+
+        // Невыполненные — вперёд
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
+
+        // Внутри выполненных — по completed_at (свежие сверху)
+        if (aDone && bDone) {
+          const aTime = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const bTime = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          return bTime - aTime;
+        }
+
+        // Внутри невыполненных — по created_at (свежие сверху)
+        const aTime = new Date(a.created_at || 0).getTime();
+        const bTime = new Date(b.created_at || 0).getTime();
+        return bTime - aTime;
+      });
+      // Группируем по субботам
+      const groups = new Map();
+
+      for (const u of sorted) {
+        // Для выполненных — по дате выполнения, иначе — по дате последнего изменения
+        let dateStr;
+        if (u.status === 'done' && u.completed_at) {
+          dateStr = u.completed_at;
+        } else {
+          dateStr = u.last_modified || u.created_at || new Date().toISOString();
+        }
+
+        const sat = getSaturdayForDate(dateStr);
+        const key = sat ? sat.toISOString().slice(0, 10) : 'unknown';
+
+        if (!groups.has(key)) {
+          groups.set(key, { date: sat, items: [] });
+        }
+        groups.get(key).items.push(u);
+      }
+
+      // Сортируем группы по дате (свежие сверху)
+      const sortedGroups = [...groups.entries()].sort((a, b) => {
+        const aTime = a[1].date ? a[1].date.getTime() : 0;
+        const bTime = b[1].date ? b[1].date.getTime() : 0;
+        return bTime - aTime;
+      });
+
+      // Формируем HTML
+      let contentHtml = '';
+      if (sorted.length === 0) {
+        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет записей об обновлениях</div>`;
+      } else {
+        contentHtml = sortedGroups.map(([key, group]) => {
+          // Заголовок группы — дата субботы
+          const dateLabel = group.date
+            ? `Суббота, ${String(group.date.getDate()).padStart(2, '0')}.${String(group.date.getMonth() + 1).padStart(2, '0')}.${group.date.getFullYear()}`
+            : 'Без даты';
+
+          const groupHeader = `
+            <div class="upd-group-header">
+              <span class="upd-group-line"></span>
+              <span class="upd-group-title">${dateLabel}</span>
+              <span class="upd-group-line"></span>
+            </div>
+          `;
+
+          const cardsHtml = group.items.map(u => {
+            const statusKey = u.status || 'not_done';
+            const statusText = UPDATE_STATUS_NAMES[statusKey] || 'Не сделано';
+
+            let dateText = '';
+            if (statusKey === 'done' && u.completed_at) {
+              dateText = `Выполнено: ${formatDate(u.completed_at)}`;
+            } else if (u.last_modified && u.last_modified !== u.created_at) {
+              dateText = `Изм: ${formatDate(u.last_modified)}`;
+            } else {
+              dateText = `Созд: ${formatDate(u.created_at)}`;
+            }
+
+            return `
+              <div class="upd-card status-${statusKey}" onclick="openUpdateEditor(${u.id})">
+                <div>
+                  <div class="upd-card-title">${escapeHtml(u.title || 'Без названия')}</div>
+                  <div class="upd-card-preview">${escapeHtml(u.text || '')}</div>
+                </div>
+                <div class="upd-card-footer">
+                  <span 
+                    class="badge badge-upd-${statusKey}" 
+                    onclick="event.stopPropagation(); cycleUpdateStatus(${u.id})" 
+                    title="Нажмите, чтобы изменить статус">
+                    ${statusText} ⟳
+                  </span>
+                  <span class="sub-text" style="font-size: 11px;">${dateText}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          return groupHeader + `<div class="upd-group-cards">${cardsHtml}</div>`;
+        }).join('');
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="back-btn" onclick="closeUpdatesScreen()">← Назад</button>
+              <span class="card-title">Обновления</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="openUpdateEditor('new')">+ Добавить обновление</button>
+            </div>
+          </div>
+
+          <div class="upd-filters">
+            <div class="upd-filter-row">
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'all' ? 'active' : ''}" onclick="setUpdateStatusFilter('all')">
+                Все (${statusCounts.all})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'done' ? 'active' : ''}" onclick="setUpdateStatusFilter('done')">
+                Сделано (${statusCounts.done})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'in_progress' ? 'active' : ''}" onclick="setUpdateStatusFilter('in_progress')">
+                В процессе (${statusCounts.in_progress})
+              </button>
+              <button class="upd-filter-btn ${state.updateStatusFilter === 'not_done' ? 'active' : ''}" onclick="setUpdateStatusFilter('not_done')">
+                Не сделано (${statusCounts.not_done})
+              </button>
+            </div>
+
+            <div class="upd-filter-row">
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'all' ? 'active' : ''}" onclick="setUpdateCategoryFilter('all')">
+                Все (${categoryCounts.all})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'bot' ? 'active' : ''}" onclick="setUpdateCategoryFilter('bot')">
+                Бот (${categoryCounts.bot})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'site' ? 'active' : ''}" onclick="setUpdateCategoryFilter('site')">
+                Сайт (${categoryCounts.site})
+              </button>
+              <button class="upd-filter-btn ${state.updateCategoryFilter === 'other' ? 'active' : ''}" onclick="setUpdateCategoryFilter('other')">
+                Прочее (${categoryCounts.other})
+              </button>
+            </div>
+          </div>
+
+          <div class="search-bar">
+            <input type="text" id="search-updates-input" placeholder="Поиск обновлений по заголовку и описанию..." value="${escapeHtml(state.searchUpdates)}" oninput="state.searchUpdates = this.value; renderUpdatesScreen(); document.getElementById('search-updates-input').focus();" />
+          </div>
+
+          <div class="upd-grid">${contentHtml}</div>
+        </div>
+      `;
+    }
+
+    function closeUpdatesScreen() {
+      state.showUpdates = false;
+      state.editingUpdateId = null;
+      render();
+    }
+
+    function setUpdateStatusFilter(filterKey) {
+      state.updateStatusFilter = filterKey;
+      renderUpdatesScreen();
+    }
+
+    function setUpdateCategoryFilter(filterKey) {
+      state.updateCategoryFilter = filterKey;
+      renderUpdatesScreen();
+    }
+
+    async function cycleUpdateStatus(updateId) {
+      const upd = (state.updates || []).find(u => u.id === updateId);
+      if (!upd) return;
+
+      const order = ['not_done', 'in_progress', 'done'];
+      const currentIdx = order.indexOf(upd.status || 'not_done');
+      const nextStatus = order[(currentIdx + 1) % order.length];
+
+      upd.status = nextStatus;
+      upd.last_modified = new Date().toISOString();
+      upd.completed_at = (nextStatus === 'done') ? new Date().toISOString() : null;
+
+      renderUpdatesScreen();
+      await saveUpdatesToGitHub();
+    }
+
+    function openUpdateEditor(updateId) {
+      state.editingUpdateId = updateId;
+      render();
+    }
+
+    function closeUpdateEditor() {
+      state.editingUpdateId = null;
+      render();
+    }
+
+    let tempEditorStatus = 'not_done';
+    let tempEditorCategory = 'other';
+
+    function renderUpdateEditor(updateId) {
+      const isNew = updateId === 'new';
+      const upd = isNew
+        ? { title: '', text: '', status: 'not_done', category: 'other' }
+        : state.updates.find(u => u.id === updateId);
+
+      if (!isNew && !upd) {
+        closeUpdateEditor();
+        return;
+      }
+
+      tempEditorStatus = upd.status || 'not_done';
+      tempEditorCategory = upd.category || 'other';
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeUpdateEditor()">← Назад</button>
+            <span class="sub-text">${isNew ? 'Новое обновление' : 'Редактирование обновления'}</span>
+          </div>
+          <div class="note-editor">
+            <input type="text" id="upd-title" class="note-input-title" placeholder="Заголовок обновления..." value="${escapeHtml(upd.title || '')}">
+            
+            <div class="upd-status-switch">
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'not_done' ? 'selected-not_done' : ''}" 
+                onclick="setEditorStatus('not_done')">
+                Не сделано
+              </button>
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'in_progress' ? 'selected-in_progress' : ''}" 
+                onclick="setEditorStatus('in_progress')">
+                В процессе
+              </button>
+              <button 
+                type="button" 
+                class="upd-status-btn ${tempEditorStatus === 'done' ? 'selected-done' : ''}" 
+                onclick="setEditorStatus('done')">
+                Сделано
+              </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="sub-text" style="font-weight: 500;">Категория:</span>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'bot' ? 'active' : ''}" 
+                onclick="setEditorCategory('bot')">
+                Бот
+              </button>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'site' ? 'active' : ''}" 
+                onclick="setEditorCategory('site')">
+                Сайт
+              </button>
+              <button 
+                type="button" 
+                class="btn-cat ${tempEditorCategory === 'other' ? 'active' : ''}" 
+                onclick="setEditorCategory('other')">
+                Прочее
+              </button>
+            </div>
+
+            <textarea id="upd-text" class="note-input-text" placeholder="Описание задачи или обновления...">${escapeHtml(upd.text || '')}</textarea>
+            
+            <div class="note-editor-toolbar">
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" onclick="saveUpdate(${isNew ? "'new'" : upd.id})">Сохранить</button>
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteUpdate(${upd.id})">Удалить</button>` : ''}
+              </div>
+              <div class="sub-text">
+                ${!isNew ? `Создано: ${formatDate(upd.created_at)} ${upd.last_modified ? ' | Изменено: ' + formatDate(upd.last_modified) : ''}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setEditorStatus(newStatus) {
+      tempEditorStatus = newStatus;
+      document.querySelectorAll('.upd-status-btn').forEach(btn => {
+        btn.classList.remove('selected-not_done', 'selected-in_progress', 'selected-done');
+      });
+      const selectedBtn = Array.from(document.querySelectorAll('.upd-status-btn')).find(b => b.textContent.trim() === (
+        newStatus === 'done' ? 'Сделано' : (newStatus === 'in_progress' ? 'В процессе' : 'Не сделано')
+      ));
+      if (selectedBtn) {
+        selectedBtn.classList.add(`selected-${newStatus}`);
+      }
+    }
+
+    function setEditorCategory(newCat) {
+      tempEditorCategory = newCat;
+      document.querySelectorAll('.btn-cat').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const targetLabel = newCat === 'bot' ? 'Бот' : (newCat === 'site' ? 'Сайт' : 'Прочее');
+      const selectedBtn = Array.from(document.querySelectorAll('.btn-cat')).find(b => b.textContent.trim() === targetLabel);
+      if (selectedBtn) {
+        selectedBtn.classList.add('active');
+      }
+    }
+
+    async function saveUpdate(updateId) {
+      const title = document.getElementById('upd-title').value.trim();
+      const text = document.getElementById('upd-text').value.trim();
+
+      if (!title && !text) {
+        showToast('Пустая запись не сохраняется', 'error');
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const isDone = tempEditorStatus === 'done';
+
+      if (updateId === 'new') {
+        const nextId = (state.updates || []).length > 0 ? Math.max(...state.updates.map(u => u.id || 0)) + 1 : 1;
+        state.updates.push({
+          id: nextId,
+          title: title,
+          text: text,
+          status: tempEditorStatus,
+          category: tempEditorCategory || 'other',
+          created_at: now,
+          last_modified: now,
+          completed_at: isDone ? now : null
+        });
+      } else {
+        const upd = state.updates.find(u => u.id === updateId);
+        if (upd) {
+          const prevStatus = upd.status;
+          upd.title = title;
+          upd.text = text;
+          upd.status = tempEditorStatus;
+          upd.category = tempEditorCategory || 'other';
+          upd.last_modified = now;
+
+          if (isDone) {
+            upd.completed_at = (prevStatus === 'done' && upd.completed_at) ? upd.completed_at : now;
+          } else {
+            upd.completed_at = null;
+          }
+        }
+      }
+
+      closeUpdateEditor();
+      await saveUpdatesToGitHub();
+    }
+
+    function confirmDeleteUpdate(updateId) {
+      confirmAction("Вы уверены, что хотите удалить эту запись без возможности восстановления?", () => {
+        deleteUpdate(updateId);
+      });
+    }
+
+    async function deleteUpdate(updateId) {
+      state.updates = state.updates.filter(u => u.id !== updateId);
+      closeUpdateEditor();
+      await saveUpdatesToGitHub();
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 1: ПОЛЬЗОВАТЕЛИ
+       ========================================================= */
+    function renderUsers() {
+      const userIds = Object.keys(state.users);
+      const q = (state.searchUsers || '').toLowerCase().trim();
+
+      let filteredIds = userIds;
+      if (q) {
+        filteredIds = userIds.filter(id => {
+          const u = state.users[id];
+          return id.includes(q) ||
+            (u.first_name || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q);
+        });
+      }
+
+      let rows = filteredIds.map(id => {
+        const u = state.users[id];
+        return `
+          <tr class="clickable" onclick="openProfile('${id}')">
+            <td>${escapeHtml(u.first_name || '—')}</td>
+            <td><code>${id}</code></td>
+            <td>${formatDate(u.last_message)}</td>
+            <td>${u.requests ?? 0}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Пользователи</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${filteredIds.length} из ${userIds.length}</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-users-input" placeholder="Поиск по имени, username или ID..." value="${escapeHtml(state.searchUsers)}" oninput="state.searchUsers = this.value; renderUsers(); document.getElementById('search-users-input').focus();" />
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr><th>Ник</th><th>ID</th><th>Последнее сообщение</th><th>Запросов</th></tr>
+                  </thead>
+                  <tbody>${rows || '<tr><td colspan="4" class="empty-state">Нет пользователей</td></tr>'}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    function openProfile(userId) {
+      state.selectedUserId = String(userId);
+      render();
+    }
+
+    function closeProfile() {
+      state.selectedUserId = null;
+      render();
+    }
+
+    function renderUserProfile(userId) {
+      const user = state.users[userId];
+      if (!user) {
+        document.getElementById('app').innerHTML = `
+          <div class="card">
+            <div class="card-header"><button class="back-btn" onclick="closeProfile()">← Назад</button></div>
+            <div class="empty-state">Пользователь с ID ${escapeHtml(userId)} не найден.</div>
+          </div>`;
+        return;
+      }
+
+      const avatarHtml = user.avatar_url 
+        ? `<img src="${escapeHtml(user.avatar_url)}" alt="Avatar" class="profile-avatar">`
+        : `<div class="profile-avatar">${escapeHtml((user.first_name || '?')[0].toUpperCase())}</div>`;
+
+      const userMessages = (state.messages || [])
+        .filter(m => String(m.user_id) === String(userId))
+        .slice(-50)
+        .reverse();
+
+      const messagesRows = userMessages.length > 0 
+        ? userMessages.map(m => {
+            const parsed = parseMediaFromText(m.text);
+            const contentHtml = parsed 
+              ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+              : escapeHtml(m.text || '');
+
+            return `<tr><td style="width: 170px;">${formatDate(m.time)}</td><td>${contentHtml}</td></tr>`;
+          }).join('')
+        : `<tr><td colspan="2" class="empty-state">Нет сообщений</td></tr>`;
+
+      const userMedia = (state.media || [])
+        .filter(m => String(m.user_id) === String(userId))
+        .slice(-20)
+        .reverse();
+
+      const mediaRows = userMedia.length > 0
+        ? userMedia.map(m => `
+            <tr>
+              <td style="width: 130px;">${getMediaBadgeHtml(m.media_type)}</td>
+              <td class="truncate-media"><code>${escapeHtml(m.file_name || '—')}</code></td>
+              <td style="width: 170px;">${formatDate(m.time)}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="3" class="empty-state">Нет медиафайлов</td></tr>`;
+
+      document.getElementById('app').innerHTML = `
+        <div class="crumbs">
+          <a onclick="closeProfile()">Пользователи</a>
+          <span class="separator">›</span>
+          <span class="current">${escapeHtml(user.first_name || userId)}</span>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeProfile()">← Назад</button>
+            <span class="sub-text">Профиль пользователя</span>
+          </div>
+          
+          <div class="profile-hero">
+            ${avatarHtml}
+            <div>
+              <div style="font-size: 20px; font-weight: 700;">${escapeHtml(user.first_name || 'Без имени')}</div>
+              <div class="sub-text">@${escapeHtml(user.username || '—')}</div>
+            </div>
+          </div>
+
+          <div class="profile-details-grid">
+            <div class="detail-item"><div class="label">ID</div><div class="value"><code>${userId}</code></div></div>
+            <div class="detail-item"><div class="label">Статус</div><div class="value">${user.banned ? '<span class="badge badge-banned">Забанен</span>' : '<span class="badge badge-active">Активен</span>'}</div></div>
+            <div class="detail-item"><div class="label">Запросов</div><div class="value">${user.requests ?? 0}</div></div>
+            <div class="detail-item"><div class="label">Первый вход</div><div class="value">${formatDate(user.first_seen)}</div></div>
+            <div class="detail-item"><div class="label">Посл. сообщение</div><div class="value">${formatDate(user.last_message)}</div></div>
+          </div>
+
+          <div class="card-header"><span class="card-title">Медиафайлы (до 20)</span></div>
+          <div class="table-container">
+            <table><thead><tr><th>Тип</th><th>Файл</th><th>Время</th></tr></thead><tbody>${mediaRows}</tbody></table>
+          </div>
+
+          <div class="card-header" style="border-top: 1px solid var(--border-color);"><span class="card-title">Последние сообщения (до 50)</span></div>
+          <div class="table-container">
+            <table><thead><tr><th>Время</th><th>Текст</th></tr></thead><tbody>${messagesRows}</tbody></table>
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 2: СООБЩЕНИЯ
+       ========================================================= */
+    function renderMessages() {
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+
+      if (q) {
+        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
+      }
+
+      let rows = list.map((m, index) => {
+        const text = m.text || '';
+        const parsed = parseMediaFromText(text);
+        let cellContent = parsed 
+          ? `${getMediaBadgeHtml(parsed.media_type)} <code style="margin-left: 6px;">${escapeHtml(parsed.file_name)}</code>`
+          : escapeHtml(text.length > 100 ? text.substring(0, 100) + '...' : text);
+
+        return `
+          <tr class="clickable" onclick="openMessageModal(${index})">
+            <td class="col-id">${m.id !== undefined ? `#${m.id}` : '—'}</td>
+            <td>${escapeHtml(m.first_name || '—')}</td>
+            <td><code>${m.user_id}</code></td>
+            <td class="truncate">${cellContent}</td>
+            <td>${formatDate(m.time)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Сообщения</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-messages-input" placeholder="Поиск по имени, тексту или User ID..." value="${escapeHtml(state.searchMessages)}" oninput="state.searchMessages = this.value; renderMessages(); document.getElementById('search-messages-input').focus();" />
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>ID</th><th>Ник</th><th>User ID</th><th>Текст</th><th>Время</th></tr></thead>
+                  <tbody>${rows || '<tr><td colspan="5" class="empty-state">Нет сообщений</td></tr>'}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+    /* =========================================================
+       РАЗДЕЛ 3: ЗАМЕТКИ
+       ========================================================= */
+    function renderNotes() {
+      const q = (state.searchNotes || '').toLowerCase().trim();
+      let sortedNotes = [...(state.notes || [])].sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
+
+      if (q) {
+        sortedNotes = sortedNotes.filter(n => (n.title || '').toLowerCase().includes(q) || (n.text || '').toLowerCase().includes(q));
+      }
+
+      let contentHtml = '';
+      if (sortedNotes.length === 0) {
+        contentHtml = `<div class="empty-state" style="grid-column: 1 / -1;">Нет заметок</div>`;
+      } else {
+        contentHtml = sortedNotes.map(n => `
+          <div class="note-card" onclick="openNoteEditor(${n.id})">
+            <div>
+              <div class="note-card-header">
+                <span class="note-card-title">${escapeHtml(n.title || 'Без названия')}</span>
+                ${n.pinned ? '<span class="note-pin-badge" title="Закреплено">Закреплено</span>' : ''}
+              </div>
+              <div class="note-card-preview">${escapeHtml(n.text || '')}</div>
+            </div>
+            <div class="note-card-date">
+              ${n.last_modified && n.last_modified !== n.created_at 
+                ? `Изменено: ${formatDate(n.last_modified)}` 
+                : `Создано: ${formatDate(n.created_at)}`}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Заметки</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${sortedNotes.length}</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                  <button class="btn-primary" onclick="openNoteEditor('new')">+ Создать заметку</button>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-notes-input" placeholder="Поиск заметок по заголовку и тексту..." value="${escapeHtml(state.searchNotes)}" oninput="state.searchNotes = this.value; renderNotes(); document.getElementById('search-notes-input').focus();" />
+              </div>
+              <div class="notes-grid">${contentHtml}</div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    function openNoteEditor(noteId) {
+      state.editingNoteId = noteId;
+      render();
+    }
+
+    function closeNoteEditor() {
+      state.editingNoteId = null;
+      render();
+    }
+
+    function renderNoteEditor(noteId) {
+      const isNew = noteId === 'new';
+      const note = isNew ? { title: '', text: '', pinned: false } : state.notes.find(n => n.id === noteId);
+
+      if (!isNew && !note) {
+        closeNoteEditor();
+        return;
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <button class="back-btn" onclick="closeNoteEditor()">← Назад</button>
+            <span class="sub-text">${isNew ? 'Новая заметка' : 'Редактирование заметки'}</span>
+          </div>
+          <div class="note-editor">
+            <input type="text" id="note-title" class="note-input-title" placeholder="Заголовок..." value="${escapeHtml(note.title || '')}">
+            <textarea id="note-text" class="note-input-text" placeholder="Текст заметки...">${escapeHtml(note.text || '')}</textarea>
+            <div class="note-editor-toolbar">
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" onclick="saveNote(${isNew ? "'new'" : note.id})">Сохранить</button>
+                <button class="btn-refresh" onclick="togglePinNote(${isNew ? "'new'" : note.id})">
+                  ${note.pinned ? 'Открепить' : 'Закрепить'}
+                </button>
+                ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteNote(${note.id})">Удалить</button>` : ''}
+              </div>
+              <div class="sub-text">
+                ${!isNew ? `Создано: ${formatDate(note.created_at)} ${note.last_modified ? ' | Изменено: ' + formatDate(note.last_modified) : ''}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function saveNote(noteId) {
+      const title = document.getElementById('note-title').value.trim();
+      const text = document.getElementById('note-text').value.trim();
+
+      if (!title && !text) {
+        showToast('Пустая заметка не сохраняется', 'error');
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      if (noteId === 'new') {
+        const nextId = state.notes.length > 0 ? Math.max(...state.notes.map(n => n.id || 0)) + 1 : 1;
+        state.notes.push({
+          id: nextId,
+          title: title,
+          text: text,
+          pinned: false,
+          created_at: now,
+          last_modified: now
+        });
+      } else {
+        const note = state.notes.find(n => n.id === noteId);
+        if (note) {
+          note.title = title;
+          note.text = text;
+          note.last_modified = now;
+        }
+      }
+
+      await saveDataToGitHub();
+      closeNoteEditor();
+    }
+
+    async function togglePinNote(noteId) {
+      if (noteId === 'new') {
+        showToast('Сначала сохраните заметку', 'info');
+        return;
+      }
+      const note = state.notes.find(n => n.id === noteId);
+      if (note) {
+        note.pinned = !note.pinned;
+        await saveDataToGitHub();
+        renderNoteEditor(noteId);
+      }
+    }
+
+    function confirmDeleteNote(noteId) {
+      confirmAction("Вы уверены, что хотите удалить эту заметку без возможности восстановления?", () => {
+        deleteNote(noteId);
+      });
+    }
+
+    async function deleteNote(noteId) {
+      state.notes = state.notes.filter(n => n.id !== noteId);
+      closeNoteEditor();
+      await saveDataToGitHub();
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 4: ГДЗ
+       ========================================================= */
+    function renderGdz() {
+      if (state.gdzSearchLoading) {
+        document.getElementById('app').innerHTML = `
+          <div class="layout-3col">
+            <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+            <div class="main-col">
+              <div class="card"><div class="empty-state">Загрузка каталога ГДЗ...</div></div>
+            </div>
+            <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+          </div>
+        `;
+        return;
+      }
+
+      if (!state.gdzSubjects) {
+        document.getElementById('app').innerHTML = `
+          <div class="layout-3col">
+            <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+            <div class="main-col">
+              <div class="card">
+                <div class="empty-state" style="color: var(--status-banned);">
+                  <p style="margin-bottom: 12px;">Не удалось загрузить каталог предметов (subjects.json).</p>
+                  <button class="btn-refresh" onclick="retryLoadGdz()">Повторить</button>
+                </div>
+              </div>
+            </div>
+            <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+          </div>
+        `;
+        return;
+      }
+
+      const subjects = state.gdzSubjects;
+      let cardHeaderHtml = '';
+      let cardBodyHtml = '';
+      let crumbsHtml = '';
+
+      if (state.gdzSelectedSubject === null) {
+        cardHeaderHtml = `
+          <div>
+            <span class="card-title">ГДЗ</span>
+            <span class="sub-text" style="margin-left: 8px;">Выбери предмет</span>
+          </div>
+        `;
+
+        const subjectKeys = Object.keys(subjects);
+        if (subjectKeys.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Предметы не найдены</div>';
+        } else {
+          const cardsHtml = subjectKeys.map(key => {
+            const subj = subjects[key];
+            const name = subj.name || key;
+            const chapters = subj.chapters || subj.sections || [];
+            let subtitle = '';
+
+            if (subj.has_chapters === false || chapters.length === 1) {
+              const ch = chapters[0];
+              if (ch && ch.numbers) {
+                const parsedNums = parseChapterNumbers(ch.numbers);
+                subtitle = `Заданий: ${parsedNums.length}`;
+              } else {
+                subtitle = 'Задания';
+              }
+            } else if (Array.isArray(chapters) && chapters.length > 1) {
+              subtitle = `Разделов: ${chapters.length}`;
+            } else {
+              subtitle = subj.description || 'Учебные материалы';
+            }
+
+            return `
+              <div class="gdz-card" onclick="selectGdzSubject('${escapeHtml(key)}')">
+                <div class="gdz-card-title">${escapeHtml(name)}</div>
+                <div class="gdz-card-sub">${escapeHtml(subtitle)}</div>
+              </div>
+            `;
+          }).join('');
+
+          cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
+        }
+      } else if (state.gdzSelectedSubject !== null && state.gdzSelectedChapter === null) {
+        const subj = subjects[state.gdzSelectedSubject];
+        const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
+        const chapterLabel = subj && subj.chapter_label ? ` → ${escapeHtml(subj.chapter_label)}` : '';
+        const chapters = subj ? (subj.chapters || subj.sections || []) : [];
+
+        crumbsHtml = `
+          <div class="crumbs">
+            <a onclick="backToGdzSubjects()">ГДЗ</a>
+            <span class="separator">›</span>
+            <span class="current">${escapeHtml(subjName)}</span>
+          </div>
+        `;
+
+        cardHeaderHtml = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="back-btn" onclick="backToGdzSubjects()">← Назад к предметам</button>
+            <span class="card-title">${escapeHtml(subjName)}${chapterLabel}</span>
+          </div>
+        `;
+
+        if (!Array.isArray(chapters) || chapters.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Разделы не найдены</div>';
+        } else {
+          const cardsHtml = chapters.map((ch, idx) => {
+            const title = ch.text || ch.title || ch.name || `Раздел ${idx + 1}`;
+            const nums = ch.numbers || ch.range || '';
+            return `
+              <div class="gdz-card" onclick="selectGdzChapter(${idx})">
+                <div class="gdz-card-title">${escapeHtml(title)}</div>
+                <div class="gdz-card-sub">Задания: ${escapeHtml(nums)}</div>
+              </div>
+            `;
+          }).join('');
+
+          cardBodyHtml = `<div class="gdz-grid">${cardsHtml}</div>`;
+        }
+      } else {
+        const subj = subjects[state.gdzSelectedSubject];
+        const subjName = subj ? (subj.name || state.gdzSelectedSubject) : 'Предмет';
+        const chapter = state.gdzSelectedChapter;
+        const chapterTitle = chapter ? (chapter.text || chapter.title || chapter.name || 'Задания') : 'Задания';
+        const hasChapters = subj && subj.has_chapters !== false;
+
+        const backBtnAction = hasChapters ? 'backToGdzChapters()' : 'backToGdzSubjects()';
+        const backBtnText = hasChapters ? '← Назад к разделам' : '← Назад к предметам';
+
+        if (hasChapters) {
+          crumbsHtml = `
+            <div class="crumbs">
+              <a onclick="backToGdzSubjects()">ГДЗ</a>
+              <span class="separator">›</span>
+              <a onclick="backToGdzChapters()">${escapeHtml(subjName)}</a>
+              <span class="separator">›</span>
+              <span class="current">${escapeHtml(chapterTitle)}</span>
+            </div>
+          `;
+        } else {
+          crumbsHtml = `
+            <div class="crumbs">
+              <a onclick="backToGdzSubjects()">ГДЗ</a>
+              <span class="separator">›</span>
+              <span class="current">${escapeHtml(subjName)}</span>
+            </div>
+          `;
+        }
+
+        cardHeaderHtml = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="back-btn" onclick="${backBtnAction}">${backBtnText}</button>
+            <div>
+              <div class="card-title">${escapeHtml(subjName)} → ${escapeHtml(chapterTitle)}</div>
+              <div class="sub-text">Выбери номер задания</div>
+            </div>
+          </div>
+        `;
+
+        const numbersList = chapter ? parseChapterNumbers(chapter.numbers) : [];
+        if (numbersList.length === 0) {
+          cardBodyHtml = '<div class="empty-state">Нет доступных номеров заданий</div>';
+        } else {
+          const buttonsHtml = numbersList.map(num => `
+            <button 
+              class="num-btn ${state.gdzSelectedNum === num ? 'active' : ''}" 
+              onclick="selectGdzNumber(${num})">
+              ${num}
+            </button>
+          `).join('');
+
+          let imageSectionHtml = '';
+          if (state.gdzSelectedNum !== null) {
+            const base = subj.base || state.gdzSelectedSubject;
+            const folder = chapter.folder || '1';
+            const imgUrl = `https://resheba.top/${base}/${folder}/${state.gdzSelectedNum}.png`;
+
+            imageSectionHtml = `
+              <div class="gdz-img-wrap" id="gdz-img-container">
+                <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(state.gdzSelectedNum))}</div>
+                <img 
+                  src="${escapeHtml(imgUrl)}" 
+                  alt="Задание ${escapeHtml(String(state.gdzSelectedNum))}" 
+                  onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
+                />
+              </div>
+            `;
+          } else {
+            imageSectionHtml = `
+              <div class="gdz-img-wrap" id="gdz-img-container">
+                <div class="sub-text" style="color: var(--text-secondary);">Выберите номер задания для показа решения</div>
+              </div>
+            `;
+          }
+
+          cardBodyHtml = `
+            <div class="nums-grid">${buttonsHtml}</div>
+            ${imageSectionHtml}
+          `;
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            ${crumbsHtml}
+            <div class="card">
+              <div class="card-header">${cardHeaderHtml}</div>
+              ${cardBodyHtml}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    async function retryLoadGdz() {
+      state.gdzSearchLoading = true;
+      render();
+      await loadSubjects();
+      state.gdzSearchLoading = false;
+      render();
+    }
+
+    function selectGdzSubject(key) {
+      state.gdzSelectedSubject = key;
+      state.gdzSelectedNum = null;
+      const subj = state.gdzSubjects ? state.gdzSubjects[key] : null;
+
+      if (subj && subj.has_chapters === false) {
+        const chapters = subj.chapters || subj.sections || [];
+        state.gdzSelectedChapter = chapters[0] || null;
+      } else {
+        state.gdzSelectedChapter = null;
+      }
+      render();
+    }
+
+    function backToGdzSubjects() {
+      state.gdzSelectedSubject = null;
+      state.gdzSelectedChapter = null;
+      state.gdzSelectedNum = null;
+      render();
+    }
+
+    function selectGdzChapter(idx) {
+      const subj = state.gdzSubjects[state.gdzSelectedSubject];
+      const chapters = subj ? (subj.chapters || subj.sections || []) : [];
+      state.gdzSelectedChapter = chapters[idx] || null;
+      state.gdzSelectedNum = null;
+      render();
+    }
+
+    function backToGdzChapters() {
+      state.gdzSelectedChapter = null;
+      state.gdzSelectedNum = null;
+      render();
+    }
+
+    function selectGdzNumber(num) {
+      state.gdzSelectedNum = num;
+      const subj = state.gdzSubjects[state.gdzSelectedSubject];
+      const chapter = state.gdzSelectedChapter;
+      if (!subj || !chapter) return;
+
+      document.querySelectorAll('.num-btn').forEach(btn => {
+        if (parseInt(btn.textContent.trim(), 10) === num) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      const container = document.getElementById('gdz-img-container');
+      if (container) {
+        const base = subj.base || state.gdzSelectedSubject;
+        const folder = chapter.folder || '1';
+        const imgUrl = `https://resheba.top/${base}/${folder}/${num}.png`;
+
+        container.innerHTML = `
+          <div class="sub-text" style="margin-bottom: 8px;">Задание №${escapeHtml(String(num))}</div>
+          <img 
+            src="${escapeHtml(imgUrl)}" 
+            alt="Задание ${escapeHtml(String(num))}" 
+            onerror="this.parentElement.innerHTML='<p style=\\'color: var(--status-banned); padding: 16px;\\'>Не удалось загрузить картинку. Возможно, задания с таким номером нет.</p>'"
+          />
+        `;
+      }
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 6: АДМИНЫ
+       ========================================================= */
+    function renderAdmins() {
+      const q = (state.searchAdmins || '').toLowerCase().trim();
+      let list = state.admins || [];
+
+      if (q) {
+        list = list.filter(admin => {
+          const user = state.users[String(admin.id)];
+          const name = user ? user.first_name : '';
+          return String(admin.id).includes(q) || name.toLowerCase().includes(q);
+        });
+      }
+
+      let rows = list.map(admin => {
+        const user = state.users[String(admin.id)];
+        const name = user ? user.first_name : '—';
+        return `
+          <tr class="${user ? 'clickable' : ''}" ${user ? `onclick="openProfile('${admin.id}')"` : ''}>
+            <td>${escapeHtml(name)}</td>
+            <td><code>${admin.id}</code></td>
+            <td>${formatDate(admin.appointed_at)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Админы</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-admins-input" placeholder="Поиск админов по имени или ID..." value="${escapeHtml(state.searchAdmins)}" oninput="state.searchAdmins = this.value; renderAdmins(); document.getElementById('search-admins-input').focus();" />
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Ник</th><th>ID</th><th>Назначен</th></tr></thead>
+                  <tbody>${rows || '<tr><td colspan="3" class="empty-state">Список админов пуст</td></tr>'}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 7: ЖУРНАЛ АУДИТА
+       ========================================================= */
+    function renderAudit() {
+      const actionText = {
+        'ban': 'забанил',
+        'unban': 'разбанил',
+        'add_admin': 'назначил админом',
+        'del_admin': 'снял с админа',
+        'del_media': 'удалил медиа',
+        'del_user_media': 'удалил все медиа'
+      };
+
+      const q = (state.searchAudit || '').toLowerCase().trim();
+      let list = (state.audit || []).slice().reverse();
+
+      if (q) {
+        list = list.filter(item => {
+          const act = actionText[item.action] || item.action;
+          return (item.admin_name || '').toLowerCase().includes(q) ||
+                 (item.target_name || '').toLowerCase().includes(q) ||
+                 act.toLowerCase().includes(q) ||
+                 String(item.target_id).includes(q);
+        });
+      }
+
+      const rows = list.map(item => {
+        return `
+          <div class="audit-row">
+            <span style="color: var(--text-secondary);">[${formatDate(item.time)}]</span> 
+            <strong>${escapeHtml(item.admin_name || 'Admin')}</strong> 
+            <span>${actionText[item.action] || item.action}</span> 
+            <strong>${escapeHtml(item.target_name || 'Объект')}</strong> 
+            <span class="sub-text">(ID: ${item.target_id})</span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Журнал аудита</span>
+                  <span class="sub-text" style="margin-left: 8px;">Всего: ${list.length}</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn-refresh" onclick="loadData()">Обновить</button>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input type="text" id="search-audit-input" placeholder="Поиск по администратору, объекту, действию..." value="${escapeHtml(state.searchAudit)}" oninput="state.searchAudit = this.value; renderAudit(); document.getElementById('search-audit-input').focus();" />
+              </div>
+              ${rows || '<div class="empty-state">Записей аудита нет</div>'}
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 8: ВАЛЕНТНОСТИ
+       ========================================================= */
+    function getValencyTypeBadge(type) {
+      if (type === 'const') return '<span class="badge badge-val-const">постоянная</span>';
+      if (type === 'var') return '<span class="badge badge-val-var">переменная</span>';
+      if (type === 'inert') return '<span class="badge badge-val-inert">инертный газ</span>';
+      return `<span class="badge">${escapeHtml(type)}</span>`;
+    }
+
+    function renderValencies() {
+      const q = (state.valenciesSearch || '').toLowerCase().trim();
+      const filtered = VALENCIES.filter(item => {
+        if (!q) return true;
+        return item.symbol.toLowerCase().includes(q) || item.name.toLowerCase().includes(q);
+      });
+
+      let rows = filtered.map(el => `
+        <tr>
+          <td><strong style="font-family: monospace; font-size: 15px;">${escapeHtml(el.symbol)}</strong></td>
+          <td>${escapeHtml(el.name)}</td>
+          <td><strong>${escapeHtml(el.val)}</strong></td>
+          <td>${getValencyTypeBadge(el.type)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Валентности</span>
+                  <span class="sub-text" style="margin-left: 8px;">Введи символ химического элемента или название</span>
+                </div>
+                <div class="header-actions">
+                  <span class="sub-text">Всего: ${filtered.length} из ${VALENCIES.length}</span>
+                </div>
+              </div>
+              <div class="search-bar">
+                <input 
+                  type="text" 
+                  id="valencies-search-input" 
+                  placeholder="Поиск по символу (например, Fe, Na) или названию (Железо, Хлор)..." 
+                  value="${escapeHtml(state.valenciesSearch)}"
+                  oninput="state.valenciesSearch = this.value; renderValencies(); document.getElementById('valencies-search-input').focus();"
+                />
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 120px;">Символ</th>
+                      <th>Название</th>
+                      <th style="width: 180px;">Валентность</th>
+                      <th style="width: 180px;">Тип</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rows || '<tr><td colspan="4" class="empty-state">Элементы не найдены</td></tr>'}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       РАЗДЕЛ 8: ТАБЛИЦА МЕНДЕЛЕЕВА
+       ========================================================= */
+    function renderPeriodic() {
+      let gridCellsHtml = '';
+      for (let p = 1; p <= 6; p++) {
+        for (let g = 1; g <= 18; g++) {
+          const el = ELEMENTS.find(e => e.period === p && e.group === g);
+          if (el) {
+            gridCellsHtml += `
+              <div class="pt-cell type-${el.type}" onclick="openElementModal('${el.sym}')" title="${escapeHtml(el.name)}">
+                <span class="num">${el.num}</span>
+                <span class="sym">${escapeHtml(el.sym)}</span>
+                <span class="nm">${escapeHtml(el.name)}</span>
+              </div>
+            `;
+          } else {
+            gridCellsHtml += `<div></div>`;
+          }
+        }
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="layout-3col">
+          <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+          <div class="main-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Таблица Менделеева</span>
+                  <span class="sub-text" style="margin-left: 8px;">Нажми на элемент, чтобы узнать подробнее</span>
+                </div>
+              </div>
+              <div class="pt-grid">
+                ${gridCellsHtml}
+              </div>
+              <div class="pt-legend">
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #f39c12;"></span><span>Щелочные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e67e22;"></span><span>Щёлочноземельные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #95a5a6;"></span><span>Переходные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #7f8c8d;"></span><span>Постпереходные</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #16a085;"></span><span>Полуметаллы</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #3498db;"></span><span>Неметаллы</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #9b59b6;"></span><span>Галогены</span></div>
+                <div class="pt-legend-item"><span class="pt-legend-color" style="background: #e74c3c;"></span><span>Благородные газы</span></div>
+              </div>
+            </div>
+          </div>
+          <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+        </div>
+      `;
+    }
+
+    async function openElementModal(symbol) {
+      const el = ELEMENTS.find(e => e.sym.toLowerCase() === symbol.toLowerCase());
+      if (!el) return;
+
+      const valObj = VALENCIES.find(v => v.symbol.toLowerCase() === el.sym.toLowerCase());
+      const valText = valObj ? valObj.val : '—';
+      const typeText = ELEMENT_TYPE_NAMES[el.type] || el.type;
+
+      const chem = await loadChemistry();
+      let solubilityHtml = '';
+
+      if (chem && chem.solubility && chem.solubility[el.sym]) {
+        const elSol = chem.solubility[el.sym];
+        const rows = ACID_RESIDUES.map(ar => {
+          const val = elSol[ar.key] || elSol[ar.key.toLowerCase()] || '-';
+          let badgeHtml = '';
+          if (val === 'Р' || val === 'р' || val === 'R') {
+            badgeHtml = '<span class="badge badge-sol-r">растворим</span>';
+          } else if (val === 'М' || val === 'м' || val === 'M') {
+            badgeHtml = '<span class="badge badge-sol-m">малорастворим</span>';
+          } else if (val === 'Н' || val === 'н' || val === 'N') {
+            badgeHtml = '<span class="badge badge-sol-n">нерастворим</span>';
+          } else {
+            badgeHtml = '<span class="sub-text">—</span>';
+          }
+
+          return `
+            <tr>
+              <td>${escapeHtml(ar.name)}</td>
+              <td><code>${escapeHtml(ar.formula)}</code></td>
+              <td>${badgeHtml}</td>
+            </tr>
+          `;
+        }).join('');
+
+        solubilityHtml = `
+          <h4 style="margin: 16px 0 8px; font-size: 14px; font-weight: 600;">Растворимость с кислотными остатками</h4>
+          <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Остаток</th>
+                  <th>Формула</th>
+                  <th>Растворимость</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        solubilityHtml = `
+          <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-secondary); font-size: 13px;">
+            Данные о растворимости недоступны для этого элемента
+          </div>
+        `;
+      }
+
+      const title = `${el.sym} — ${el.name}`;
+      const content = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          <div><span class="sub-text">Атомный номер:</span> <strong>${el.num}</strong></div>
+          <div><span class="sub-text">Период:</span> <strong>${el.period}</strong></div>
+          <div><span class="sub-text">Группа:</span> <strong>${el.group}</strong></div>
+          <div><span class="sub-text">Валентность:</span> <strong>${escapeHtml(valText)}</strong></div>
+          <div style="grid-column: 1 / -1;"><span class="sub-text">Тип:</span> <strong>${escapeHtml(typeText)}</strong></div>
+        </div>
+        ${solubilityHtml}
+      `;
+
+      const actions = `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`;
+      openModal(title, content, actions);
+    }
+
+    /* =========================================================
+       МОДАЛЬНЫЕ ОКНА
+       ========================================================= */
+    const modal = document.getElementById('common-modal');
+	let duelsCharts = [];
+
+    function decodeBase64Content(b64) {
+      const raw = atob(b64.replace(/\n/g, ''));
+      return decodeURIComponent(Array.prototype.map.call(raw, c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+    }
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const modalActions = document.getElementById('modal-actions');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+function openModal(title, content, actionsHtml, isWide = false) {
+  modalTitle.textContent = title;
+  modalContent.innerHTML = content;
+  modalActions.innerHTML = actionsHtml;
+  
+  const win = modal.querySelector('.modal-window');
+  if (isWide) {
+    win.classList.add('duels-wide');
+  } else {
+    win.classList.remove('duels-wide');
+  }
+  
+  modal.classList.add('active');
+}
+
+    function closeModal() {
+      modal.classList.remove('active');
+      if (typeof duelsCharts !== 'undefined') {
+        duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+        duelsCharts.length = 0;
+      }
+    }
+
+    modalCloseBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    function openMessageModal(index) {
+      const q = (state.searchMessages || '').toLowerCase().trim();
+      let list = (state.messages || []).slice(-200).reverse();
+      if (q) {
+        list = list.filter(m => (m.first_name || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q) || String(m.user_id).includes(q));
+      }
+
+      const msg = list[index];
+      if (!msg) return;
+
+      const parsed = parseMediaFromText(msg.text);
+      const title = msg.id !== undefined ? `Сообщение #${msg.id}` : 'Сообщение';
+      const body = parsed 
+        ? `<strong>Тип медиа:</strong> ${getMediaBadgeHtml(parsed.media_type)}<br><br><strong>Файл:</strong> <code>${escapeHtml(parsed.file_name)}</code>`
+        : `<div style="white-space: pre-wrap;">${escapeHtml(msg.text || '')}</div>`;
+
+      const actions = `
+        <span class="sub-text" style="margin-right: auto;">${escapeHtml(msg.first_name || '')} • ${formatDate(msg.time)}</span>
+        <button class="btn-primary" onclick="closeModal(); openProfile('${msg.user_id}')">В профиль</button>
+      `;
+
+      openModal(title, body, actions);
+    }
+    
+    // Инициализация при старте
+    localStorage.removeItem('ai_user_name');
+    /* =========================================================
+       ФОН ПО ВРЕМЕНИ СУТОК
+       ========================================================= */
+    function updateTimeOfDayBackground() {
+      const h = new Date().getHours();
+      let bg = '#0d0d0d';
+      if (h >= 5 && h < 11)       bg = '#0f0d0a';   // утро
+      else if (h >= 11 && h < 17) bg = '#0d0d0d';   // день
+      else if (h >= 17 && h < 22) bg = '#0e0a10';   // вечер
+      else                        bg = '#08080f';   // ночь
+
+      document.documentElement.style.setProperty('--bg-color', bg);
+    }
+    updateTimeOfDayBackground();
+    setInterval(updateTimeOfDayBackground, 10 * 60 * 1000);
+
+    /* =========================================================
+       КОНФЕТТИ
+       ========================================================= */
+    function showConfetti() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const colors = ['#5865F2', '#43b581', '#f1c40f', '#e67e22', '#eb459e', '#1abc9c', '#9b59b6'];
+      const count = 28;
+
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = 6 + Math.random() * 6;
+        const startX = Math.random() * window.innerWidth;
+        const dx = (Math.random() - 0.5) * 260;
+        const duration = 1600 + Math.random() * 1200;
+        const rotate = Math.random() * 720 - 360;
+
+        el.style.cssText = `
+          position: fixed;
+          top: -20px;
+          left: ${startX}px;
+          width: ${size}px;
+          height: ${size * 1.6}px;
+          background: ${color};
+          border-radius: 2px;
+          pointer-events: none;
+          z-index: 9999;
+          will-change: transform, opacity;
+        `;
+        document.body.appendChild(el);
+
+        el.animate([
+          { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+          { transform: `translate(${dx}px, ${window.innerHeight + 60}px) rotate(${rotate}deg)`, opacity: 0 }
+        ], { duration, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' });
+
+        setTimeout(() => el.remove(), duration + 100);
+      }
+    }
+    
+    /* =========================================================
+       RIPPLE-ЭФФЕКТ
+       ========================================================= */
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, .nav-btn, .gdz-card, .num-btn, .btn-action');
+      if (!btn) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      btn.classList.add('ripple-host');
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const circle = document.createElement('span');
+      circle.className = 'ripple-circle';
+      circle.style.width = circle.style.height = size + 'px';
+      circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      btn.appendChild(circle);
+
+      setTimeout(() => circle.remove(), 600);
+    });
+    
+        /* =========================================================
+       3D-НАКЛОН КАРТОЧЕК
+       ========================================================= */
+    function initCardTilt() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (window.matchMedia('(max-width: 900px)').matches) return; // только для десктопа
+
+      document.querySelectorAll('.note-card, .useful-card, .gdz-card, .upd-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width - 0.5;
+          const y = (e.clientY - rect.top) / rect.height - 0.5;
+          card.style.transform = `perspective(800px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) translateY(-3px)`;
+          card.style.transition = 'transform 0.08s ease';
+        });
+
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+          card.style.transition = 'transform 0.3s ease';
+        });
+      });
+    }
+    
+    /* =========================================================
+       ЧАСТИЦЫ НА ФОНЕ
+       ========================================================= */
+    (function initParticles() {
+      const canvas = document.getElementById('bg-particles');
+      if (!canvas) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const ctx = canvas.getContext('2d');
+      let W, H;
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function hexToRgb(hex) {
+        const m = hex.replace('#', '').match(/.{2}/g);
+        if (!m || m.length < 3) return { r: 88, g: 101, b: 242 };
+        return {
+          r: parseInt(m[0], 16),
+          g: parseInt(m[1], 16),
+          b: parseInt(m[2], 16)
+        };
+      }
+
+      let accentRgb = hexToRgb(
+        getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#5865F2'
+      );
+
+      setInterval(() => {
+        const c = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+        if (c) accentRgb = hexToRgb(c);
+      }, 1000);
+
+      const PARTICLE_COUNT = Math.min(35, Math.floor(window.innerWidth / 40));
+      const particles = [];
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
+          r: Math.random() * 1.3 + 0.5,
+          alpha: Math.random() * 0.22 + 0.05
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < 0) { p.x = 0; p.vx *= -1; }
+          if (p.x > W) { p.x = W; p.vx *= -1; }
+          if (p.y < 0) { p.y = 0; p.vy *= -1; }
+          if (p.y > H) { p.y = H; p.vy *= -1; }
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, ${p.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    // Инициализация при старте
+    initThemeColor();
+    checkAuth();
