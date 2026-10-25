@@ -1278,16 +1278,20 @@
 
     function applyAdminVisibility() {
       const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
+      const allowedTabs = window.ALLOWED_TABS || null; // Если мы на странице duels.html, тут будет ['duels', 'game']
 
       document.querySelectorAll('.nav-btn').forEach(btn => {
         const tab = btn.getAttribute('data-tab');
         const isPublic = publicTabs.includes(tab);
+        
+        let visible = isPublic || state.isAdmin;
 
-        if (isPublic) {
-          btn.style.display = '';
-        } else {
-          btn.style.display = state.isAdmin ? '' : 'none';
+        // Если мы на странице с ограничениями (например, duels.html), скрываем лишнее
+        if (allowedTabs && !allowedTabs.includes(tab)) {
+          visible = false;
         }
+
+        btn.style.display = visible ? '' : 'none';
       });
     }
 
@@ -7003,5 +7007,14 @@ function openModal(title, content, actionsHtml, isWide = false) {
     })();
 
     // Инициализация при старте
+      // Если мы на странице duels.html, автоматически открываем "Дуэли"
+      if (window.ALLOWED_TABS && window.ALLOWED_TABS.length > 0) {
+        if (!window.ALLOWED_TABS.includes(state.currentTab)) {
+          state.currentTab = window.ALLOWED_TABS[0]; // Берем первую разрешенную вкладку
+          document.querySelectorAll('.nav-btn').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-tab') === state.currentTab);
+          });
+        }
+      }
     initThemeColor();
     checkAuth();
