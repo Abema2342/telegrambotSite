@@ -3906,6 +3906,7 @@ function runPendingConfirm() {
         case 'game': renderGame(); break;
         case 'periodic': renderPeriodic(); break;
         case 'datastructure': renderDataStructure(); break;
+		case 'textbooks': renderTextbooks(); break;
 		case 'duels':
         if (!state.isAdmin) {
           showToast('Доступ только для администратора', 'error');
@@ -7008,6 +7009,79 @@ function openModal(title, content, actionsHtml, isWide = false) {
       }
       animate();
     })();
+
+    /* =========================================================
+       РАЗДЕЛ: УЧЕБНИКИ
+       ========================================================= */
+    async function loadTextbooks() {
+      if (state.textbooks) return state.textbooks;
+      try {
+        const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/textbooks.json?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const meta = await res.json();
+        const json = JSON.parse(decodeBase64Content(meta.content));
+        state.textbooks = json.books || [];
+        return state.textbooks;
+      } catch (e) {
+        console.error('Ошибка загрузки учебников:', e);
+        state.textbooks = [];
+        return [];
+      }
+    }
+
+    function renderTextbooks() {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div class="empty-state">Загрузка учебников...</div>';
+
+      loadTextbooks().then(books => {
+        if (!books.length) {
+          app.innerHTML = '<div class="card"><div class="empty-state">Учебники не найдены. Проверь файл textbooks.json.</div></div>';
+          return;
+        }
+
+        const cardsHtml = books.map(b => `
+          <div class="gdz-card" onclick="openTextbook(${b.id})">
+            <div class="gdz-card-title">${escapeHtml(b.subject)}</div>
+            <div class="gdz-card-sub">${escapeHtml(b.title)}</div>
+            <div style="margin-top: 8px; font-size: 11px; color: var(--accent-color); font-weight: 600;">Открыть →</div>
+          </div>
+        `).join('');
+
+        app.innerHTML = `
+          <div class="layout-3col">
+            <aside class="side-col side-col-left">${renderLeftWidgets()}</aside>
+            <div class="main-col">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <span class="card-title">Учебники</span>
+                    <span class="sub-text" style="margin-left: 8px;">Всего: ${books.length}</span>
+                  </div>
+                  <div class="header-actions">
+                    <button class="btn-refresh" onclick="state.textbooks = null; renderTextbooks();">Обновить</button>
+                  </div>
+                </div>
+                <div class="gdz-grid">${cardsHtml}</div>
+              </div>
+            </div>
+            <aside class="side-col side-col-right">${renderRightWidgets()}</aside>
+          </div>
+        `;
+      });
+    }
+
+    function openTextbook(id) {
+      const book = (state.textbooks || []).find(b => b.id === id);
+      if (!book) return;
+
+      // Если это прямая ссылка на PDF, а не viewer, мы можем обернуть её в просмотрщик
+      // Но проще открыть в новой вкладке, чтобы не ломать iframe сайтами-источниками
+      confirmAction(`Открыть «${book.title}» в новой вкладке?`, () => {
+        window.open(book.url, '_blank');
+      });
+    }
 
     // Инициализация при старте
       // Если мы на странице duels.html, автоматически открываем "Дуэли"
