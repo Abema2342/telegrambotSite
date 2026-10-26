@@ -7076,11 +7076,20 @@ function openModal(title, content, actionsHtml, isWide = false) {
       const book = (state.textbooks || []).find(b => b.id === id);
       if (!book) return;
 
-      // Если это прямая ссылка на PDF, а не viewer, мы можем обернуть её в просмотрщик
-      // Но проще открыть в новой вкладке, чтобы не ломать iframe сайтами-источниками
-      confirmAction(`Открыть «${book.title}» в новой вкладке?`, () => {
-        window.open(book.url, '_blank');
-      });
+      // Формируем полный путь к файлу (относительно index.html)
+      const fileUrl = book.url; 
+
+      const content = `
+        <div style="width: 100%; height: 70vh; background: #111; border-radius: 8px; overflow: hidden;">
+          <iframe src="${escapeHtml(fileUrl)}" style="width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="sub-text">${escapeHtml(book.title)}</span>
+          <a href="${escapeHtml(fileUrl)}" target="_blank" class="btn-primary" style="text-decoration: none; padding: 8px 14px;">Скачать PDF</a>
+        </div>
+      `;
+
+      openModal(book.subject, content, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
     }
 
     // Инициализация при старте
