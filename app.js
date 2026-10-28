@@ -6800,6 +6800,14 @@ function openModal(title, content, actionsHtml, isWide = false) {
 
     function closeModal() {
       modal.classList.remove('active');
+      
+      // Убираем классы полноэкранного режима
+      const modalWin = document.querySelector('#common-modal .modal-window');
+      if (modalWin) {
+        modalWin.classList.remove('pdf-modal');
+        modalWin.classList.remove('duels-wide');
+      }
+
       if (typeof duelsCharts !== 'undefined') {
         duelsCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
         duelsCharts.length = 0;
@@ -7076,20 +7084,20 @@ function openModal(title, content, actionsHtml, isWide = false) {
       const book = (state.textbooks || []).find(b => b.id === id);
       if (!book) return;
 
-      // Формируем полный путь к файлу (относительно index.html)
       const fileUrl = book.url; 
 
       const content = `
-        <div style="width: 100%; height: 70vh; background: #111; border-radius: 8px; overflow: hidden;">
-          <iframe src="${escapeHtml(fileUrl)}" style="width: 100%; height: 100%; border: none;"></iframe>
-        </div>
-        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span class="sub-text">${escapeHtml(book.title)}</span>
-          <a href="${escapeHtml(fileUrl)}" target="_blank" class="btn-primary" style="text-decoration: none; padding: 8px 14px;">Скачать PDF</a>
-        </div>
+        <iframe src="${escapeHtml(fileUrl)}"></iframe>
       `;
 
+      // Открываем модалку
       openModal(book.subject, content, `<button class="btn-refresh" onclick="closeModal()">Закрыть</button>`, true);
+      
+      // Добавляем класс для полноэкранного режима
+      setTimeout(() => {
+        const modalWin = document.querySelector('#common-modal .modal-window');
+        if (modalWin) modalWin.classList.add('pdf-modal');
+      }, 10);
     }
 
     // Инициализация при старте
