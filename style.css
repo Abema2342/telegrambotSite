@@ -3357,5 +3357,97 @@
       background-color: rgba(255, 255, 255, 0.85);
     }
 
+    /* =========================================
+       ДОПОЛНИТЕЛЬНЫЕ ФИКСЫ ДЛЯ СВЕТЛОЙ ТЕМЫ
+       ========================================= */
+
+    /* 1. Шапка сайта (топбар) */
+    body.light-theme header {
+      background-color: rgba(255, 255, 255, 0.85) !important;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    body.light-theme .btn-logout {
+      color: #4b5563;
+      border-color: #d1d5db;
+    }
+    body.light-theme .btn-logout:hover {
+      background: #f3f4f6;
+      color: var(--status-banned);
+    }
+    body.light-theme .btn-updates {
+      color: #4b5563;
+      border-color: #d1d5db;
+    }
+    body.light-theme .btn-updates:hover {
+      background: #f3f4f6;
+    }
+
+    /* 2. Кнопки статусов в редакторе обновлений */
+    body.light-theme .upd-status-btn {
+      background: #f3f4f6;
+      color: #4b5563;
+      border-color: #d1d5db;
+    }
+    body.light-theme .upd-status-btn.selected-not_done {
+      background: rgba(106, 106, 106, 0.1);
+      border-color: #9ca3af;
+      color: #4b5563;
+    }
+    body.light-theme .upd-status-btn.selected-in_progress {
+      background: rgba(241, 196, 15, 0.15);
+      border-color: #f1c40f;
+      color: #d97706;
+    }
+    body.light-theme .upd-status-btn.selected-done {
+      background: rgba(67, 181, 129, 0.15);
+      border-color: #43b581;
+      color: #059669;
+    }
+
+    /* 3. Поля ввода (заметки, обновления, структура данных) */
+    body.light-theme .note-input-title,
+    body.light-theme .note-input-text,
+    body.light-theme .ds-textarea,
+    body.light-theme .search-bar input {
+      background: #ffffff !important;
+      border-color: #d1d5db !important;
+      color: #1a1a1a !important;
+    }
+
+    /* 4. Кнопки "Форматировать", "Загрузить" (btn-refresh) */
+    body.light-theme .btn-refresh {
+      color: #4b5563;
+      border-color: #d1d5db;
+    }
+    body.light-theme .btn-refresh:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+
+    /* 5. Фон модальных окон и панели настроек */
+    body.light-theme .modal-window {
+      background-color: #ffffff !important;
+      border-color: #e5e7eb;
+    }
+    body.light-theme .modal-header,
+    body.light-theme .modal-footer {
+      border-color: #e5e7eb;
+      background-color: #f9fafb;
+    }
+    body.light-theme .fab-panel {
+      background: rgba(255, 255, 255, 0.98);
+      border-color: #e5e7eb;
+    }
+    
+    /* 6. Текст в карточках обновлений (чтобы не был серым) */
+    body.light-theme .upd-card-title,
+    body.light-theme .upd-card-preview,
+    body.light-theme .card-title {
+      color: #1a1a1a;
+    }
+    body.light-theme .upd-card-preview {
+      color: #4b5563;
+    }
+
     body.light-theme .rgb-slider { background: #d1d5db; }
     body.light-theme .rgb-slider::-webkit-slider-thumb { border-color: #fff; }
