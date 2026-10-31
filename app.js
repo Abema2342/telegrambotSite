@@ -1338,13 +1338,12 @@ function runPendingConfirm() {
     action();
   }
 }
-
     /* =========================================================
-       СИСТЕМА КАСТОМИЗАЦИИ ТЕМЫ (RGB + ПАЛИТРА)
+       СИСТЕМА КАСТОМИЗАЦИИ ТЕМЫ (RGB + СВЕТЛАЯ ТЕМА)
        ========================================================= */
     
-    // Храним текущие цвета в localStorage
     let currentTheme = JSON.parse(localStorage.getItem('custom_theme')) || {
+      isLight: false,
       accent: '#5865F2',
       bg: '#0d0d0d',
       grad1: '#5865F2',
@@ -1353,11 +1352,7 @@ function runPendingConfirm() {
 
     function hexToRgb(hex) {
       const m = hex.replace('#', '').match(/.{2}/g);
-      return m ? {
-        r: parseInt(m[0], 16),
-        g: parseInt(m[1], 16),
-        b: parseInt(m[2], 16)
-      } : { r: 0, g: 0, b: 0 };
+      return m ? { r: parseInt(m[0], 16), g: parseInt(m[1], 16), b: parseInt(m[2], 16) } : { r: 0, g: 0, b: 0 };
     }
 
     function rgbToHex(r, g, b) {
@@ -1365,78 +1360,74 @@ function runPendingConfirm() {
       return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
 
-    // Применение темы к CSS
     function applyTheme(theme) {
       currentTheme = theme;
       localStorage.setItem('custom_theme', JSON.stringify(theme));
 
+      // Включаем/выключаем светлую тему
+      if (theme.isLight) {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+
       document.documentElement.style.setProperty('--accent-color', theme.accent);
-      document.documentElement.style.setProperty('--bg-color', theme.bg);
-      
-      // Обновляем фон body
       document.body.style.backgroundColor = theme.bg;
       
-      // Обновляем градиенты (используем color-mix для прозрачности)
       document.body.style.backgroundImage = `
         radial-gradient(circle at 20% 30%, ${theme.grad1}15, transparent 55%),
         radial-gradient(circle at 80% 70%, ${theme.grad2}10, transparent 55%)
       `;
-
-      // Перестраиваем UI панели, чтобы обновить превью
-      renderThemePanel();
     }
 
-    // Отрисовка панели
+    // Эта функция вызывается ТОЛЬКО при открытии панели
     function renderThemePanel() {
       const panel = document.getElementById('fab-theme-panel');
       if (!panel) return;
 
-      // Вспомогательная функция для генерации блока цвета
       const colorControlHtml = (id, colorHex) => {
         const rgb = hexToRgb(colorHex);
         return `
           <div class="color-preview-box" style="background: ${colorHex};" id="preview-${id}"></div>
-          
           <div class="rgb-row">
             <span class="rgb-label r">R</span>
-            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.r}" 
-                   oninput="updateRGB('${id}', 'r', this.value)">
-            <span style="font-size: 11px; width: 25px; text-align: right; color: #a0a0a0;" id="val-${id}-r">${rgb.r}</span>
+            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.r}" oninput="updateRGB('${id}', 'r', this.value)">
+            <span style="font-size: 11px; width: 25px; text-align: right; color: var(--text-secondary);" id="val-${id}-r">${rgb.r}</span>
           </div>
           <div class="rgb-row">
             <span class="rgb-label g">G</span>
-            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.g}" 
-                   oninput="updateRGB('${id}', 'g', this.value)">
-            <span style="font-size: 11px; width: 25px; text-align: right; color: #a0a0a0;" id="val-${id}-g">${rgb.g}</span>
+            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.g}" oninput="updateRGB('${id}', 'g', this.value)">
+            <span style="font-size: 11px; width: 25px; text-align: right; color: var(--text-secondary);" id="val-${id}-g">${rgb.g}</span>
           </div>
           <div class="rgb-row">
             <span class="rgb-label b">B</span>
-            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.b}" 
-                   oninput="updateRGB('${id}', 'b', this.value)">
-            <span style="font-size: 11px; width: 25px; text-align: right; color: #a0a0a0;" id="val-${id}-b">${rgb.b}</span>
+            <input type="range" class="rgb-slider" min="0" max="255" value="${rgb.b}" oninput="updateRGB('${id}', 'b', this.value)">
+            <span style="font-size: 11px; width: 25px; text-align: right; color: var(--text-secondary);" id="val-${id}-b">${rgb.b}</span>
           </div>
         `;
       };
 
       panel.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 600;">Настройки темы</span>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px;">
+            <input type="checkbox" id="theme-light-toggle" ${currentTheme.isLight ? 'checked' : ''} onchange="toggleLightTheme(this.checked)">
+            ☀️ Светлая
+          </label>
+        </div>
+
         <div class="theme-tabs">
           <button class="theme-tab active" onclick="switchThemeTab('accent')">Акцент</button>
           <button class="theme-tab" onclick="switchThemeTab('bg')">Фон</button>
-          <button class="theme-tab" onclick="switchThemeTab('grad')">Градиенты</button>
+          <button class="theme-tab" onclick="switchThemeTab('grad')">Градиент</button>
         </div>
 
-        <div class="theme-section active" id="sec-accent">
-          ${colorControlHtml('accent', currentTheme.accent)}
-        </div>
-
-        <div class="theme-section" id="sec-bg">
-          ${colorControlHtml('bg', currentTheme.bg)}
-        </div>
-
+        <div class="theme-section active" id="sec-accent">${colorControlHtml('accent', currentTheme.accent)}</div>
+        <div class="theme-section" id="sec-bg">${colorControlHtml('bg', currentTheme.bg)}</div>
         <div class="theme-section" id="sec-grad">
-          <div style="font-size: 12px; color: #a0a0a0; margin-bottom: 4px;">Градиент 1 (Левый верх)</div>
+          <div style="font-size: 11px; color: var(--text-secondary);">Пятно 1 (Лево-верх)</div>
           ${colorControlHtml('grad1', currentTheme.grad1)}
-          <div style="font-size: 12px; color: #a0a0a0; margin-top: 8px; margin-bottom: 4px;">Градиент 2 (Правый низ)</div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Пятно 2 (Право-низ)</div>
           ${colorControlHtml('grad2', currentTheme.grad2)}
         </div>
 
@@ -1446,8 +1437,20 @@ function runPendingConfirm() {
         </div>
       `;
 
-      // Восстанавливаем активную вкладку
       if (window._activeThemeTab) switchThemeTab(window._activeThemeTab);
+    }
+
+    function toggleLightTheme(isLight) {
+      currentTheme.isLight = isLight;
+      applyTheme(currentTheme);
+      // Если включили светлую, ставим белый фон по умолчанию
+      if (isLight && currentTheme.bg === '#0d0d0d') {
+         currentTheme.bg = '#f4f6f8';
+         applyTheme(currentTheme);
+      } else if (!isLight && currentTheme.bg === '#f4f6f8') {
+         currentTheme.bg = '#0d0d0d';
+         applyTheme(currentTheme);
+      }
     }
 
     function switchThemeTab(tabId) {
@@ -1469,12 +1472,15 @@ function runPendingConfirm() {
       const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
       currentTheme[id] = hex;
       
-      // Мгновенно применяем
+      // Применяем цвета на лету (БЕЗ перерисовки панели)
       applyTheme(currentTheme);
       
-      // Обновляем цифры и превью, не перерисовывая всю панель
-      document.getElementById('val-' + id + '-' + channel).innerText = value;
-      document.getElementById('preview-' + id).style.background = hex;
+      // Обновляем только текст и превью
+      const valEl = document.getElementById('val-' + id + '-' + channel);
+      if (valEl) valEl.innerText = value;
+      
+      const prevEl = document.getElementById('preview-' + id);
+      if (prevEl) prevEl.style.background = hex;
     }
 
     function randomizeTheme() {
@@ -1482,40 +1488,28 @@ function runPendingConfirm() {
       const c = () => rgbToHex(r(), r(), r());
       
       applyTheme({
+        isLight: currentTheme.isLight,
         accent: c(),
-        bg: rgbToHex(r() % 30, r() % 30, r() % 30), // Темный фон
+        bg: currentTheme.isLight ? rgbToHex(240 + r()%15, 240 + r()%15, 240 + r()%15) : rgbToHex(r() % 30, r() % 30, r() % 30),
         grad1: c(),
         grad2: c()
       });
+      renderThemePanel(); // Обновляем ползунки под новые цвета
     }
 
     function resetTheme() {
       applyTheme({
+        isLight: false,
         accent: '#5865F2',
         bg: '#0d0d0d',
         grad1: '#5865F2',
         grad2: '#5865F2'
       });
+      renderThemePanel();
     }
 
-    // Инициализация при старте
     function initThemeColor() {
       applyTheme(currentTheme);
-    }
-
-    const fabBtn = document.getElementById('fab-theme-btn');
-    const fabPanel = document.getElementById('fab-theme-panel');
-    
-    if (fabBtn && fabPanel) {
-      fabBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fabPanel.classList.toggle('open');
-      });
-      document.addEventListener('click', (e) => {
-        if (fabPanel && !fabPanel.contains(e.target) && e.target !== fabBtn) {
-          fabPanel.classList.remove('open');
-        }
-      });
     }
 
     const mediaTypeConfig = {
