@@ -1510,6 +1510,7 @@ function runPendingConfirm() {
 
     function initThemeColor() {
       applyTheme(currentTheme);
+      renderThemePanel(); // <--- ВОТ ЭТА СТРОКА БЫЛА ПОТЕРЯНА
     }
 
     const mediaTypeConfig = {
