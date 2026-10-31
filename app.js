@@ -1508,6 +1508,64 @@ function runPendingConfirm() {
       renderThemePanel();
     }
 
+    // =========================================================
+    // БЕЗОПАСНАЯ ЗАГРУЗКА ВИДЕО-ФОНА (чтобы скрипт не падал)
+    // =========================================================
+    const bgVideo = document.getElementById('jellyfish-bg');
+    if (bgVideo) {
+      let isReversing = false;
+      bgVideo.addEventListener('loadedmetadata', () => {
+        bgVideo.play();
+      });
+
+      bgVideo.addEventListener('ended', () => {
+        if (!isReversing) {
+          isReversing = true;
+          bgVideo.playbackRate = -1;
+          bgVideo.play();
+        } else {
+          isReversing = false;
+          bgVideo.playbackRate = 1;
+          bgVideo.play();
+        }
+      });
+    }
+
+    // =========================================================
+    // ОБРАБОТЧИК КЛИКА ПО КНОПКЕ ПАЛИТРЫ (Его не хватало!)
+    // =========================================================
+    const fabBtn = document.getElementById('fab-theme-btn');
+    const fabPanel = document.getElementById('fab-theme-panel');
+    
+    if (fabBtn && fabPanel) {
+      fabBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // На всякий случай проверяем, нарисована ли панель, если нет - рисуем
+        if (!fabPanel.innerHTML.trim()) {
+          renderThemePanel();
+        }
+        fabPanel.classList.toggle('open');
+      });
+
+      // Закрываем панель, если кликнули мимо неё
+      document.addEventListener('click', (e) => {
+        if (fabPanel && !fabPanel.contains(e.target) && e.target !== fabBtn) {
+          fabPanel.classList.remove('open');
+        }
+      });
+    }
+
+    // Инициализация при старте
+    if (window.ALLOWED_TABS && window.ALLOWED_TABS.length > 0) {
+      if (!window.ALLOWED_TABS.includes(state.currentTab)) {
+        state.currentTab = window.ALLOWED_TABS[0];
+        document.querySelectorAll('.nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === state.currentTab);
+        });
+      }
+    }
+    initThemeColor();
+    checkAuth();
     function initThemeColor() {
       applyTheme(currentTheme);
       renderThemePanel(); // <--- ВОТ ЭТА СТРОКА БЫЛА ПОТЕРЯНА
@@ -2442,27 +2500,6 @@ function runPendingConfirm() {
         }
       }
     }
-
-	      const bgVideo = document.getElementById('jellyfish-bg');
-    let isReversing = false;
-
-    bgVideo.addEventListener('loadedmetadata', () => {
-      bgVideo.play();
-    });
-
-    bgVideo.addEventListener('ended', () => {
-      if (!isReversing) {
-        // Дошли до конца — включаем реверс
-        isReversing = true;
-        bgVideo.playbackRate = -1;
-        bgVideo.play();
-      } else {
-        // Отмотали назад до начала — снова вперед
-        isReversing = false;
-        bgVideo.playbackRate = 1;
-        bgVideo.play();
-      }
-    });
 
     /* =========================================================
        ЗАГРУЗКА РЕЖИМОВ ИИ
