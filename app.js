@@ -585,7 +585,7 @@
       let items = state.duelsWishlist.map(w => {
         const it = getDuelItemById(w.item);
         if (!it) return null;
-        return { ...it, finisher: w.finisher }; // Добавляем информцию о финишере
+        return { ...it, finisher: w.finisher }; // Добавляем информацию о финишере
       }).filter(Boolean);
 
       // Сортировка
@@ -614,17 +614,28 @@
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
         
-        // Добавляем иконку эффекта, если он есть
+        // --- НОВАЯ ЛОГИКА: Иконка или Кнопка "Плюс" ---
         if (it.finisher) {
           const f = getDuelItemById(it.finisher);
           if (f) {
             priceHtml += ` + ${formatCoins(f.basePrice)}`;
             finisherIconHtml = `
-              <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}">
-                <img src="${escapeHtml(f.icon || f.image || '')}" style="width: 100%; height: 100%; object-fit: contain;">
+              <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
+                <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
               </div>
             `;
           }
+        } else {
+          // Если эффекта нет, показываем кнопку с плюсом
+          finisherIconHtml = `
+            <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
+                 style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
+                 title="Прикрепить эффект"
+                 onmouseover="this.style.borderColor='var(--accent-color)'; this.style.color='var(--accent-color)';"
+                 onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';">
+              +
+            </div>
+          `;
         }
 
         const xBtn = state.duelsEditMode
@@ -638,7 +649,7 @@
           <div class="duels-card" onclick="${onclickJs}">
             ${xBtn}
             
-            <!-- Обертка для картинки, чтобы позиционировать иконку финишера -->
+            <!-- Обертка для картинки -->
             <div style="position: relative; width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 6px; display: flex; justify-content: center; align-items: center;">
               <img src="${escapeHtml(it.image || it.icon || '')}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" onerror="this.style.opacity=0.3">
               ${finisherIconHtml}
@@ -668,7 +679,7 @@
           ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
         </div>
       `;
-    }	
+    }
 
     function toggleDuelsEditMode() {
       state.duelsEditMode = !state.duelsEditMode;
