@@ -4271,7 +4271,9 @@ function runPendingConfirm() {
       canvas.width = JAR_WIDTH;
       canvas.height = JAR_HEIGHT;
       const ctx = canvas.getContext('2d');
-      canvas.style.background = 'linear-gradient(to bottom, rgba(255, 182, 193, 0.05), rgba(255, 105, 180, 0.1))';
+      
+      // УБИРАЕМ старый CSS-фон, теперь всё рисуем в Canvas
+      canvas.style.background = 'transparent'; 
 
       const jar = state.jars[state.activeJarIndex];
 
@@ -4292,7 +4294,7 @@ function runPendingConfirm() {
         if (state.currentTab !== 'game') return;
         ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
 
-        // 1. Движение
+        // 1. Движение и физика (без изменений)
         for (let b of jar.balls) {
           b.vy += GAME_GRAVITY;
           b.vx *= GAME_FRICTION;
@@ -4303,7 +4305,7 @@ function runPendingConfirm() {
           b.y += b.vy;
         }
 
-        // 2. Столкновения и СЛИЯНИЕ
+        // 2. Столкновения и СЛИЯНИЕ (без изменений)
         for (let iter = 0; iter < 4; iter++) {
           for (let i = 0; i < jar.balls.length; i++) {
             let b = jar.balls[i];
@@ -4327,19 +4329,17 @@ function runPendingConfirm() {
               let minDist = b.r + b2.r;
 
               if (dist < minDist) {
-                // ЛОГИКА СЛИЯНИЯ (1+1=2)
                 if (b.value === b2.value) {
                   b2.value *= 2;
                   b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
                   b2.mass = b2.r ** 2;
                   b2.vx += b.vx * 0.5;
                   b2.vy += b.vy * 0.5;
-                  b.isDead = true; // Удаляем первый шарик
-				  playPopSound();
-                  break; // Выходим из цикла j для этого i
+                  b.isDead = true; 
+				          playPopSound();
+                  break; 
                 } 
                 
-                // Если это разные шарики — обычное физическое столкновение
                 let nx, ny;
                 if (dist === 0) {
                   let angle = Math.random() * Math.PI * 2;
@@ -4359,28 +4359,60 @@ function runPendingConfirm() {
           }
         }
 
-        // Очистка "мертвых" шариков
         if (jar.balls.some(b => b.isDead)) {
           jar.balls = jar.balls.filter(b => !b.isDead);
           saveGameState();
         }
 
-        // 3. Отрисовка банки (без изменений)
-        ctx.strokeStyle = 'rgba(255, 105, 180, 0.3)';
+        // ==========================================
+        // 3. ОТРИСОВКА БАНКИ (НОВЫЙ КОД)
+        // ==========================================
+        
+        // Функция для прорисовки контура банки (чтобы не дублировать код)
+        const drawJarPath = () => {
+          ctx.beginPath();
+          ctx.moveTo(LEFT_NECK, 0); 
+          ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
+          ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
+          ctx.lineTo(0, JAR_HEIGHT - 40);
+          ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
+          ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
+          ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
+          ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
+          ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
+          ctx.lineTo(RIGHT_NECK, 0);
+          ctx.closePath();
+        };
+
+        // А) Рисуем фон (стекло) ВНУТРИ банки
+        ctx.save(); 
+        drawJarPath(); // Очерчиваем форму банки
+        ctx.clip();    // Говорим Canvas: "Всё, что нарисуешь дальше, обрежь по этой форме"
+
+        // Градиент для эффекта стекла
+        const glassGrad = ctx.createLinearGradient(0, 0, JAR_WIDTH, 0);
+        glassGrad.addColorStop(0, 'rgba(255, 182, 193, 0.1)');   // Светлый блик слева
+        glassGrad.addColorStop(0.2, 'rgba(255, 105, 180, 0.03)'); // Прозрачная середина
+        glassGrad.addColorStop(1, 'rgba(255, 105, 180, 0.08)');   // Темнее справа
+        ctx.fillStyle = glassGrad;
+        ctx.fillRect(0, 0, JAR_WIDTH, JAR_HEIGHT); // Заливаем обрезанную область
+
+        // Блик (отражение света)
+        const highlightGrad = ctx.createLinearGradient(50, 0, 150, 0);
+        highlightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+        highlightGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = highlightGrad;
+        ctx.fillRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
+
+        ctx.restore(); // Убираем обрезку
+
+        // Б) Рисуем контур банки ПОВЕРХ фона
+        ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)';
         ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(LEFT_NECK, 0); ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
-        ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
-        ctx.lineTo(0, JAR_HEIGHT - 40);
-        ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
-        ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
-        ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
-        ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
-        ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
-        ctx.lineTo(RIGHT_NECK, 0);
+        drawJarPath();
         ctx.stroke();
 
-        // 4. Отрисовка шариков
+        // 4. Отрисовка шариков (без изменений)
         for (let b of jar.balls) {
           ctx.save();
           ctx.translate(b.x, b.y);
@@ -4394,18 +4426,14 @@ function runPendingConfirm() {
           ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
           ctx.closePath();
 
-          // Переливающийся цвет в зависимости от номинала и времени
           const time = Date.now() / 1000;
-          // Сдвигаем цвет на 35 градусов для каждого удвоения (1, 2, 4, 8...)
-          // И добавляем плавную пульсацию (Math.sin), чтобы шарики "переливались"
           const baseHue = (Math.log2(b.value || 1) * 35);
           const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
           
-          // Радиальный градиент (создает объемный 3D-эффект)
           let grad = ctx.createRadialGradient(-b.r * 0.2, -b.r * 0.2, b.r * 0.1, 0, 0, b.r);
-          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`); // Светлый блик
-          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`); // Основной цвет
-          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`); // Темная тень
+          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`);
+          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`);
+          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`);
           
           ctx.fillStyle = grad;
           ctx.fill();
