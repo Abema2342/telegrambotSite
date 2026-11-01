@@ -74,7 +74,7 @@
     }
 
     function formatCoins(n) {
-      if (n === -1 || n === null || n === undefined || isNaN(n)) return '—';
+      if (n === -1 || n === null || n === undefined || isNaN(n)) return 'Unvalued';
       return Number(n).toLocaleString('ru-RU');
     }
 
@@ -114,8 +114,8 @@
           <img class="duels-card-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.style.opacity=0.3">
           <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
           <div class="duels-card-prices">
-            <span>База: <span class="value">${formatCoins(item.basePrice)}</span></span>
-            <span>Ср: <span class="value">${formatCoins(item.salesAvg)}</span></span>
+            <span>База: <span class="value" style="${it.basePrice === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : ''}">${formatCoins(it.basePrice)}</span></span>
+            <span>Ср: <span class="value" style="${it.salesAvg === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : ''}">${formatCoins(it.salesAvg)}</span></span>
           </div>
         </div>
       `;
@@ -124,7 +124,15 @@
     function renderDuelsPrices() {
       const content = document.getElementById('duels-content');
       const q = (state.duelsSearch || '').toLowerCase().trim();
-      const all = state.duelsData || [];
+      let all = state.duelsData || [];
+      
+      // Сортировка по цене (чтобы Unvalued были в конце)
+      all.sort((a, b) => {
+        let pA = a.basePrice === -1 ? Infinity : Number(a.basePrice) || 0;
+        let pB = b.basePrice === -1 ? Infinity : Number(b.basePrice) || 0;
+        return pA - pB;
+      });
+
       const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
 
       content.innerHTML = `
@@ -591,21 +599,21 @@
       // Сортировка
       if (state.duelsWishlistSort === 'price-desc') {
         items.sort((a, b) => {
-          let priceA = Number(a.basePrice) || 0;
-          let priceB = Number(b.basePrice) || 0;
-          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += Number(f.basePrice) || 0; }
-          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += Number(f.basePrice) || 0; }
+          let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
+          let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
+          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
+          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
           return priceB - priceA;
         });
       } else if (state.duelsWishlistSort === 'price-asc') {
         items.sort((a, b) => {
-          let priceA = Number(a.basePrice) || 0;
-          let priceB = Number(b.basePrice) || 0;
-          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += Number(f.basePrice) || 0; }
-          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += Number(f.basePrice) || 0; }
+          let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
+          let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
+          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
+          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
           return priceA - priceB;
         });
-      }
+      }языка
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
