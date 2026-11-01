@@ -4198,10 +4198,8 @@ function runPendingConfirm() {
                 <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;" onclick="addNewJar()">+ Новая банка</button>
               </div>
 
-<div class="game-jar-visual">
-  <div class="jar-3d-wrapper">
-    <canvas id="game-canvas"></canvas>
-  </div>
+<div class="game-jar-visual" style="position: relative; width: 100%; height: 600px; overflow: hidden; border-radius: 12px;">
+  <div id="game-3d-container" style="width: 100%; height: 100%;"></div>
 </div>
               
               <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
@@ -4234,18 +4232,86 @@ function runPendingConfirm() {
       initGameCanvas();
     }
 	
+    let threeRenderer, threeScene, threeCamera, controls;
+    let jarMesh, balls3D = [];
+    let threeAnimationLoop;
+
     function initGameCanvas() {
-      const canvas = document.getElementById('game-canvas');
-      if (!canvas) return;
+      const container = document.getElementById('game-3d-container');
+      if (!container) return;
+
+      // 1. Инициализация Three.js
+      threeScene = new THREE.Scene();
       
-      canvas.width = JAR_WIDTH;
-      canvas.height = JAR_HEIGHT;
-      const ctx = canvas.getContext('2d');
-      canvas.style.background = 'transparent'; 
+      threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      threeCamera.position.set(0, 0, 600); // Отодвигаем камеру
 
+      threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      threeRenderer.setSize(container.clientWidth, container.clientHeight);
+      threeRenderer.setPixelRatio(window.devicePixelRatio);
+      container.innerHTML = ''; // Очищаем контейнер
+      container.appendChild(threeRenderer.domElement);
+
+      // 2. Управление мышкой (вращение)
+      controls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
+      controls.enableDamping = true; // Плавность
+      controls.dampingFactor = 0.05;
+      controls.enableZoom = true; // Можно приближать колесиком
+      controls.enablePan = false; // Запрещаем двигать банку в стороны
+      controls.minPolarAngle = Math.PI / 4; // Ограничиваем углы, чтобы не смотрели снизу
+      controls.maxPolarAngle = Math.PI / 1.5;
+
+      // 3. Освещение
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      threeScene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(100, 200, 200);
+      threeScene.add(dirLight);
+
+      // 4. Создание 3D Банки
+      // Строим профиль банки (точки для вращения)
+      const points = [];
+      points.push(new THREE.Vector2(0, -JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 20, -JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(JAR_WIDTH / 2, -JAR_HEIGHT / 2 + 40));
+      points.push(new THREE.Vector2(JAR_WIDTH / 2, SHOULDER_HEIGHT - JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(RIGHT_NECK, NECK_HEIGHT - JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(RIGHT_NECK, 0 - JAR_HEIGHT / 2));
+      
+      // Внутренняя часть банки (чтобы она была полой)
+      points.push(new THREE.Vector2(RIGHT_NECK - 5, 0 - JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(RIGHT_NECK - 5, NECK_HEIGHT - JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 25, SHOULDER_HEIGHT - JAR_HEIGHT / 2));
+      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 25, -JAR_HEIGHT / 2 + 40));
+      points.push(new THREE.Vector2(0, -JAR_HEIGHT / 2 + 40));
+      
+      const jarGeometry = new THREE.LatheGeometry(points, 64); // 64 сегмента для гладкости
+      
+      // Стеклянный материал
+      const jarMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffb7c5, // Нежно-розовый
+        metalness: 0.1,
+        roughness: 0.1,
+        transmission: 0.9, // Прозрачность (стекло)
+        thickness: 1.0,
+        transparent: true,
+        opacity: 1,
+        side: THREE.DoubleSide
+      });
+
+      jarMesh = new THREE.Mesh(jarGeometry, jarMaterial);
+      jarMesh.position.y = 0; // Центрируем
+      threeScene.add(jarMesh);
+
+      // 5. Крышка (простая 3D таблетка)
+      const lidGeo = new THREE.CylinderGeometry(RIGHT_NECK, RIGHT_NECK, 30, 32);
+      const lidMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 }); // Дерево
+      const lidMesh = new THREE.Mesh(lidGeo, lidMat);
+      lidMesh.position.y = JAR_HEIGHT / 2 + 15; 
+      jarMesh.add(lidMesh);
+
+      // 6. Синхронизация 3D-шариков с нашими данными
       const jar = state.jars[state.activeJarIndex];
-
-      // Инициализация шариков
       jar.balls.forEach(b => {
         if (b.x === undefined) {
           b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
@@ -4257,234 +4323,155 @@ function runPendingConfirm() {
         }
       });
 
-      // === ЭФФЕКТ 3D ВРАЩЕНИЯ ===
-      const wrapper = document.querySelector('.jar-3d-wrapper');
-      if (wrapper) {
-        // Убираем старый обработчик, если он был, чтобы не дублировался
-        document.onmousemove = null; 
-        document.onmousemove = (e) => {
-          if (state.currentTab !== 'game') return;
-          // Вычисляем угол наклона в зависимости от положения мыши
-          const xAxis = (window.innerWidth / 2 - e.pageX) / 30; // Наклон по горизонтали
-          const yAxis = (window.innerHeight / 2 - e.pageY) / 30; // Наклон по вертикали
-          
-          // Ограничиваем углы, чтобы банка не выворачивалась наизнанку
-          const rotateX = Math.max(-15, Math.min(15, yAxis));
-          const rotateY = Math.max(-15, Math.min(15, xAxis));
-          
-          wrapper.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-        };
-      }
+      // Очищаем старые меши
+      balls3D.forEach(mesh => jarMesh.remove(mesh));
+      balls3D = [];
 
+      // 7. Запуск 3D-цикла
+      if (threeAnimationLoop) cancelAnimationFrame(threeAnimationLoop);
       if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
 
-      function update() {
-        if (state.currentTab !== 'game') return;
-        ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
+      animate3D();
+    }
 
-        // 1. Физика движения и слияния (осталась без изменений)
-        for (let b of jar.balls) {
-          b.vy += GAME_GRAVITY;
-          b.vx *= GAME_FRICTION;
-          b.vy *= GAME_FRICTION;
-          if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
-          if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
-          b.x += b.vx;
-          b.y += b.vy;
-        }
+    function animate3D() {
+      threeAnimationLoop = requestAnimationFrame(animate3D);
+      if (state.currentTab !== 'game') return;
 
-        for (let iter = 0; iter < 4; iter++) {
-          for (let i = 0; i < jar.balls.length; i++) {
-            let b = jar.balls[i];
-            if (b.isDead) continue;
+      const jar = state.jars[state.activeJarIndex];
+      
+      // --- 2D ФИЗИКА (СТАРАЯ, НО РАБОТАЕТ) ---
+      for (let b of jar.balls) {
+        b.vy += GAME_GRAVITY;
+        b.vx *= GAME_FRICTION;
+        b.vy *= GAME_FRICTION;
+        if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
+        if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
+        b.x += b.vx;
+        b.y += b.vy;
+      }
 
-            let [leftWall, rightWall] = getJarBounds(b.y);
-            if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
-            if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
-            if (b.y + b.r > JAR_HEIGHT) { 
-              b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
-              if (Math.abs(b.vy) < 0.5) b.vy = 0; 
-            }
+      for (let iter = 0; iter < 4; iter++) {
+        for (let i = 0; i < jar.balls.length; i++) {
+          let b = jar.balls[i];
+          if (b.isDead) continue;
 
-            for (let j = i + 1; j < jar.balls.length; j++) {
-              let b2 = jar.balls[j];
-              if (b2.isDead) continue;
+          let [leftWall, rightWall] = getJarBounds(b.y);
+          if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
+          if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
+          if (b.y + b.r > JAR_HEIGHT) { 
+            b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
+            if (Math.abs(b.vy) < 0.5) b.vy = 0; 
+          }
 
-              let dx = b2.x - b.x;
-              let dy = b2.y - b.y;
-              let dist = Math.sqrt(dx * dx + dy * dy);
-              let minDist = b.r + b2.r;
+          for (let j = i + 1; j < jar.balls.length; j++) {
+            let b2 = jar.balls[j];
+            if (b2.isDead) continue;
 
-              if (dist < minDist) {
-                if (b.value === b2.value) {
-                  b2.value *= 2;
-                  b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
-                  b2.mass = b2.r ** 2;
-                  b2.vx += b.vx * 0.5;
-                  b2.vy += b.vy * 0.5;
-                  b.isDead = true; 
-                  playPopSound();
-                  break; 
-                } 
-                
-                let nx, ny;
-                if (dist === 0) {
-                  let angle = Math.random() * Math.PI * 2;
-                  nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
-                } else {
-                  nx = dx / dist; ny = dy / dist;
-                }
-                let overlap = minDist - dist;
-                b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
-                b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
-                
-                let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
-                b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
-                b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
+            let dx = b2.x - b.x;
+            let dy = b2.y - b.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            let minDist = b.r + b2.r;
+
+            if (dist < minDist) {
+              if (b.value === b2.value) {
+                b2.value *= 2;
+                b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
+                b2.mass = b2.r ** 2;
+                b2.vx += b.vx * 0.5;
+                b2.vy += b.vy * 0.5;
+                b.isDead = true; 
+                playPopSound();
+                break; 
+              } 
+              
+              let nx, ny;
+              if (dist === 0) {
+                let angle = Math.random() * Math.PI * 2;
+                nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
+              } else {
+                nx = dx / dist; ny = dy / dist;
               }
+              let overlap = minDist - dist;
+              b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
+              b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
+              
+              let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
+              b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
+              b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
             }
           }
         }
-
-        if (jar.balls.some(b => b.isDead)) {
-          jar.balls = jar.balls.filter(b => !b.isDead);
-          saveGameState();
-        }
-
-        // 2. Отрисовка красивой банки
-        const drawJarPath = () => {
-          ctx.beginPath();
-          // Левая шея
-          ctx.moveTo(LEFT_NECK, 0); 
-          ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
-          // Левое плечико
-          ctx.bezierCurveTo(LEFT_NECK, NECK_HEIGHT + 40, 0, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT);
-          // Стенка
-          ctx.lineTo(0, JAR_HEIGHT - 40);
-          ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
-          // Дно
-          ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
-          ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
-          // Правая стенка
-          ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
-          // Правое плечико
-          ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT + 40, RIGHT_NECK, NECK_HEIGHT);
-          // Правая шея
-          ctx.lineTo(RIGHT_NECK, 0);
-          ctx.closePath();
-        };
-
-        // Тень на полу
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(JAR_WIDTH / 2, JAR_HEIGHT + 10, JAR_WIDTH / 2.5, 15, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Объемное стекло
-        ctx.save(); 
-        drawJarPath(); 
-        ctx.clip();    
-
-        const glassGrad = ctx.createLinearGradient(0, 0, JAR_WIDTH, 0);
-        glassGrad.addColorStop(0, 'rgba(255, 105, 180, 0.15)');   
-        glassGrad.addColorStop(0.2, 'rgba(255, 182, 193, 0.05)'); 
-        glassGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)'); 
-        glassGrad.addColorStop(0.8, 'rgba(255, 182, 193, 0.05)'); 
-        glassGrad.addColorStop(1, 'rgba(255, 105, 180, 0.15)');   
-        ctx.fillStyle = glassGrad;
-        ctx.fillRect(0, 0, JAR_WIDTH, JAR_HEIGHT); 
-
-        // Блик слева
-        const glareGrad = ctx.createLinearGradient(30, 0, 80, 0);
-        glareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        glareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
-        glareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = glareGrad;
-        ctx.fillRect(30, 0, 50, JAR_HEIGHT);
-
-        ctx.restore(); 
-
-        // Контур
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 4;
-        drawJarPath();
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(255, 105, 180, 0.5)'; 
-        ctx.lineWidth = 1.5;
-        drawJarPath();
-        ctx.stroke();
-
-        // 3. Крышка и веревка
-        const LID_HEIGHT = 35;
-        const LID_WIDTH = NECK_WIDTH + 24;
-        const LID_LEFT = LEFT_NECK - 12;
-
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(LID_LEFT, 0, LID_WIDTH, 10);
-
-        const lidGrad = ctx.createLinearGradient(LID_LEFT, 0, LID_LEFT + LID_WIDTH, 0);
-        lidGrad.addColorStop(0, '#5C3A21'); lidGrad.addColorStop(0.3, '#A06A42'); lidGrad.addColorStop(1, '#4A2E1A');
-        ctx.fillStyle = lidGrad;
-        ctx.beginPath();
-        ctx.roundRect(LID_LEFT, -LID_HEIGHT, LID_WIDTH, LID_HEIGHT, [8, 8, 0, 0]);
-        ctx.fill();
-
-        ctx.strokeStyle = '#D2B48C'; 
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(LEFT_NECK - 3, 20);
-        ctx.quadraticCurveTo(JAR_WIDTH / 2, 30, RIGHT_NECK + 3, 20);
-        ctx.stroke();
-
-        // Бантик
-        ctx.fillStyle = '#D2B48C';
-        ctx.beginPath();
-        ctx.ellipse(LEFT_NECK + 5, 25, 12, 7, Math.PI / 4, 0, Math.PI * 2);
-        ctx.ellipse(LEFT_NECK + 5, 25, 12, 7, -Math.PI / 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 4. Отрисовка шариков
-        for (let b of jar.balls) {
-          ctx.save();
-          ctx.translate(b.x, b.y);
-          
-          ctx.beginPath();
-          const topCurveHeight = b.r * 0.3;
-          ctx.moveTo(0, topCurveHeight);
-          ctx.bezierCurveTo(0, 0, -b.r / 2, 0, -b.r / 2, topCurveHeight);
-          ctx.bezierCurveTo(-b.r / 2, (b.r + topCurveHeight) / 2, 0, (b.r + topCurveHeight) / 2, 0, b.r);
-          ctx.bezierCurveTo(0, (b.r + topCurveHeight) / 2, b.r / 2, (b.r + topCurveHeight) / 2, b.r / 2, topCurveHeight);
-          ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
-          ctx.closePath();
-
-          const time = Date.now() / 1000;
-          const baseHue = (Math.log2(b.value || 1) * 35);
-          const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
-          
-          let grad = ctx.createRadialGradient(-b.r * 0.2, -b.r * 0.2, b.r * 0.1, 0, 0, b.r);
-          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`);
-          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`);
-          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`);
-          
-          ctx.fillStyle = grad;
-          ctx.fill();
-          
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-          ctx.stroke();
-
-          ctx.fillStyle = '#fff';
-          ctx.font = `bold ${Math.floor(b.r * 0.7)}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(b.value, 0, b.r * 0.3);
-          
-          ctx.restore();
-        }
-
-        gamePhysicsLoop = requestAnimationFrame(update);
       }
-      update();
+
+      // Слияние и обновление
+      if (jar.balls.some(b => b.isDead)) {
+        jar.balls = jar.balls.filter(b => !b.isDead);
+        saveGameState();
+        // Пересоздаем 3D меши после слияния
+        syncBalls3D(jar.balls); 
+      }
+
+      // --- ОБНОВЛЕНИЕ 3D ---
+      
+      // Синхронизируем позиции существующих мешей с физикой
+      jar.balls.forEach((b, index) => {
+        let mesh = balls3D[index];
+        if (!mesh) {
+          // Если меша нет (новый шарик) - создаем
+          mesh = createBall3D(b);
+          balls3D.push(mesh);
+          jarMesh.add(mesh);
+        }
+        
+        // Переносим 2D координаты в 3D (X, Y). Z оставляем 0 для плоскости.
+        // Центрируем банку: X от 0..JAR_WIDTH -> -JAR_WIDTH/2..JAR_WIDTH/2
+        mesh.position.x = b.x - JAR_WIDTH / 2;
+        mesh.position.y = JAR_HEIGHT / 2 - b.y; // Инвертируем Y
+        mesh.position.z = 0;
+        
+        // Обновляем цвет в зависимости от значения
+        const time = Date.now() / 1000;
+        const baseHue = (Math.log2(b.value || 1) * 35);
+        const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
+        mesh.material.color.setHSL(hue / 360, 0.9, 0.6);
+        mesh.scale.setScalar(b.r / 20); // Масштабируем сферу под радиус
+      });
+
+      // Удаляем лишние меши (если шариков стало меньше)
+      if (balls3D.length > jar.balls.length) {
+        const toRemove = balls3D.splice(jar.balls.length);
+        toRemove.forEach(mesh => jarMesh.remove(mesh));
+      }
+
+      controls.update();
+      threeRenderer.render(threeScene, threeCamera);
+    }
+
+    // Хелпер для создания 3D-шарика
+    function createBall3D(b) {
+      const geometry = new THREE.SphereGeometry(20, 32, 32);
+      const material = new THREE.MeshStandardMaterial({
+        roughness: 0.2,
+        metalness: 0.1,
+        emissive: new THREE.Color(0x000000),
+        transparent: true,
+        opacity: 0.95
+      });
+      return new THREE.Mesh(geometry, material);
+    }
+
+    // Хелпер для полной синхронизации при слиянии
+    function syncBalls3D(currentBalls) {
+        balls3D.forEach(mesh => jarMesh.remove(mesh));
+        balls3D = [];
+        currentBalls.forEach(b => {
+            const mesh = createBall3D(b);
+            mesh.position.x = b.x - JAR_WIDTH / 2;
+            mesh.position.y = JAR_HEIGHT / 2 - b.y;
+            jarMesh.add(mesh);
+            balls3D.push(mesh);
+        });
     }
 
     function switchJar(dir) {
