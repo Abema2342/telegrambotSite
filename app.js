@@ -4264,7 +4264,7 @@ threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.
       
       // ОГРАНИЧЕНИЯ ЗУМА:
       controls.minDistance = 300;  // Нельзя придвинуть ближе (чтобы не залезть внутрь банки)
-controls.maxDistance = 6000; // Увеличиваем лимит, чтобы можно было отъехать очень далеко
+controls.maxDistance = 30000; // Увеличиваем лимит, чтобы можно было отъехать очень далеко
 
       // 3. Освещение
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
