@@ -1480,12 +1480,22 @@ function runPendingConfirm() {
       const sec = document.getElementById('sec-' + tabId);
       if (sec) sec.classList.add('active');
     }
-	    function setBgType(type) {
+    function setBgType(type) {
       currentTheme.bgType = type;
       applyTheme(currentTheme);
-      renderThemePanel(); // Перерисовываем панель, чтобы обновить активную кнопку
-    }
+      renderThemePanel(); 
 
+      // Управление воспроизведением видео
+      const video = document.getElementById('bg-video');
+      if (video) {
+        if (type === 'jellyfish') {
+          // Пытаемся запустить. Браузер разрешит, так как видео без звука (muted)
+          video.play().catch(e => console.log('Видео заблокировано браузером:', e));
+        } else {
+          video.pause();
+        }
+      }
+    }
     function updateRGB(id, channel, value) {
       const rgb = hexToRgb(currentTheme[id]);
       rgb[channel] = parseInt(value);
@@ -1589,7 +1599,13 @@ function runPendingConfirm() {
     checkAuth();
     function initThemeColor() {
       applyTheme(currentTheme);
-      renderThemePanel(); // <--- ВОТ ЭТА СТРОКА БЫЛА ПОТЕРЯНА
+      renderThemePanel();
+
+      // Если при загрузке выбран фон "Медузы", запускаем видео
+      if (currentTheme.bgType === 'jellyfish') {
+        const video = document.getElementById('bg-video');
+        if (video) video.play().catch(e => console.log('Autoplay blocked'));
+      }
     }
 
     const mediaTypeConfig = {

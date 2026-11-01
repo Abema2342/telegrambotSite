@@ -3571,3 +3571,40 @@
         transform: scale(1);
       }
     }
+	
+	    /* ===== ВИДЕО-ФОН ===== */
+    .bg-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -3;
+      pointer-events: none;
+      display: none; /* Скрыто по умолчанию */
+    }
+
+    /* Затемнение поверх видео */
+    .bg-video-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(13, 13, 13, 0.5); /* Темное стекло */
+      z-index: -2;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* Показываем видео только если выбран класс bg-jellyfish */
+    body.bg-jellyfish .bg-video,
+    body.bg-jellyfish .bg-video-overlay {
+      display: block;
+    }
+
+    /* Для светлой темы делаем затемнение светлым */
+    body.light-theme .bg-video-overlay {
+      background: rgba(255, 255, 255, 0.6);
+    }
