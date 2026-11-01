@@ -602,11 +602,12 @@
       items.sort((a, b) => {
         let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
         let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
-        return priceB - priceA; // От большего к меньшему
+        return priceB - priceA; 
       });
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
+        const isFinisher = id.startsWith('finisher-'); // <--- ПРОВЕРКА: это эффект?
         
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
@@ -626,7 +627,8 @@
               </div>
             `;
           }
-        } else {
+        } else if (!isFinisher) {
+          // Показываем кнопку "+" ТОЛЬКО если это не эффект
           finisherIconHtml = `
             <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
                  style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
@@ -667,7 +669,6 @@
         `;
       }).join('');
 
-      // Убрали select, оставили только кнопки и счетчик
       content.innerHTML = `
         <div class="duels-toolbar">
           <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
