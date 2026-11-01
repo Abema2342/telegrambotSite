@@ -4244,7 +4244,7 @@ function runPendingConfirm() {
       threeScene = new THREE.Scene();
       
       // Увеличиваем дальнюю границу (far) до 10000, чтобы банка не исчезала при отдалении
-      threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
       threeCamera.position.set(0, 0, 800); // Чуть дальше стартовая позиция 
 	  
       threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -4264,7 +4264,7 @@ function runPendingConfirm() {
       
       // ОГРАНИЧЕНИЯ ЗУМА:
       controls.minDistance = 300;  // Нельзя придвинуть ближе (чтобы не залезть внутрь банки)
-      controls.maxDistance = 2500; // Нельзя отдалить дальше (чтобы банка не стала точкой)
+controls.maxDistance = 6000; // Увеличиваем лимит, чтобы можно было отъехать очень далеко
 
       // 3. Освещение
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
