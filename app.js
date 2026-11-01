@@ -4155,10 +4155,14 @@ function runPendingConfirm() {
         // В горлышке
         return [LEFT_NECK, RIGHT_NECK];
       } else if (y < SHOULDER_HEIGHT) {
-        // На плечиках (плавно расширяются от горла к телу банки)
+        // На плечиках банки (плавный изгиб)
         let progress = (y - NECK_HEIGHT) / (SHOULDER_HEIGHT - NECK_HEIGHT);
-        let left = LEFT_NECK - (LEFT_NECK * progress);
-        let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * progress);
+        
+        // Функция Smoothstep для плавного перехода (Ease-in-out)
+        let easedProgress = progress * progress * (3 - 2 * progress); 
+        
+        let left = LEFT_NECK - (LEFT_NECK * easedProgress);
+        let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * easedProgress);
         return [left, right];
       } else {
         // В основной части банки
@@ -4264,197 +4268,44 @@ function runPendingConfirm() {
       });
     }
 
-    function initGameCanvas() {
-      const canvas = document.getElementById('game-canvas');
-      if (!canvas) return;
-      
-      canvas.width = JAR_WIDTH;
-      canvas.height = JAR_HEIGHT;
-      const ctx = canvas.getContext('2d');
-      
-      // УБИРАЕМ старый CSS-фон, теперь всё рисуем в Canvas
-      canvas.style.background = 'transparent'; 
-
-      const jar = state.jars[state.activeJarIndex];
-
-      jar.balls.forEach(b => {
-        if (b.x === undefined) {
-          b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
-          b.y = -Math.random() * 200;
-          b.vx = (Math.random() - 0.5) * 4;
-          b.vy = Math.random() * 2;
-          b.r = Math.max(24, Math.min(55, 24 + Math.log2(b.value || 1) * 6)); 
-          b.mass = b.r ** 2;
-        }
-      });
-
-      if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
-
-      function update() {
-        if (state.currentTab !== 'game') return;
-        ctx.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
-
-        // 1. Движение и физика (без изменений)
-        for (let b of jar.balls) {
-          b.vy += GAME_GRAVITY;
-          b.vx *= GAME_FRICTION;
-          b.vy *= GAME_FRICTION;
-          if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
-          if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
-          b.x += b.vx;
-          b.y += b.vy;
-        }
-
-        // 2. Столкновения и СЛИЯНИЕ (без изменений)
-        for (let iter = 0; iter < 4; iter++) {
-          for (let i = 0; i < jar.balls.length; i++) {
-            let b = jar.balls[i];
-            if (b.isDead) continue;
-
-            let [leftWall, rightWall] = getJarBounds(b.y);
-            if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
-            if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
-            if (b.y + b.r > JAR_HEIGHT) { 
-              b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
-              if (Math.abs(b.vy) < 0.5) b.vy = 0; 
-            }
-
-            for (let j = i + 1; j < jar.balls.length; j++) {
-              let b2 = jar.balls[j];
-              if (b2.isDead) continue;
-
-              let dx = b2.x - b.x;
-              let dy = b2.y - b.y;
-              let dist = Math.sqrt(dx * dx + dy * dy);
-              let minDist = b.r + b2.r;
-
-              if (dist < minDist) {
-                if (b.value === b2.value) {
-                  b2.value *= 2;
-                  b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
-                  b2.mass = b2.r ** 2;
-                  b2.vx += b.vx * 0.5;
-                  b2.vy += b.vy * 0.5;
-                  b.isDead = true; 
-				          playPopSound();
-                  break; 
-                } 
-                
-                let nx, ny;
-                if (dist === 0) {
-                  let angle = Math.random() * Math.PI * 2;
-                  nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
-                } else {
-                  nx = dx / dist; ny = dy / dist;
-                }
-                let overlap = minDist - dist;
-                b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
-                b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
-                
-                let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
-                b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
-                b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
-              }
-            }
-          }
-        }
-
-        if (jar.balls.some(b => b.isDead)) {
-          jar.balls = jar.balls.filter(b => !b.isDead);
-          saveGameState();
-        }
-
-        // ==========================================
-        // 3. ОТРИСОВКА БАНКИ (НОВЫЙ КОД)
-        // ==========================================
-        
-        // Функция для прорисовки контура банки (чтобы не дублировать код)
+        // Функция для прорисовки контура банки (плавные плечики)
         const drawJarPath = () => {
           ctx.beginPath();
+          
+          // 1. Левая часть горлышка
           ctx.moveTo(LEFT_NECK, 0); 
           ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
-          ctx.bezierCurveTo(LEFT_NECK, SHOULDER_HEIGHT - 40, 0, SHOULDER_HEIGHT - 80, 0, SHOULDER_HEIGHT);
+          
+          // 2. ЛЕВОЕ ПЛЕЧИКО (Плавный изгиб)
+          // (Стартовая точка, Контрольная 1, Контрольная 2, Конечная точка)
+          ctx.bezierCurveTo(
+            LEFT_NECK, NECK_HEIGHT + 80,    // Тянем вниз от горлышка
+            0, SHOULDER_HEIGHT - 80,        // Тянем вверх от стенки
+            0, SHOULDER_HEIGHT              // Конечная точка (начало прямой стенки)
+          );
+          
+          // 3. Левая стенка вниз
           ctx.lineTo(0, JAR_HEIGHT - 40);
           ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
+          
+          // 4. Дно
           ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
           ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
+          
+          // 5. Правая стенка вверх
           ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
-          ctx.bezierCurveTo(JAR_WIDTH, SHOULDER_HEIGHT - 80, RIGHT_NECK, SHOULDER_HEIGHT - 40, RIGHT_NECK, NECK_HEIGHT);
+          
+          // 6. ПРАВОЕ ПЛЕЧИКО (Симметричный изгиб)
+          ctx.bezierCurveTo(
+            JAR_WIDTH, SHOULDER_HEIGHT - 80, 
+            RIGHT_NECK, NECK_HEIGHT + 80,    
+            RIGHT_NECK, NECK_HEIGHT          
+          );
+          
+          // 7. Правая часть горлышка
           ctx.lineTo(RIGHT_NECK, 0);
           ctx.closePath();
         };
-
-        // А) Рисуем фон (стекло) ВНУТРИ банки
-        ctx.save(); 
-        drawJarPath(); // Очерчиваем форму банки
-        ctx.clip();    // Говорим Canvas: "Всё, что нарисуешь дальше, обрежь по этой форме"
-
-        // Градиент для эффекта стекла
-        const glassGrad = ctx.createLinearGradient(0, 0, JAR_WIDTH, 0);
-        glassGrad.addColorStop(0, 'rgba(255, 182, 193, 0.1)');   // Светлый блик слева
-        glassGrad.addColorStop(0.2, 'rgba(255, 105, 180, 0.03)'); // Прозрачная середина
-        glassGrad.addColorStop(1, 'rgba(255, 105, 180, 0.08)');   // Темнее справа
-        ctx.fillStyle = glassGrad;
-        ctx.fillRect(0, 0, JAR_WIDTH, JAR_HEIGHT); // Заливаем обрезанную область
-
-        // Блик (отражение света)
-        const highlightGrad = ctx.createLinearGradient(50, 0, 150, 0);
-        highlightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-        highlightGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = highlightGrad;
-        ctx.fillRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
-
-        ctx.restore(); // Убираем обрезку
-
-        // Б) Рисуем контур банки ПОВЕРХ фона
-        ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)';
-        ctx.lineWidth = 3;
-        drawJarPath();
-        ctx.stroke();
-
-        // 4. Отрисовка шариков (без изменений)
-        for (let b of jar.balls) {
-          ctx.save();
-          ctx.translate(b.x, b.y);
-          
-          ctx.beginPath();
-          const topCurveHeight = b.r * 0.3;
-          ctx.moveTo(0, topCurveHeight);
-          ctx.bezierCurveTo(0, 0, -b.r / 2, 0, -b.r / 2, topCurveHeight);
-          ctx.bezierCurveTo(-b.r / 2, (b.r + topCurveHeight) / 2, 0, (b.r + topCurveHeight) / 2, 0, b.r);
-          ctx.bezierCurveTo(0, (b.r + topCurveHeight) / 2, b.r / 2, (b.r + topCurveHeight) / 2, b.r / 2, topCurveHeight);
-          ctx.bezierCurveTo(b.r / 2, 0, 0, 0, 0, topCurveHeight);
-          ctx.closePath();
-
-          const time = Date.now() / 1000;
-          const baseHue = (Math.log2(b.value || 1) * 35);
-          const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
-          
-          let grad = ctx.createRadialGradient(-b.r * 0.2, -b.r * 0.2, b.r * 0.1, 0, 0, b.r);
-          grad.addColorStop(0, `hsl(${hue}, 95%, 75%)`);
-          grad.addColorStop(0.6, `hsl(${hue}, 90%, 55%)`);
-          grad.addColorStop(1, `hsl(${hue}, 100%, 35%)`);
-          
-          ctx.fillStyle = grad;
-          ctx.fill();
-          
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-          ctx.stroke();
-
-          ctx.fillStyle = '#fff';
-          ctx.font = `bold ${Math.floor(b.r * 0.7)}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(b.value, 0, b.r * 0.3);
-          
-          ctx.restore();
-        }
-
-        gamePhysicsLoop = requestAnimationFrame(update);
-      }
-      update();
-    }
 
     function addGameNumber() {
       const inputEl = document.getElementById('game-input');
