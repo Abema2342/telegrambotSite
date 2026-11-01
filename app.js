@@ -4243,79 +4243,106 @@ function runPendingConfirm() {
       // 1. Инициализация Three.js
       threeScene = new THREE.Scene();
       
-      // Увеличиваем дальнюю границу (far) до 10000, чтобы банка не исчезала при отдалении
-threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
-      threeCamera.position.set(0, 0, 800); // Чуть дальше стартовая позиция 
-	  
+      threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+      threeCamera.position.set(0, 100, 800); // Смотрим чуть сверху
+
       threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       threeRenderer.setSize(container.clientWidth, container.clientHeight);
       threeRenderer.setPixelRatio(window.devicePixelRatio);
-      container.innerHTML = ''; // Очищаем контейнер
+      container.innerHTML = ''; 
       container.appendChild(threeRenderer.domElement);
 
-      // 2. Управление мышкой (вращение)
+      // 2. Управление мышкой
       controls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
-      controls.enableDamping = true;
+      controls.enableDamping = true; 
       controls.dampingFactor = 0.05;
       controls.enableZoom = true; 
       controls.enablePan = false; 
-      controls.minPolarAngle = Math.PI / 4;
-      controls.maxPolarAngle = Math.PI / 1.5;
-      
-      // ОГРАНИЧЕНИЯ ЗУМА:
-      controls.minDistance = 300;  // Нельзя придвинуть ближе (чтобы не залезть внутрь банки)
-controls.maxDistance = 30000; // Увеличиваем лимит, чтобы можно было отъехать очень далеко
+      controls.minPolarAngle = Math.PI / 4; 
+      controls.maxPolarAngle = Math.PI / 1.7;
+      controls.minDistance = 400;
+      controls.maxDistance = 3000;
 
-      // 3. Освещение
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      // 3. Освещение (яркое, чтобы стекло не было черным)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       threeScene.add(ambientLight);
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(100, 200, 200);
+      
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      dirLight.position.set(200, 500, 300);
       threeScene.add(dirLight);
 
-      // 4. Создание 3D Банки
-      // Строим профиль банки (точки для вращения)
+      // Свет изнутри банки
+      const insideLight = new THREE.PointLight(0xffb7c5, 1.5, 1000);
+      insideLight.position.set(0, 0, 0);
+      threeScene.add(insideLight);
+
+      // 4. Создание 3D Банки (ПРАВИЛЬНЫЕ КООРДИНАТЫ)
       const points = [];
-      points.push(new THREE.Vector2(0, -JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 20, -JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(JAR_WIDTH / 2, -JAR_HEIGHT / 2 + 40));
-      points.push(new THREE.Vector2(JAR_WIDTH / 2, SHOULDER_HEIGHT - JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(RIGHT_NECK, NECK_HEIGHT - JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(RIGHT_NECK, 0 - JAR_HEIGHT / 2));
+      const halfH = JAR_HEIGHT / 2; // 400
+      const bodyRadius = JAR_WIDTH / 2; // 350
+      const neckRadius = NECK_WIDTH / 2; // 250
+      const thickness = 15; // Толщина стекла
+
+      // --- ВНЕШНЯЯ ЧАСТЬ ---
+      points.push(new THREE.Vector2(0, -halfH)); // Дно центр
+      points.push(new THREE.Vector2(bodyRadius - 20, -halfH)); // Дно край
+      points.push(new THREE.Vector2(bodyRadius, -halfH + 20)); // Скругление дна
+      points.push(new THREE.Vector2(bodyRadius, halfH - SHOULDER_HEIGHT)); // Стенка до плечиков
+
+      // Плечико (плавная кривая)
+      const shoulderOuter = new THREE.QuadraticBezierCurve(
+        new THREE.Vector2(bodyRadius, halfH - SHOULDER_HEIGHT),
+        new THREE.Vector2(bodyRadius, halfH - NECK_HEIGHT), 
+        new THREE.Vector2(neckRadius, halfH - NECK_HEIGHT)
+      );
+      shoulderOuter.getPoints(20).forEach(p => points.push(p));
+
+      points.push(new THREE.Vector2(neckRadius, halfH)); // Шея верх внешний
+
+      // --- ВНУТРЕННЯЯ ЧАСТЬ (ПУСТОТА) ---
+      points.push(new THREE.Vector2(neckRadius - thickness, halfH)); // Шея верх внутренний
+      points.push(new THREE.Vector2(neckRadius - thickness, halfH - NECK_HEIGHT)); // Шея низ внутренний
+
+      // Плечико (внутреннее)
+      const shoulderInner = new THREE.QuadraticBezierCurve(
+        new THREE.Vector2(neckRadius - thickness, halfH - NECK_HEIGHT),
+        new THREE.Vector2(bodyRadius - thickness, halfH - NECK_HEIGHT),
+        new THREE.Vector2(bodyRadius - thickness, halfH - SHOULDER_HEIGHT)
+      );
+      shoulderInner.getPoints(20).forEach(p => points.push(p));
+
+      points.push(new THREE.Vector2(bodyRadius - thickness, -halfH + 20 + thickness)); // Стенка низ внутренняя
+      points.push(new THREE.Vector2(0, -halfH + 20 + thickness)); // Дно центр внутренний
       
-      // Внутренняя часть банки (чтобы она была полой)
-      points.push(new THREE.Vector2(RIGHT_NECK - 5, 0 - JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(RIGHT_NECK - 5, NECK_HEIGHT - JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 25, SHOULDER_HEIGHT - JAR_HEIGHT / 2));
-      points.push(new THREE.Vector2(JAR_WIDTH / 2 - 25, -JAR_HEIGHT / 2 + 40));
-      points.push(new THREE.Vector2(0, -JAR_HEIGHT / 2 + 40));
+      const jarGeometry = new THREE.LatheGeometry(points, 64); 
       
-      const jarGeometry = new THREE.LatheGeometry(points, 64); // 64 сегмента для гладкости
-      
-      // Стеклянный материал
-      const jarMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffb7c5, // Нежно-розовый
-        metalness: 0.1,
+      // Материал стекла (светлый, полупрозрачный)
+      const jarMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd1dc, 
         roughness: 0.1,
-        transmission: 0.9, // Прозрачность (стекло)
-        thickness: 1.0,
+        metalness: 0.2,
         transparent: true,
-        opacity: 1,
-        side: THREE.DoubleSide
+        opacity: 0.4, 
+        side: THREE.DoubleSide 
       });
 
       jarMesh = new THREE.Mesh(jarGeometry, jarMaterial);
-      jarMesh.position.y = 0; // Центрируем
+      jarMesh.position.y = 0; 
       threeScene.add(jarMesh);
 
-      // 5. Крышка (простая 3D таблетка)
-      const lidGeo = new THREE.CylinderGeometry(RIGHT_NECK, RIGHT_NECK, 30, 32);
-      const lidMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 }); // Дерево
+      // 5. Крышка (Пробка)
+      const lidGeo = new THREE.CylinderGeometry(neckRadius, neckRadius, 40, 32);
+      const lidMat = new THREE.MeshStandardMaterial({ 
+        color: 0x8B5A2B,
+        roughness: 0.8
+      });
       const lidMesh = new THREE.Mesh(lidGeo, lidMat);
-      lidMesh.position.y = JAR_HEIGHT / 2 + 15; 
+      
+      // Ставим крышку ровно на верх шеи (halfH = 400, высота крышки 40, значит центр на 400 + 20 = 420)
+      lidMesh.position.y = halfH + 20; 
       jarMesh.add(lidMesh);
 
-      // 6. Синхронизация 3D-шариков с нашими данными
+      // 6. Синхронизация шариков
       const jar = state.jars[state.activeJarIndex];
       jar.balls.forEach(b => {
         if (b.x === undefined) {
@@ -4328,11 +4355,18 @@ controls.maxDistance = 30000; // Увеличиваем лимит, чтобы �
         }
       });
 
-      // Очищаем старые меши
       balls3D.forEach(mesh => jarMesh.remove(mesh));
       balls3D = [];
 
-      // 7. Запуск 3D-цикла
+      // Обработка изменения размера окна
+      window.addEventListener('resize', () => {
+        if (!container) return;
+        threeCamera.aspect = container.clientWidth / container.clientHeight;
+        threeCamera.updateProjectionMatrix();
+        threeRenderer.setSize(container.clientWidth, container.clientHeight);
+      });
+
+      // 7. Запуск цикла
       if (threeAnimationLoop) cancelAnimationFrame(threeAnimationLoop);
       if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
 
