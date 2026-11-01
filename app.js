@@ -4243,9 +4243,10 @@ function runPendingConfirm() {
       // 1. Инициализация Three.js
       threeScene = new THREE.Scene();
       
-      threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-      threeCamera.position.set(0, 0, 600); // Отодвигаем камеру
-
+      // Увеличиваем дальнюю границу (far) до 10000, чтобы банка не исчезала при отдалении
+      threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+      threeCamera.position.set(0, 0, 800); // Чуть дальше стартовая позиция 
+	  
       threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       threeRenderer.setSize(container.clientWidth, container.clientHeight);
       threeRenderer.setPixelRatio(window.devicePixelRatio);
@@ -4254,12 +4255,16 @@ function runPendingConfirm() {
 
       // 2. Управление мышкой (вращение)
       controls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
-      controls.enableDamping = true; // Плавность
+      controls.enableDamping = true;
       controls.dampingFactor = 0.05;
-      controls.enableZoom = true; // Можно приближать колесиком
-      controls.enablePan = false; // Запрещаем двигать банку в стороны
-      controls.minPolarAngle = Math.PI / 4; // Ограничиваем углы, чтобы не смотрели снизу
+      controls.enableZoom = true; 
+      controls.enablePan = false; 
+      controls.minPolarAngle = Math.PI / 4;
       controls.maxPolarAngle = Math.PI / 1.5;
+      
+      // ОГРАНИЧЕНИЯ ЗУМА:
+      controls.minDistance = 300;  // Нельзя придвинуть ближе (чтобы не залезть внутрь банки)
+      controls.maxDistance = 2500; // Нельзя отдалить дальше (чтобы банка не стала точкой)
 
       // 3. Освещение
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
