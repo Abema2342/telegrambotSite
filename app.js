@@ -4354,52 +4354,46 @@ function runPendingConfirm() {
 
       const jar = state.jars[state.activeJarIndex];
       const halfH = JAR_HEIGHT / 2;
-      const bodyRadius = JAR_WIDTH / 2 - 15; // Радиус банки (с учетом толщины стекла)
-      const neckRadius = NECK_WIDTH / 2 - 15; // Радиус горлышка
+      const bodyRadius = JAR_WIDTH / 2 - 15;
+      const neckRadius = NECK_WIDTH / 2 - 15;
 
-      // 1. ФИЗИКА (3D)
+      // 1. ФИЗИКА
       for (let b of jar.balls) {
-        // Гравитация
-        b.vy -= 0.5; 
+        b.vy -= 1.5; // Гравитация (быстрее)
         
-        // Движение
-        b.x += b.vx * 0.1;
-        b.y += b.vy * 0.1;
-        b.z += b.vz * 0.1;
+        b.x += b.vx;
+        b.y += b.vy;
+        b.z += b.vz;
 
-        // Проверка коллизии со стенками банки (цилиндр)
+        // Столкновение со стенками (цилиндр)
         let currentRadius = (b.y < halfH - NECK_HEIGHT) ? neckRadius : bodyRadius;
         let distFromCenter = Math.sqrt(b.x * b.x + b.z * b.z);
 
         if (distFromCenter > currentRadius - b.r) {
-          // Шарик коснулся стенки
           let nx = b.x / distFromCenter;
           let nz = b.z / distFromCenter;
           
-          // Выталкиваем внутрь
           b.x = nx * (currentRadius - b.r);
           b.z = nz * (currentRadius - b.r);
           
-          // Отражаем скорость
           let dot = b.vx * nx + b.vz * nz;
           b.vx -= 2 * dot * nx;
           b.vz -= 2 * dot * nz;
           
-          // Трение
-          b.vx *= 0.8;
-          b.vz *= 0.8;
-        }
-
-        // Проверка дна
-        if (b.y - b.r < -halfH) {
-          b.y = -halfH + b.r;
-          b.vy *= -0.5; // Отскок от пола
           b.vx *= 0.9;
           b.vz *= 0.9;
         }
+
+        // Столкновение с дном
+        if (b.y - b.r < -halfH) {
+          b.y = -halfH + b.r;
+          b.vy *= -0.4; // Отскок
+          b.vx *= 0.8;
+          b.vz *= 0.8;
+        }
       }
 
-      // 2. СТОЛКНОВЕНИЯ ШАРИКОВ
+      // 2. СТОЛКНОВЕНИЯ И СЛИЯНИЕ
       for (let i = 0; i < jar.balls.length; i++) {
         let b1 = jar.balls[i];
         if (b1.isDead) continue;
@@ -4415,7 +4409,6 @@ function runPendingConfirm() {
           let minDist = b1.r + b2.r;
 
           if (dist < minDist && dist > 0) {
-            // Слияние
             if (b1.value === b2.value) {
               b2.value *= 2;
               b2.r = Math.max(20, Math.min(45, 20 + Math.log2(b2.value) * 5));
@@ -4424,7 +4417,7 @@ function runPendingConfirm() {
               break;
             } 
             
-            // Обычное столкновение (расталкиваем)
+            // Расталкивание
             let nx = dx / dist;
             let ny = dy / dist;
             let nz = dz / dist;
@@ -4438,7 +4431,6 @@ function runPendingConfirm() {
             b2.y += ny * overlap;
             b2.z += nz * overlap;
 
-            // Меняем скорости
             let p = 2 * (b1.vx * nx + b1.vy * ny + b1.vz * nz - b2.vx * nx - b2.vy * ny - b2.vz * nz) / 2;
             b1.vx -= p * nx;
             b1.vy -= p * ny;
@@ -4450,23 +4442,20 @@ function runPendingConfirm() {
         }
       }
 
-      // Удаляем слитые шарики
       if (jar.balls.some(b => b.isDead)) {
         jar.balls = jar.balls.filter(b => !b.isDead);
         saveGameState();
       }
 
-      // 3. СИНХРОНИЗАЦИЯ С THREE.JS
-      // Удаляем лишние меши
+      // 3. РЕНДЕР THREE.JS
       while (balls3D.length > jar.balls.length) {
         threeScene.remove(balls3D.pop());
       }
       
-      // Добавляем/обновляем существующие
       jar.balls.forEach((b, i) => {
         let mesh = balls3D[i];
         if (!mesh) {
-          const geo = new THREE.SphereGeometry(1, 32, 32); // Радиус 1, масштабируем через scale
+          const geo = new THREE.SphereGeometry(1, 32, 32); 
           const mat = new THREE.MeshStandardMaterial({
             roughness: 0.2, metalness: 0.1, 
           });
@@ -4475,11 +4464,11 @@ function runPendingConfirm() {
           threeScene.add(mesh);
         }
         
-        // Обновляем позицию
+        // Обновляем позицию и размер
         mesh.position.set(b.x, b.y, b.z);
         mesh.scale.setScalar(b.r);
         
-        // Обновляем цвет (переливание)
+        // Переливание цветов
         const time = Date.now() / 1000;
         const hue = ((Math.log2(b.value) * 35) + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
         mesh.material.color.setHSL(hue / 360, 0.9, 0.6);
@@ -4681,22 +4670,27 @@ function runPendingConfirm() {
 
     function pushGameBall(val) {
       const jar = state.jars[state.activeJarIndex];
+      const halfH = JAR_HEIGHT / 2;
+      const neckRadius = NECK_WIDTH / 2;
       
       const newBall = {
         id: Date.now() + Math.random(),
         value: val,
-        x: Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30,
-        y: -50,
-        vx: (Math.random() - 0.5) * 3,
+        // Спавним шарик внутри горлышка в 3D-пространстве
+        x: (Math.random() - 0.5) * (neckRadius * 1.2), 
+        y: halfH, 
+        z: (Math.random() - 0.5) * (neckRadius * 1.2),
+        vx: (Math.random() - 0.5) * 5,
         vy: 0,
-        r: Math.max(24, Math.min(55, 24 + Math.log2(val) * 6)),
-        mass: Math.max(24, Math.min(55, 24 + Math.log2(val) * 6)) ** 2
+        vz: (Math.random() - 0.5) * 5,
+        r: Math.max(20, Math.min(45, 20 + Math.log2(val || 1) * 5)), 
+        mass: Math.max(20, Math.min(45, 20 + Math.log2(val || 1) * 5)) ** 2
       };
 
       jar.balls.push(newBall);
       saveGameState();
       
-      // Обновляем UI суммы (без вызова полного ререндера, чтобы не дергался Canvas)
+      // Обновляем UI суммы
       const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
       const sumDisplay = document.querySelector('.game-sum-display');
       if (sumDisplay) {
@@ -4712,7 +4706,6 @@ function runPendingConfirm() {
       localStorage.setItem('md_game_kills', state.gameKills);
       updateKillsUI();
     }
-
     // --- МАТЕМАТИЧЕСКИЙ СЕЙФ (С КЛАВИАТУРОЙ И СЛОЖНЫМИ ПРИМЕРАМИ) ---
     function questMath() {
       document.getElementById('quest-title').innerText = 'Взлом кода';
