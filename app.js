@@ -4140,13 +4140,15 @@ function runPendingConfirm() {
     const GAME_GRAVITY = 0.3;
     const GAME_FRICTION = 0.9;  // Чем меньше, тем быстрее останавливаются
     const GAME_BOUNCE = 0.05;   // Почти не отскакивают от пола и стен
+    // Размеры банки
     const JAR_WIDTH = 700;
     const JAR_HEIGHT = 800;
     
-    // Новые размеры для красивой широкой банки
-    const NECK_WIDTH = 480;   // Горлышко чуть уже
-    const NECK_HEIGHT = 640;  // Прямая часть идет вниз до 320px (почти половина банки)
-    const SHOULDER_HEIGHT = 620; // Изгиб заканчивается на 620px и переходит в стенки
+    const NECK_WIDTH = 460;   // Ширина горлышка
+    const NECK_HEIGHT = 350;  // Длина ровного горлышка (было 320)
+    const SHOULDER_HEIGHT = 680; // Точка, где заканчивается расширение (было 620)
+    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
+    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
     const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
     const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
 
@@ -4328,18 +4330,18 @@ function runPendingConfirm() {
           saveGameState();
         }
 
-        const drawJarPath = () => {
+         const drawJarPath = () => {
           ctx.beginPath();
           
-          // 1. Левая часть горлышка (ровная)
+          // 1. Левая часть горлышка (ровная линия вниз)
           ctx.moveTo(LEFT_NECK, 0); 
           ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
           
-          // 2. ЛЕВОЕ ПЛЕЧИКО (Плавный и долгий изгиб)
+          // 2. Плавное расширение влево (от горлышка к стенке)
           ctx.bezierCurveTo(
-            LEFT_NECK, NECK_HEIGHT + 180,    // Держим вертикаль вниз
-            0, SHOULDER_HEIGHT - 60,         // Плавно закругляем к горизонтали
-            0, SHOULDER_HEIGHT               // Входим в стенку
+            LEFT_NECK, NECK_HEIGHT + 150, // Тянем вниз
+            0, SHOULDER_HEIGHT - 150,     // Тянем влево (к стенке)
+            0, SHOULDER_HEIGHT            // Встаем ровно на левую стенку
           );
           
           // 3. Левая стенка вниз
@@ -4353,10 +4355,10 @@ function runPendingConfirm() {
           // 5. Правая стенка вверх
           ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
           
-          // 6. ПРАВОЕ ПЛЕЧИКО
+          // 6. Плавное расширение вправо (симметрично левому)
           ctx.bezierCurveTo(
-            JAR_WIDTH, SHOULDER_HEIGHT - 60, 
-            RIGHT_NECK, NECK_HEIGHT + 180,    
+            JAR_WIDTH, SHOULDER_HEIGHT - 150, 
+            RIGHT_NECK, NECK_HEIGHT + 150,    
             RIGHT_NECK, NECK_HEIGHT          
           );
           
