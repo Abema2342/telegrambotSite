@@ -4145,7 +4145,7 @@ function runPendingConfirm() {
     
     // Новые размеры для красивой широкой банки
     const NECK_WIDTH = 480;   // Горлышко чуть уже
-    const NECK_HEIGHT = 100;  // Прямая часть идет вниз до 320px (почти половина банки)
+    const NECK_HEIGHT = 640;  // Прямая часть идет вниз до 320px (почти половина банки)
     const SHOULDER_HEIGHT = 620; // Изгиб заканчивается на 620px и переходит в стенки
     const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
     const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
