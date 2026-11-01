@@ -4194,16 +4194,20 @@ function runPendingConfirm() {
                 </div>
               </div>
               
-              <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+              <!-- Кнопки управления банкой -->
+              <div style="display: flex; justify-content: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
                 <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;" onclick="addNewJar()">+ Новая банка</button>
+                <button class="btn-refresh" style="padding: 4px 12px; font-size: 12px; border-radius: 20px; color: var(--status-banned); border-color: rgba(240, 71, 71, 0.4);" onclick="resetJar()">Обнулить</button>
               </div>
 
-<div class="game-jar-visual" style="position: relative; width: 100%; height: 600px; overflow: hidden; border-radius: 12px;">
-  <div id="game-3d-container" style="width: 100%; height: 100%;"></div>
-</div>
+              <!-- 3D Контейнер -->
+              <div class="game-jar-visual" style="position: relative; width: 100%; height: 600px; overflow: hidden; border-radius: 12px;">
+                <div id="game-3d-container" style="width: 100%; height: 100%;"></div>
+              </div>
               
+              <!-- Счетчик убийств и сумма -->
               <div id="game-kills" style="text-align: center; font-size: 14px; color: var(--text-secondary); margin-top: 8px;">
-                Убийств: ${state.gameKills})
+                Убийств: ${state.gameKills}
               </div>
               <div class="game-sum-display ${isOver ? 'error' : (isFull ? 'success' : '')}">
                 Сумма: <span>${currentSum}</span> / ${jar.target}
@@ -4329,7 +4333,7 @@ function runPendingConfirm() {
         b.vx = (Math.random() - 0.5) * 10;
         b.vy = 0;
         b.vz = (Math.random() - 0.5) * 10;
-        b.r = Math.max(20, Math.min(45, 20 + Math.log2(b.value || 1) * 5)); 
+		b.r = Math.max(20, 20 + Math.log2(b.value || 1) * 8); 
       });
 
       balls3D.forEach(mesh => threeScene.remove(mesh));
@@ -4411,13 +4415,13 @@ function runPendingConfirm() {
           let minDist = b1.r + b2.r;
 
           if (dist < minDist && dist > 0) {
-            if (b1.value === b2.value && b1.value + b2.value < 128) {
-              b2.value *= 2;
-              b2.r = Math.max(20, Math.min(45, 20 + Math.log2(b2.value) * 5));
-              b1.isDead = true;
-              playPopSound();
-              break;
-            } 
+			if (b1.value === b2.value && b1.value < 64) { // Слияние только до 64
+				b2.value *= 2;
+				b2.r = Math.max(20, 20 + Math.log2(b2.value) * 8);
+				b1.isDead = true;
+				playPopSound();
+				break;
+			}
             
             // Расталкивание
             let nx = dx / dist;
@@ -4685,8 +4689,8 @@ function runPendingConfirm() {
         vx: (Math.random() - 0.5) * 5,
         vy: 0,
         vz: (Math.random() - 0.5) * 5,
-        r: Math.max(20, Math.min(45, 20 + Math.log2(val || 1) * 5)), 
-        mass: Math.max(20, Math.min(45, 20 + Math.log2(val || 1) * 5)) ** 2
+		r: Math.max(20, 20 + Math.log2(val || 1) * 8), 
+		mass: Math.max(20, 20 + Math.log2(val || 1) * 8) ** 2
       };
 
       jar.balls.push(newBall);
