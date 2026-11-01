@@ -4143,9 +4143,9 @@ function runPendingConfirm() {
     const JAR_WIDTH = 700;
     const JAR_HEIGHT = 800;
     
-    const NECK_WIDTH = 540; 
-    const NECK_HEIGHT = 80; 
-    const SHOULDER_HEIGHT = 240; 
+    const NECK_WIDTH = 580;   // Было 540 (горлышко шире)
+    const NECK_HEIGHT = 150;  // Было 80 (прямая часть горлышка длиннее)
+    const SHOULDER_HEIGHT = 360; // Было 240 (изгиб опускается ниже и получается плавнее)
     const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
     const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
 
@@ -4272,16 +4272,15 @@ function runPendingConfirm() {
         const drawJarPath = () => {
           ctx.beginPath();
           
-          // 1. Левая часть горлышка
+          // 1. Левая часть горлышка (ровная)
           ctx.moveTo(LEFT_NECK, 0); 
           ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
           
           // 2. ЛЕВОЕ ПЛЕЧИКО (Плавный изгиб)
-          // (Стартовая точка, Контрольная 1, Контрольная 2, Конечная точка)
           ctx.bezierCurveTo(
-            LEFT_NECK, NECK_HEIGHT + 80,    // Тянем вниз от горлышка
-            0, SHOULDER_HEIGHT - 80,        // Тянем вверх от стенки
-            0, SHOULDER_HEIGHT              // Конечная точка (начало прямой стенки)
+            LEFT_NECK, NECK_HEIGHT + 120,    // Тянем линию вниз, сохраняя вертикаль
+            0, SHOULDER_HEIGHT - 120,        // Плавно закругляем к горизонтали
+            0, SHOULDER_HEIGHT               // Приходим ровно в стенку банки
           );
           
           // 3. Левая стенка вниз
@@ -4297,8 +4296,8 @@ function runPendingConfirm() {
           
           // 6. ПРАВОЕ ПЛЕЧИКО (Симметричный изгиб)
           ctx.bezierCurveTo(
-            JAR_WIDTH, SHOULDER_HEIGHT - 80, 
-            RIGHT_NECK, NECK_HEIGHT + 80,    
+            JAR_WIDTH, SHOULDER_HEIGHT - 120, 
+            RIGHT_NECK, NECK_HEIGHT + 120,    
             RIGHT_NECK, NECK_HEIGHT          
           );
           
