@@ -3616,3 +3616,23 @@
     body.light-theme .bg-video-overlay {
       background: rgba(255, 255, 255, 0.6);
     }
+	
+	    /* ===== 3D БАНКА ===== */
+    .game-jar-visual {
+      perspective: 1200px; /* Создаем 3D-пространство */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .jar-3d-wrapper {
+      display: inline-block;
+      transition: transform 0.1s ease-out;
+      transform-style: preserve-3d;
+    }
+
+    #game-canvas {
+      /* Убираем старую анимацию парения, чтобы она не мешала 3D */
+      animation: none !important; 
+      display: block;
+    }
