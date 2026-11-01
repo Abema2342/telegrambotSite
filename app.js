@@ -4141,26 +4141,30 @@ function runPendingConfirm() {
     const GAME_FRICTION = 0.9;  // Чем меньше, тем быстрее останавливаются
     const GAME_BOUNCE = 0.05;   // Почти не отскакивают от пола и стен
     // Размеры банки
+    // Идеальные пропорции банки
     const JAR_WIDTH = 700;
     const JAR_HEIGHT = 800;
     
-    const NECK_WIDTH = 460;   // Ширина горлышка
-    const NECK_HEIGHT = 350;  // Длина ровного горлышка (было 320)
-    const SHOULDER_HEIGHT = 680; // Точка, где заканчивается расширение (было 620)
-    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
-    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
+    const NECK_WIDTH = 500;   // Шея достаточно широкая
+    const NECK_HEIGHT = 80;   // КОРОТКАЯ шея
+    const SHOULDER_HEIGHT = 200; // Плечики заканчиваются быстро
+    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   // 100
+    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;         // 600
 
     function getJarBounds(y) {
       if (y < NECK_HEIGHT) {
+        // В шее
         return [LEFT_NECK, RIGHT_NECK];
       } else if (y < SHOULDER_HEIGHT) {
+        // На плечиках
         let progress = (y - NECK_HEIGHT) / (SHOULDER_HEIGHT - NECK_HEIGHT);
-        let easedProgress = progress * progress * (3 - 2 * progress); 
+        let easedProgress = progress * progress * (3 - 2 * progress); // Плавный переход
         
         let left = LEFT_NECK - (LEFT_NECK * easedProgress);
         let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * easedProgress);
         return [left, right];
       } else {
+        // Прямые стенки
         return [0, JAR_WIDTH];
       }
     }
@@ -4328,18 +4332,18 @@ function runPendingConfirm() {
           saveGameState();
         }
 
-         const drawJarPath = () => {
+        const drawJarPath = () => {
           ctx.beginPath();
           
-          // 1. Левая часть горлышка (ровная линия вниз)
+          // 1. Левая часть шеи (ровно вниз)
           ctx.moveTo(LEFT_NECK, 0); 
           ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
           
-          // 2. Плавное расширение влево (от горлышка к стенке)
+          // 2. ЛЕВОЕ ПЛЕЧИКО (Быстрый, но плавный изгиб)
           ctx.bezierCurveTo(
-            LEFT_NECK, NECK_HEIGHT + 150, // Тянем вниз
-            0, SHOULDER_HEIGHT - 150,     // Тянем влево (к стенке)
-            0, SHOULDER_HEIGHT            // Встаем ровно на левую стенку
+            LEFT_NECK, NECK_HEIGHT + 40,    // Тянем вниз от шеи
+            0, SHOULDER_HEIGHT - 40,        // Тянем вверх от стенки
+            0, SHOULDER_HEIGHT              // Конечная точка (прямая стенка)
           );
           
           // 3. Левая стенка вниз
@@ -4353,14 +4357,14 @@ function runPendingConfirm() {
           // 5. Правая стенка вверх
           ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
           
-          // 6. Плавное расширение вправо (симметрично левому)
+          // 6. ПРАВОЕ ПЛЕЧИКО
           ctx.bezierCurveTo(
-            JAR_WIDTH, SHOULDER_HEIGHT - 150, 
-            RIGHT_NECK, NECK_HEIGHT + 150,    
+            JAR_WIDTH, SHOULDER_HEIGHT - 40, 
+            RIGHT_NECK, NECK_HEIGHT + 40,    
             RIGHT_NECK, NECK_HEIGHT          
           );
           
-          // 7. Правая часть горлышка
+          // 7. Правая часть шеи
           ctx.lineTo(RIGHT_NECK, 0);
           ctx.closePath();
         };
