@@ -1278,15 +1278,17 @@
 
     function applyAdminVisibility() {
       const publicTabs = state.publicTabs || DEFAULT_PUBLIC_TABS;
-      const allowedTabs = window.ALLOWED_TABS || null; // Если мы на странице duels.html, тут будет ['duels', 'game']
+      const allowedTabs = window.ALLOWED_TABS || null;
 
       document.querySelectorAll('.nav-btn').forEach(btn => {
+        // ДОБАВЛЯЕМ ЭТУ СТРОКУ: пропускаем кнопку "Главная"
+        if (btn.classList.contains('home-btn')) return; 
+
         const tab = btn.getAttribute('data-tab');
         const isPublic = publicTabs.includes(tab);
         
         let visible = isPublic || state.isAdmin;
 
-        // Если мы на странице с ограничениями (например, duels.html), скрываем лишнее
         if (allowedTabs && !allowedTabs.includes(tab)) {
           visible = false;
         }

@@ -3584,6 +3584,14 @@
       pointer-events: none;
       display: none; /* Скрыто по умолчанию */
     }
+	
+	    .header-left {
+      grid-column: 1;
+      justify-self: start;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
     /* Затемнение поверх видео */
     .bg-video-overlay {
