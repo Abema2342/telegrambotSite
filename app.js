@@ -598,7 +598,7 @@
         return { ...it, finisher: w.finisher }; 
       }).filter(Boolean);
 
-      // СОРТИРОВКА ПО УБЫВАНИЮ (всегда)
+      // СОРТИРОВКА ПО УБЫВАНИЮ
       items.sort((a, b) => {
         let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
         let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
@@ -607,8 +607,13 @@
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
-        const isFinisher = id.startsWith('finisher-'); // <--- ПРОВЕРКА: это эффект?
         
+        // Строгая проверка: если слаг начинается с finisher-, это эффект
+        const itemSlug = String(it.slug || '').toLowerCase();
+        const isFinisher = itemSlug.startsWith('finisher-') || id.toLowerCase().startsWith('finisher-');
+
+        console.log(`Предмет: ${it.name} | ID: ${id} | Это эффект: ${isFinisher}`); // Проверка в консоли
+
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
         
@@ -628,7 +633,7 @@
             `;
           }
         } else if (!isFinisher) {
-          // Показываем кнопку "+" ТОЛЬКО если это не эффект
+          // Кнопка плюса
           finisherIconHtml = `
             <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
                  style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
