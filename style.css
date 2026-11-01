@@ -3451,3 +3451,123 @@
 
     body.light-theme .rgb-slider { background: #d1d5db; }
     body.light-theme .rgb-slider::-webkit-slider-thumb { border-color: #fff; }
+	
+	    /* ===== ФОН: САКУРА ===== */
+    #sakura-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0; /* Лежит на фоне */
+      pointer-events: none; /* Клики проходят сквозь лепестки */
+    }
+    
+    /* Убеждаемся, что основной интерфейс выше сакуры */
+    #dashboard-screen {
+      z-index: 1;
+    }
+	
+    /* ===== ДЕРЕВО САКУРЫ ===== */
+    .sakura-tree {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; 
+      pointer-events: none; /* Клики проходят сквозь дерево */
+      opacity: 0.8; /* Немного приглушаем, чтобы не перекрывать текст */
+    }
+
+    /* Ветки */
+    .sakura-tree .branch {
+      fill: none;
+      stroke: #2a1515; /* Темный ствол */
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 6000;
+      stroke-dashoffset: 6000;
+      animation: drawTree 6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    .sakura-tree .branch.main { stroke-width: 20; }
+    .sakura-tree .branch { stroke-width: 10; }
+    .sakura-tree .branch.thin { stroke-width: 5; }
+
+    /* Цветы */
+    .sakura-tree .flower {
+      opacity: 0;
+      transform: scale(0);
+      transform-box: fill-box;
+      transform-origin: center;
+      /* Распускаются по очереди */
+      animation: bloomTree 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: calc(var(--n, 1) * 0.05s); 
+    }
+
+    @keyframes drawTree {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes bloomTree {
+      0% { opacity: 0; transform: scale(0); }
+      70% { transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+	
+	    /* Кнопки выбора фона */
+    .bg-type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .bg-type-btn {
+      padding: 8px 0;
+      background: var(--card-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .bg-type-btn:hover {
+      border-color: var(--accent-color);
+    }
+    .bg-type-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+      box-shadow: 0 2px 8px rgba(88,101,242,0.3);
+    }
+
+    /* Классы для управления видимостью фонов */
+    body:not(.bg-sakura) .sakura-tree,
+    body:not(.bg-sakura) #sakura-canvas {
+      display: none !important;
+    }
+
+    /* Заглушка для медуз (морской градиент) */
+    body.bg-jellyfish {
+      background-image: radial-gradient(circle at 50% 30%, #1b4b66 0%, #0d1b2a 80%) !important;
+    }
+    body.light-theme.bg-jellyfish {
+      background-image: radial-gradient(circle at 50% 30%, #e0f7fa 0%, #b2ebf2 80%) !important;
+    }
+
+    /* Светлая тема */
+    body.light-theme .sakura-tree { opacity: 0.9; }
+    body.light-theme .sakura-tree .branch { stroke: #1a0a0a; }
+
+    /* Отключение анимаций для слабых устройств или пользователей с reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      .sakura-tree .branch, .sakura-tree .flower {
+        animation: none;
+        stroke-dashoffset: 0;
+        opacity: 1;
+        transform: scale(1);
+      }
+    }

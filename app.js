@@ -1347,9 +1347,10 @@ function runPendingConfirm() {
       accent: '#5865F2',
       bg: '#0d0d0d',
       grad1: '#5865F2',
-      grad2: '#5865F2'
+      grad2: '#5865F2',
+      bgType: 'default' // <--- ДОБАВИЛИ ЭТО
     };
-
+	
     function hexToRgb(hex) {
       const m = hex.replace('#', '').match(/.{2}/g);
       return m ? { r: parseInt(m[0], 16), g: parseInt(m[1], 16), b: parseInt(m[2], 16) } : { r: 0, g: 0, b: 0 };
@@ -1364,11 +1365,18 @@ function runPendingConfirm() {
       currentTheme = theme;
       localStorage.setItem('custom_theme', JSON.stringify(theme));
 
-      // Включаем/выключаем светлую тему
       if (theme.isLight) {
         document.body.classList.add('light-theme');
       } else {
         document.body.classList.remove('light-theme');
+      }
+
+      // Управление типами фона
+      document.body.classList.remove('bg-sakura', 'bg-jellyfish');
+      if (theme.bgType === 'sakura') {
+        document.body.classList.add('bg-sakura');
+      } else if (theme.bgType === 'jellyfish') {
+        document.body.classList.add('bg-jellyfish');
       }
 
       document.documentElement.style.setProperty('--accent-color', theme.accent);
@@ -1423,7 +1431,15 @@ function runPendingConfirm() {
         </div>
 
         <div class="theme-section active" id="sec-accent">${colorControlHtml('accent', currentTheme.accent)}</div>
-        <div class="theme-section" id="sec-bg">${colorControlHtml('bg', currentTheme.bg)}</div>
+        <div class="theme-section" id="sec-bg">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Тип фона:</div>
+          <div class="bg-type-grid">
+            <button class="bg-type-btn ${currentTheme.bgType === 'default' ? 'active' : ''}" onclick="setBgType('default')">Обычный</button>
+            <button class="bg-type-btn ${currentTheme.bgType === 'sakura' ? 'active' : ''}" onclick="setBgType('sakura')">Сакура</button>
+            <button class="bg-type-btn ${currentTheme.bgType === 'jellyfish' ? 'active' : ''}" onclick="setBgType('jellyfish')">Медузы</button>
+          </div>
+          ${colorControlHtml('bg', currentTheme.bg)}
+        </div>
         <div class="theme-section" id="sec-grad">
           <div style="font-size: 11px; color: var(--text-secondary);">Пятно 1 (Лево-верх)</div>
           ${colorControlHtml('grad1', currentTheme.grad1)}
@@ -1463,6 +1479,11 @@ function runPendingConfirm() {
       
       const sec = document.getElementById('sec-' + tabId);
       if (sec) sec.classList.add('active');
+    }
+	    function setBgType(type) {
+      currentTheme.bgType = type;
+      applyTheme(currentTheme);
+      renderThemePanel(); // Перерисовываем панель, чтобы обновить активную кнопку
     }
 
     function updateRGB(id, channel, value) {
@@ -7306,5 +7327,103 @@ function openModal(title, content, actionsHtml, isWide = false) {
           });
         }
       }
+    // =========================================================
+    // ФОН: СВЕТЯЩАЯСЯ САКУРА (Не перезапускается при смене вкладок)
+    // =========================================================
+    (function initSakura() {
+      const canvas = document.getElementById('sakura-canvas');
+      if (!canvas) return;
+      
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const ctx = canvas.getContext('2d');
+      let W, H;
+      const petals = [];
+      const PETAL_COUNT = 45;
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // Класс лепестка
+      class Petal {
+        constructor() {
+          this.reset(true);
+        }
+
+        reset(randomY = false) {
+          // Спавним лепестки по всей ширине экрана
+          this.x = Math.random() * W; 
+          this.y = randomY ? Math.random() * H : (Math.random() * 100 - 50);
+          
+          this.size = Math.random() * 3 + 2; // Маленькие, аккуратные лепестки
+          this.speedY = Math.random() * 0.5 + 0.2; // Медленное падение
+          this.speedX = Math.random() * 1.5 + 0.2; // Ветер дует ВПРАВО (от дерева)
+          this.angle = Math.random() * Math.PI * 2;
+          this.spin = (Math.random() - 0.5) * 0.04; 
+          this.sway = Math.random() * Math.PI * 2; 
+          this.swaySpeed = Math.random() * 0.02 + 0.005; 
+          this.opacity = Math.random() * 0.6 + 0.3;
+        }
+
+        update() {
+          this.y += this.speedY;
+          this.sway += this.swaySpeed;
+          
+          // Покачивание + ветер вправо
+          this.x += Math.sin(this.sway) * 1.5 + this.speedX;
+          this.angle += this.spin;
+
+          // Возрождение
+          if (this.y > H + 20 || this.x < -20 || this.x > W + 20) {
+            this.reset(false);
+          }
+        }
+
+        // ... (метод draw() оставляем без изменений)
+
+        draw() {
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.angle);
+
+          ctx.shadowColor = 'rgba(255, 182, 193, 0.8)';
+          ctx.shadowBlur = 12;
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, this.size, this.size / 1.5, 0, 0, Math.PI * 2);
+          
+          const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+          grad.addColorStop(0, `rgba(255, 192, 203, ${this.opacity})`); 
+          grad.addColorStop(1, `rgba(255, 105, 180, ${this.opacity})`); 
+          
+          ctx.fillStyle = grad;
+          ctx.fill();
+          
+          ctx.restore();
+        }
+      }
+
+      // Создаем лепестки
+      for (let i = 0; i < PETAL_COUNT; i++) {
+        petals.push(new Petal());
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, W, H);
+
+        for (const petal of petals) {
+          petal.update();
+          petal.draw();
+        }
+
+        requestAnimationFrame(animate);
+      }
+      
+      animate();
+    })();
     initThemeColor();
     checkAuth();
