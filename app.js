@@ -4143,29 +4143,24 @@ function runPendingConfirm() {
     const JAR_WIDTH = 700;
     const JAR_HEIGHT = 800;
     
-    const NECK_WIDTH = 580;   // Было 540 (горлышко шире)
-    const NECK_HEIGHT = 150;  // Было 80 (прямая часть горлышка длиннее)
-    const SHOULDER_HEIGHT = 360; // Было 240 (изгиб опускается ниже и получается плавнее)
+    // Новые размеры для красивой широкой банки
+    const NECK_WIDTH = 480;   // Горлышко чуть уже
+    const NECK_HEIGHT = 320;  // Прямая часть идет вниз до 320px (почти половина банки)
+    const SHOULDER_HEIGHT = 620; // Изгиб заканчивается на 620px и переходит в стенки
     const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
     const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
 
-    // Умная функция, которая говорит физике: "на этой высоте стенки вот тут"
     function getJarBounds(y) {
       if (y < NECK_HEIGHT) {
-        // В горлышке
         return [LEFT_NECK, RIGHT_NECK];
       } else if (y < SHOULDER_HEIGHT) {
-        // На плечиках банки (плавный изгиб)
         let progress = (y - NECK_HEIGHT) / (SHOULDER_HEIGHT - NECK_HEIGHT);
-        
-        // Функция Smoothstep для плавного перехода (Ease-in-out)
         let easedProgress = progress * progress * (3 - 2 * progress); 
         
         let left = LEFT_NECK - (LEFT_NECK * easedProgress);
         let right = RIGHT_NECK + ((JAR_WIDTH - RIGHT_NECK) * easedProgress);
         return [left, right];
       } else {
-        // В основной части банки
         return [0, JAR_WIDTH];
       }
     }
@@ -4333,34 +4328,39 @@ function runPendingConfirm() {
           saveGameState();
         }
 
-        // 3. ОТРИСОВКА БАНКИ
         const drawJarPath = () => {
           ctx.beginPath();
+          
+          // 1. Левая часть горлышка (ровная)
           ctx.moveTo(LEFT_NECK, 0); 
           ctx.lineTo(LEFT_NECK, NECK_HEIGHT); 
           
-          // Плавное левое плечико
+          // 2. ЛЕВОЕ ПЛЕЧИКО (Плавный и долгий изгиб)
           ctx.bezierCurveTo(
-            LEFT_NECK, NECK_HEIGHT + 120, 
-            0, SHOULDER_HEIGHT - 120, 
-            0, SHOULDER_HEIGHT
+            LEFT_NECK, NECK_HEIGHT + 180,    // Держим вертикаль вниз
+            0, SHOULDER_HEIGHT - 60,         // Плавно закругляем к горизонтали
+            0, SHOULDER_HEIGHT               // Входим в стенку
           );
           
+          // 3. Левая стенка вниз
           ctx.lineTo(0, JAR_HEIGHT - 40);
           ctx.quadraticCurveTo(0, JAR_HEIGHT, 40, JAR_HEIGHT);
           
+          // 4. Дно
           ctx.lineTo(JAR_WIDTH - 40, JAR_HEIGHT);
           ctx.quadraticCurveTo(JAR_WIDTH, JAR_HEIGHT, JAR_WIDTH, JAR_HEIGHT - 40);
           
+          // 5. Правая стенка вверх
           ctx.lineTo(JAR_WIDTH, SHOULDER_HEIGHT);
           
-          // Плавное правое плечико
+          // 6. ПРАВОЕ ПЛЕЧИКО
           ctx.bezierCurveTo(
-            JAR_WIDTH, SHOULDER_HEIGHT - 120, 
-            RIGHT_NECK, NECK_HEIGHT + 120,    
+            JAR_WIDTH, SHOULDER_HEIGHT - 60, 
+            RIGHT_NECK, NECK_HEIGHT + 180,    
             RIGHT_NECK, NECK_HEIGHT          
           );
           
+          // 7. Правая часть горлышка
           ctx.lineTo(RIGHT_NECK, 0);
           ctx.closePath();
         };
