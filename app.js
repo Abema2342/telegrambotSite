@@ -108,19 +108,23 @@
     function duelsCardHtml(item, onClickJs, extraTopRight) {
       const id = getDuelItemId(item);
       const img = item.image || item.icon || '';
+      
+      // Делаем "Unvalued" серым и курсивным
+      const valStyle = item.basePrice === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
+      const avgStyle = item.salesAvg === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
+
       return `
         <div class="duels-card" onclick="${onClickJs}">
           ${extraTopRight || ''}
           <img class="duels-card-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.style.opacity=0.3">
           <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
           <div class="duels-card-prices">
-            <span>База: <span class="value" style="${it.basePrice === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : ''}">${formatCoins(it.basePrice)}</span></span>
-            <span>Ср: <span class="value" style="${it.salesAvg === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : ''}">${formatCoins(it.salesAvg)}</span></span>
+            <span>База: <span class="value" style="${valStyle}">${formatCoins(item.basePrice)}</span></span>
+            <span>Ср: <span class="value" style="${avgStyle}">${formatCoins(item.salesAvg)}</span></span>
           </div>
         </div>
       `;
     }
-
     function renderDuelsPrices() {
       const content = document.getElementById('duels-content');
       const q = (state.duelsSearch || '').toLowerCase().trim();
