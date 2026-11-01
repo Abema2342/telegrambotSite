@@ -374,9 +374,8 @@
         try {
           await saveDuelsWishlist();
           showToast('Эффект прикреплен', 'success');
-          closeModal();
-          renderDuelsWishlist();
-          openDuelItemModal(itemId); // Переоткрываем модалку, чтобы обновить вид
+          closeModal();          // Закрываем меню выбора
+          renderDuelsWishlist(); // Обновляем сетку
         } catch (e) {
           showToast('Ошибка: ' + e.message, 'error');
         }
@@ -593,27 +592,23 @@
       let items = state.duelsWishlist.map(w => {
         const it = getDuelItemById(w.item);
         if (!it) return null;
-        return { ...it, finisher: w.finisher }; // Добавляем информацию о финишере
+        return { ...it, finisher: w.finisher }; 
       }).filter(Boolean);
 
-      // Сортировка
+      // Сортировка (ТОЛЬКО по цене предмета, эффект игнорируется)
       if (state.duelsWishlistSort === 'price-desc') {
         items.sort((a, b) => {
           let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
           let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
-          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
-          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
           return priceB - priceA;
         });
       } else if (state.duelsWishlistSort === 'price-asc') {
         items.sort((a, b) => {
           let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
           let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
-          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
-          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += (f.basePrice === -1 ? 0 : Number(f.basePrice) || 0); }
           return priceA - priceB;
         });
-      }языка
+      }
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
@@ -622,11 +617,18 @@
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
         
-        // --- НОВАЯ ЛОГИКА: Иконка или Кнопка "Плюс" ---
         if (it.finisher) {
           const f = getDuelItemById(it.finisher);
           if (f) {
-            priceHtml += ` + ${formatCoins(f.basePrice)}`;
+            // Высчитываем итоговую сумму
+            let totalStr = 'Unvalued';
+            if (it.basePrice !== -1 && f.basePrice !== -1) {
+               totalStr = (Number(it.basePrice) + Number(f.basePrice)).toLocaleString('ru-RU');
+            }
+            
+            // Пишем: Цена предмета + Цена эффекта = Итог
+            priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)} = ${totalStr}`;
+
             finisherIconHtml = `
               <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
                 <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
@@ -634,7 +636,7 @@
             `;
           }
         } else {
-          // Если эффекта нет, показываем кнопку с плюсом
+          // Кнопка "Плюс" для добавления
           finisherIconHtml = `
             <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
                  style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
@@ -656,16 +658,13 @@
         return `
           <div class="duels-card" onclick="${onclickJs}">
             ${xBtn}
-            
-            <!-- Обертка для картинки -->
             <div style="position: relative; width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 6px; display: flex; justify-content: center; align-items: center;">
               <img src="${escapeHtml(it.image || it.icon || '')}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" onerror="this.style.opacity=0.3">
               ${finisherIconHtml}
             </div>
-            
             <div class="duels-card-name">${escapeHtml(it.name || id)}</div>
             <div class="duels-card-prices">
-              <span>Цена: <span class="value">${priceHtml}</span></span>
+              <span style="line-height: 1.2; display: block;">Цена: <span class="value">${priceHtml}</span></span>
             </div>
           </div>
         `;
@@ -675,7 +674,6 @@
         <div class="duels-toolbar">
           <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
           <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
-          
           <select class="duels-sort-select" onchange="state.duelsWishlistSort = this.value; renderDuelsWishlist();" style="margin-left: auto;">
             <option value="default" ${state.duelsWishlistSort === 'default' ? 'selected' : ''}>Без сортировки</option>
             <option value="price-desc" ${state.duelsWishlistSort === 'price-desc' ? 'selected' : ''}>Цена (по убыванию)</option>
