@@ -207,15 +207,48 @@
       const item = getDuelItemById(id);
       if (!item) { showToast('Предмет не найден', 'error'); return; }
       
-      // 1. Сначала получаем ID
       const itemId = getDuelItemId(item);
       state.currentDuelsItemId = itemId;
       
       const name = item.name || itemId;
       const img = item.image || item.icon || '';
-
-      // Сброс диапазона при открытии
       state.duelsChartRange = 30; 
+
+      // --- НОВЫЙ БЛОК: ПРОВЕРКА ХОТЕЛОК И ФИНИШЕРА ---
+      const wishlistEntry = state.duelsWishlist.find(w => w.item === itemId);
+      const isFinisher = itemId.startsWith('finisher-'); 
+      
+      let finisherHtml = '';
+      if (wishlistEntry && !isFinisher) {
+        // Если предмет в хотелках и это не сам финишер, показываем слот
+        if (wishlistEntry.finisher) {
+          const f = getDuelItemById(wishlistEntry.finisher);
+          if (f) {
+            finisherHtml = `
+              <div class="finisher-slot filled">
+                <div class="finisher-img-wrap" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')" title="Открыть график эффекта">
+                  <img src="${escapeHtml(f.image || f.icon || '')}">
+                  <div class="finisher-remove" onclick="event.stopPropagation(); removeFinisherFromWishlist('${escapeJsStr(itemId)}')" title="Удалить эффект">×</div>
+                </div>
+                <div class="finisher-info">
+                  <div class="finisher-name">${escapeHtml(f.name)}</div>
+                  <div class="finisher-price">Цена: ${formatCoins(f.basePrice)}</div>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          finisherHtml = `
+            <div class="finisher-slot">
+              <div class="finisher-info">
+                <span class="sub-text">Эффект не прикреплен</span>
+              </div>
+              <button class="btn-refresh" style="margin-left: auto; padding: 4px 8px; font-size: 11px;" onclick="openFinisherPicker('${escapeJsStr(itemId)}')">+ Прикрепить эффект</button>
+            </div>
+          `;
+        }
+      }
+      // ------------------------------------------------
 
       const bodyHtml = `
         <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
@@ -228,7 +261,10 @@
           </div>
         </div>
 
-        <div class="duels-modal-tabs">
+        <!-- ВСТАВЛЯЕМ БЛОК ФИНИШЕРА СЮДА -->
+        ${finisherHtml}
+
+        <div class="duels-modal-tabs" style="margin-top: 16px;">
           <button class="duels-modal-tab active" id="duels-tab-price" onclick="duelsShowChart('price')">Цена</button>
           <button class="duels-modal-tab" id="duels-tab-deals" onclick="duelsShowChart('deals')">Сделки</button>
         </div>
@@ -264,7 +300,7 @@
           
           let rawSales = Array.isArray(json) ? json : (json.sales || []);
           rawSales = rawSales.map(s => ({ ...s, _mins: parseAgoTime(s.when || s.time) }));
-          rawSales.sort((a, b) => b._mins - a._mins); // Сортируем от старых к новым
+          rawSales.sort((a, b) => b._mins - a._mins); 
           
           history = { sales: rawSales, chart: json.chartData || [] };
           state.duelsHistoryCache[itemId] = history;
@@ -275,7 +311,6 @@
         }
       }
 
-      // Таймаут нужен, чтобы Chart.js увидел размеры открывшейся модалки
       setTimeout(() => {
         drawDuelsChart(itemId, history, 'price');
       }, 50);
@@ -295,6 +330,65 @@
       // Фильтры применяются только к сделкам (график цены их скрывает)
       drawDuelsChart(itemId, history, 'deals');
       renderDuelsHistoryList(history);
+    }
+	
+	    // Открыть меню выбора финишера
+    function openFinisherPicker(itemId) {
+      // Берем все предметы, которые начинаются на finisher-
+      const finishers = (state.duelsData || []).filter(it => it.slug.startsWith('finisher-'));
+      
+      const html = `
+        <div class="search-bar" style="padding: 0 0 12px; border-bottom: none;">
+          <input type="text" id="finisher-search" placeholder="Поиск эффекта..." oninput="filterFinisherPicker(this.value)">
+        </div>
+        <div class="duels-grid" id="finisher-grid" style="padding: 0; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+          ${finishers.map(f => duelsCardHtml(f, `selectFinisher('${escapeJsStr(itemId)}', '${escapeJsStr(f.slug)}')`)).join('')}
+        </div>
+      `;
+      window._finisherAvailable = finishers;
+      window._currentItemId = itemId;
+      openModal('Выбор эффекта (Finisher)', html, `<button class="btn-refresh" onclick="closeModal()">Отмена</button>`, true);
+    }
+
+    function filterFinisherPicker(q) {
+      const grid = document.getElementById('finisher-grid');
+      if (!grid) return;
+      const ql = (q || '').toLowerCase().trim();
+      const list = (window._finisherAvailable || []).filter(f => !ql || (f.name || '').toLowerCase().includes(ql));
+      grid.innerHTML = list.map(f => duelsCardHtml(f, `selectFinisher('${escapeJsStr(window._currentItemId)}', '${escapeJsStr(f.slug)}')`)).join('');
+    }
+
+    // Выбрать финишер и сохранить
+    async function selectFinisher(itemId, finisherId) {
+      const entry = state.duelsWishlist.find(w => w.item === itemId);
+      if (entry) {
+        entry.finisher = finisherId;
+        try {
+          await saveDuelsWishlist();
+          showToast('Эффект прикреплен', 'success');
+          closeModal();
+          renderDuelsWishlist();
+          openDuelItemModal(itemId); // Переоткрываем модалку, чтобы обновить вид
+        } catch (e) {
+          showToast('Ошибка: ' + e.message, 'error');
+        }
+      }
+    }
+
+    // Удалить финишер
+    async function removeFinisherFromWishlist(itemId) {
+      const entry = state.duelsWishlist.find(w => w.item === itemId);
+      if (entry) {
+        entry.finisher = null;
+        try {
+          await saveDuelsWishlist();
+          showToast('Эффект удален', 'success');
+          renderDuelsWishlist();
+          openDuelItemModal(itemId);
+        } catch (e) {
+          showToast('Ошибка: ' + e.message, 'error');
+        }
+      }
     }
 
     function renderDuelsHistoryList(history) {
@@ -452,7 +546,15 @@
       const meta = await res.json();
       state.duelsWishlistSha = meta.sha;
       const json = JSON.parse(decodeBase64Content(meta.content));
-      state.duelsWishlist = Array.isArray(json.items) ? json.items : (Array.isArray(json) ? json : []);
+      
+      let raw = Array.isArray(json.items) ? json.items : (Array.isArray(json) ? json : []);
+      
+      // МИГРАЦИЯ: если старый формат (массив строк) -> делаем объекты
+      state.duelsWishlist = raw.map(x => {
+        if (typeof x === 'string') return { item: x, finisher: null };
+        return x;
+      });
+
       state.duelsWishlistLoaded = true;
       return state.duelsWishlist;
     }
@@ -478,23 +580,75 @@
 
     function renderDuelsWishlist() {
       const content = document.getElementById('duels-content');
-      const items = state.duelsWishlist.map(id => getDuelItemById(id)).filter(Boolean);
+      
+      // Получаем список предметов из данных
+      let items = state.duelsWishlist.map(w => {
+        const it = getDuelItemById(w.item);
+        if (!it) return null;
+        return { ...it, finisher: w.finisher }; // Добавляем информцию о финишере
+      }).filter(Boolean);
+
+      // Сортировка
+      if (state.duelsWishlistSort === 'price-desc') {
+        items.sort((a, b) => {
+          let priceA = Number(a.basePrice) || 0;
+          let priceB = Number(b.basePrice) || 0;
+          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += Number(f.basePrice) || 0; }
+          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += Number(f.basePrice) || 0; }
+          return priceB - priceA;
+        });
+      } else if (state.duelsWishlistSort === 'price-asc') {
+        items.sort((a, b) => {
+          let priceA = Number(a.basePrice) || 0;
+          let priceB = Number(b.basePrice) || 0;
+          if (a.finisher) { const f = getDuelItemById(a.finisher); if (f) priceA += Number(f.basePrice) || 0; }
+          if (b.finisher) { const f = getDuelItemById(b.finisher); if (f) priceB += Number(f.basePrice) || 0; }
+          return priceA - priceB;
+        });
+      }
+
       const cards = items.map(it => {
         const id = getDuelItemId(it);
+        
+        // Формируем цену
+        let priceHtml = formatCoins(it.basePrice);
+        if (it.finisher) {
+          const f = getDuelItemById(it.finisher);
+          if (f) {
+            priceHtml += ` + ${formatCoins(f.basePrice)}`;
+          }
+        }
+
         const xBtn = state.duelsEditMode
           ? `<button class="duels-card-x" onclick="event.stopPropagation(); removeFromWishlist('${escapeJsStr(id)}')">×</button>`
           : '';
         const onclickJs = state.duelsEditMode
           ? `removeFromWishlist('${escapeJsStr(id)}')`
           : `openDuelItemModal('${escapeJsStr(id)}')`;
-        return duelsCardHtml(it, onclickJs, xBtn);
+        
+        return `
+          <div class="duels-card" onclick="${onclickJs}">
+            ${xBtn}
+            <img class="duels-card-img" src="${escapeHtml(it.image || it.icon || '')}" onerror="this.style.opacity=0.3">
+            <div class="duels-card-name">${escapeHtml(it.name || id)}</div>
+            <div class="duels-card-prices">
+              <span>Цена: <span class="value">${priceHtml}</span></span>
+            </div>
+          </div>
+        `;
       }).join('');
 
       content.innerHTML = `
         <div class="duels-toolbar">
           <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
           <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
-          <span class="sub-text" style="margin-left: auto;">В хотелках: ${items.length}</span>
+          
+          <select class="duels-sort-select" onchange="state.duelsWishlistSort = this.value; renderDuelsWishlist();" style="margin-left: auto;">
+            <option value="default" ${state.duelsWishlistSort === 'default' ? 'selected' : ''}>Без сортировки</option>
+            <option value="price-desc" ${state.duelsWishlistSort === 'price-desc' ? 'selected' : ''}>Цена (по убыванию)</option>
+            <option value="price-asc" ${state.duelsWishlistSort === 'price-asc' ? 'selected' : ''}>Цена (по возрастанию)</option>
+          </select>
+          <span class="sub-text" style="margin-left: 8px;">В хотелках: ${items.length}</span>
         </div>
         <div class="duels-grid">
           ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
@@ -508,7 +662,7 @@
     }
 
     async function removeFromWishlist(id) {
-      state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+      state.duelsWishlist = state.duelsWishlist.filter(x => x.item !== String(id)); 
       try {
         await saveDuelsWishlist();
         showToast('Удалено из хотелок', 'success');
@@ -549,8 +703,8 @@
     }
 
     async function addToWishlist(id) {
-      if (state.duelsWishlist.some(x => String(x) === String(id))) return;
-      state.duelsWishlist.push(String(id));
+      if (state.duelsWishlist.some(x => x.item === String(id))) return; // <--- ИЗМЕНЕНО
+      state.duelsWishlist.push({ item: String(id), finisher: null }); // <--- ИЗМЕНЕНО
       try {
         await saveDuelsWishlist();
         showToast('Добавлено в хотелки', 'success');
@@ -558,7 +712,7 @@
         const input = document.getElementById('duels-add-search');
         duelsFilterAddMenu(input ? input.value : '');
       } catch (e) {
-        state.duelsWishlist = state.duelsWishlist.filter(x => String(x) !== String(id));
+        state.duelsWishlist = state.duelsWishlist.filter(x => x.item !== String(id)); 
         showToast('Ошибка: ' + e.message, 'error');
       }
     }
@@ -1223,7 +1377,7 @@
       duelsWishlist: [],
       duelsWishlistSha: null,
       duelsWishlistLoaded: false,
-      duelsSets: [],
+      duelsWishlistSort: 'default', // <--- ДОБАВИТЬ ЭТО
       duelsSetsSha: null,
       duelsSetsLoaded: false,
       duelsSubtab: 'prices',
@@ -4484,6 +4638,25 @@ function runPendingConfirm() {
       threeRenderer.render(threeScene, threeCamera);
     }
 
+    function resetJar() {
+      const jar = state.jars[state.activeJarIndex];
+      if (!jar) return;
+      
+      confirmAction('Обнулить текущую банку? Все шарики исчезнут.', () => {
+        jar.balls = [];
+        saveGameState();
+        
+        // Пересоздаем 3D сцену, чтобы удалить старые шарики с экрана
+        if (threeScene) {
+            balls3D.forEach(mesh => threeScene.remove(mesh));
+            balls3D = [];
+        }
+        
+        renderGame();
+        showToast('Банка обнулена', 'success');
+      });
+    }
+	
     // Хелпер для создания 3D-шарика
     function createBall3D(b) {
       const geometry = new THREE.SphereGeometry(20, 32, 32);
