@@ -598,12 +598,12 @@
         return { ...it, finisher: w.finisher }; 
       }).filter(Boolean);
 
-      // Сортировка (по цене предмета)
-      if (state.duelsWishlistSort === 'price-desc') {
-        items.sort((a, b) => ((b.basePrice === -1 ? 0 : Number(b.basePrice)) - (a.basePrice === -1 ? 0 : Number(a.basePrice))));
-      } else if (state.duelsWishlistSort === 'price-asc') {
-        items.sort((a, b) => ((a.basePrice === -1 ? 0 : Number(a.basePrice)) - (b.basePrice === -1 ? 0 : Number(b.basePrice))));
-      }
+      // СОРТИРОВКА ПО УБЫВАНИЮ (всегда)
+      items.sort((a, b) => {
+        let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
+        let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
+        return priceB - priceA; // От большего к меньшему
+      });
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
@@ -645,8 +645,7 @@
           ? `removeFromWishlist('${escapeJsStr(id)}')`
           : `openDuelItemModal('${escapeJsStr(id)}')`;
         
-        // Показываем количество существующих предметов (exist)
-        const existCount = it.exist !== undefined ? it.exist : (it.existing || 0);
+        const existCount = it.exist !== undefined ? it.exist : 0;
 
         return `
           <div class="duels-card" onclick="${onclickJs}">
@@ -656,11 +655,9 @@
               
               ${finisherIconHtml}
               
-              <!-- БЕЙДЖ С КОЛИЧЕСТВОМ СУЩЕСТВУЮЩИХ -->
-              <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);" title="Существует в игре">
+              <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);">
                 x${existCount}
               </div>
-              
             </div>
             <div class="duels-card-name">${escapeHtml(it.name || id)}</div>
             <div class="duels-card-prices">
@@ -670,16 +667,13 @@
         `;
       }).join('');
 
+      // Убрали select, оставили только кнопки и счетчик
       content.innerHTML = `
         <div class="duels-toolbar">
           <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
           <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
-          <select class="duels-sort-select" onchange="state.duelsWishlistSort = this.value; renderDuelsWishlist();" style="margin-left: auto;">
-            <option value="default" ${state.duelsWishlistSort === 'default' ? 'selected' : ''}>Без сортировки</option>
-            <option value="price-desc" ${state.duelsWishlistSort === 'price-desc' ? 'selected' : ''}>Цена (по убыванию)</option>
-            <option value="price-asc" ${state.duelsWishlistSort === 'price-asc' ? 'selected' : ''}>Цена (по возрастанию)</option>
-          </select>
-          <span class="sub-text" style="margin-left: 8px;">В хотелках: ${items.length}</span>
+          
+          <span class="sub-text" style="margin-left: auto;">В хотелках: ${items.length}</span>
         </div>
         <div class="duels-grid">
           ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
