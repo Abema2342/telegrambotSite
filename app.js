@@ -4359,7 +4359,9 @@ function runPendingConfirm() {
 
       // 1. ФИЗИКА
       for (let b of jar.balls) {
-        b.vy -= 1.5; // Гравитация (быстрее)
+        if (b.z === undefined) b.z = 0; // <--- ДОБАВИТЬ ЭТО
+        b.vy -= 1.5; 
+        // ... остальной код
         
         b.x += b.vx;
         b.y += b.vy;
@@ -4409,7 +4411,7 @@ function runPendingConfirm() {
           let minDist = b1.r + b2.r;
 
           if (dist < minDist && dist > 0) {
-            if (b1.value === b2.value) {
+            if (b1.value === b2.value && b1.value + b2.value < 128) {
               b2.value *= 2;
               b2.r = Math.max(20, Math.min(45, 20 + Math.log2(b2.value) * 5));
               b1.isDead = true;
@@ -4676,7 +4678,7 @@ function runPendingConfirm() {
       const newBall = {
         id: Date.now() + Math.random(),
         value: val,
-        // Спавним шарик внутри горлышка в 3D-пространстве
+        // Задаем 3D координаты (внутри горлышка)
         x: (Math.random() - 0.5) * (neckRadius * 1.2), 
         y: halfH, 
         z: (Math.random() - 0.5) * (neckRadius * 1.2),
@@ -4690,7 +4692,6 @@ function runPendingConfirm() {
       jar.balls.push(newBall);
       saveGameState();
       
-      // Обновляем UI суммы
       const currentSum = jar.balls.reduce((acc, b) => acc + b.value, 0);
       const sumDisplay = document.querySelector('.game-sum-display');
       if (sumDisplay) {
