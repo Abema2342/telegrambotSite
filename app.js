@@ -4149,8 +4149,6 @@ function runPendingConfirm() {
     const SHOULDER_HEIGHT = 680; // Точка, где заканчивается расширение (было 620)
     const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
     const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
-    const LEFT_NECK = (JAR_WIDTH - NECK_WIDTH) / 2;   
-    const RIGHT_NECK = JAR_WIDTH - LEFT_NECK;
 
     function getJarBounds(y) {
       if (y < NECK_HEIGHT) {
