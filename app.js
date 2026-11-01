@@ -3328,16 +3328,41 @@ function runPendingConfirm() {
     }
 
     function calcPress(action) {
+      // 1. Обработка кнопок C, ⌫ и =
       if (action === 'clear') {
         state.calcDisplay = '';
-      } else if (action === 'back') {
+        updateSciDisplay();
+        return;
+      }
+      
+      if (action === 'back') {
         state.calcDisplay = state.calcDisplay.slice(0, -1);
-      } else if (action === '=') {
+        updateSciDisplay();
+        return;
+      }
+      
+      if (action === '=') {
         calcEvaluate();
         return;
-      } else {
-        state.calcDisplay += action;
       }
+
+      // 2. ЛОГИКА ЗАЩИТЫ ОТ ДВОЙНЫХ ЗНАКОВ
+      const operators = ['+', '−', '×', '÷', '^'];
+      const lastChar = state.calcDisplay.slice(-1);
+
+      // Если мы пытаемся ввести оператор...
+      if (operators.includes(action)) {
+        // И если последний символ в строке — тоже оператор...
+        if (operators.includes(lastChar)) {
+          // Просто заменяем последний оператор на новый
+          state.calcDisplay = state.calcDisplay.slice(0, -1) + action;
+          updateSciDisplay();
+          return;
+        }
+      }
+
+      // 3. Обычное добавление символа
+      state.calcDisplay += action;
       updateSciDisplay();
     }
 
