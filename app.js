@@ -562,7 +562,8 @@
       
       // МИГРАЦИЯ: если старый формат (массив строк) -> делаем объекты
       state.duelsWishlist = raw.map(x => {
-        if (typeof x === 'string') return { item: x, finisher: null };
+        if (typeof x === 'string') return { item: x, finisher: null, quantity: 1 };
+        if (!x.quantity) x.quantity = 1; // Ставим 1 по умолчанию
         return x;
       });
 
@@ -595,10 +596,10 @@
       let items = state.duelsWishlist.map(w => {
         const it = getDuelItemById(w.item);
         if (!it) return null;
-        return { ...it, finisher: w.finisher }; 
+        return { ...it, finisher: w.finisher, quantity: w.quantity || 1 }; 
       }).filter(Boolean);
 
-      // СОРТИРОВКА ПО УБЫВАНИЮ
+      // Сортировка (по цене предмета)
       items.sort((a, b) => {
         let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
         let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
@@ -608,11 +609,8 @@
       const cards = items.map(it => {
         const id = getDuelItemId(it);
         
-        // Строгая проверка: если слаг начинается с finisher-, это эффект
         const itemSlug = String(it.slug || '').toLowerCase();
         const isFinisher = itemSlug.startsWith('finisher-') || id.toLowerCase().startsWith('finisher-');
-
-        console.log(`Предмет: ${it.name} | ID: ${id} | Это эффект: ${isFinisher}`); // Проверка в консоли
 
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
@@ -622,9 +620,13 @@
           if (f) {
             let totalStr = 'Unvalued';
             if (it.basePrice !== -1 && f.basePrice !== -1) {
-               totalStr = (Number(it.basePrice) + Number(f.basePrice)).toLocaleString('ru-RU');
+               // Умножаем общую сумму на количество
+               let singleSum = Number(it.basePrice) + Number(f.basePrice);
+               totalStr = (singleSum * it.quantity).toLocaleString('ru-RU');
             }
-            priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)} = ${totalStr}`;
+            // Если количество больше 1, пишем (x3) в скобках
+            let qtyStr = it.quantity > 1 ? ` (x${it.quantity})` : '';
+            priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)}${qtyStr} = ${totalStr}`;
 
             finisherIconHtml = `
               <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
@@ -633,7 +635,6 @@
             `;
           }
         } else if (!isFinisher) {
-          // Кнопка плюса
           finisherIconHtml = `
             <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
                  style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
@@ -662,7 +663,15 @@
               
               ${finisherIconHtml}
               
-              <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);">
+              <!-- Кнопка изменения количества (Слева) -->
+              <div onclick="event.stopPropagation(); openQuantityModal('${escapeJsStr(id)}')" 
+                   style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: var(--accent-color); z-index: 3; border: 1px solid var(--accent-color); cursor: pointer;"
+                   title="Изменить количество">
+                x${it.quantity}
+              </div>
+
+              <!-- Количество в игре (Справа) -->
+              <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);" title="Существует в игре">
                 x${existCount}
               </div>
             </div>
@@ -678,7 +687,6 @@
         <div class="duels-toolbar">
           <button class="btn-primary" onclick="openDuelsAddMenu()">+ Добавить</button>
           <button class="btn-refresh" onclick="toggleDuelsEditMode()">${state.duelsEditMode ? 'Готово' : 'Редактировать'}</button>
-          
           <span class="sub-text" style="margin-left: auto;">В хотелках: ${items.length}</span>
         </div>
         <div class="duels-grid">
@@ -735,7 +743,7 @@
 
     async function addToWishlist(id) {
       if (state.duelsWishlist.some(x => x.item === String(id))) return; // <--- ИЗМЕНЕНО
-      state.duelsWishlist.push({ item: String(id), finisher: null }); // <--- ИЗМЕНЕНО
+            state.duelsWishlist.push({ item: String(id), finisher: null, quantity: 1 }); // <--- ИЗМЕНЕНО
       try {
         await saveDuelsWishlist();
         showToast('Добавлено в хотелки', 'success');
@@ -745,6 +753,58 @@
       } catch (e) {
         state.duelsWishlist = state.duelsWishlist.filter(x => x.item !== String(id)); 
         showToast('Ошибка: ' + e.message, 'error');
+      }
+    }
+	
+	    function openQuantityModal(itemId) {
+      const entry = state.duelsWishlist.find(w => w.item === itemId);
+      if (!entry) return;
+      const item = getDuelItemById(itemId);
+      const currentQty = entry.quantity || 1;
+
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p class="sub-text">Сколько штук «${escapeHtml(item ? item.name : itemId)}» тебе нужно?</p>
+          <input type="number" id="qty-input" class="form-input" value="${currentQty}" min="1" max="999" style="margin-bottom: 0;" autofocus />
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="saveQuantity('${escapeJsStr(itemId)}')">Сохранить</button>
+      `;
+      openModal('Количество', content, actions);
+
+      setTimeout(() => {
+        const input = document.getElementById('qty-input');
+        if (input) {
+          input.focus();
+          input.select();
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveQuantity(itemId);
+          });
+        }
+      }, 50);
+    }
+
+    async function saveQuantity(itemId) {
+      const input = document.getElementById('qty-input');
+      if (!input) return;
+      const val = parseInt(input.value, 10);
+      if (isNaN(val) || val < 1) {
+        showToast('Введи число больше нуля', 'error');
+        return;
+      }
+
+      const entry = state.duelsWishlist.find(w => w.item === itemId);
+      if (entry) {
+        entry.quantity = val;
+        try {
+          await saveDuelsWishlist();
+          closeModal();
+          renderDuelsWishlist();
+        } catch (e) {
+          showToast('Ошибка: ' + e.message, 'error');
+        }
       }
     }
 
