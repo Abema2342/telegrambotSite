@@ -3727,3 +3727,35 @@
       outline: none;
       cursor: pointer;
     }
+	
+	    /* ===== КАСТОМНЫЙ СКРОЛЛБАР ===== */
+    
+    /* Для Chrome, Edge, Safari (WebKit) */
+    ::-webkit-scrollbar {
+      width: 10px;  /* Ширина вертикального скролла */
+      height: 10px; /* Высота горизонтального скролла */
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color); /* Цвет фона под ползунком */
+      border-left: 1px solid var(--border-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color); /* Цвет самого ползунка */
+      border-radius: 10px;
+      border: 2px solid var(--bg-color); /* Отступ, чтобы ползунок не прилипал к краям */
+      background-clip: padding-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-color); /* Подсвечиваем акцентным цветом при наведении */
+      border: 2px solid var(--bg-color);
+      background-clip: padding-box;
+    }
+
+    /* Для Firefox */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) var(--bg-color);
+    }
