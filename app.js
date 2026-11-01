@@ -620,8 +620,8 @@
           if (f) {
             priceHtml += ` + ${formatCoins(f.basePrice)}`;
             finisherIconHtml = `
-              <div style="position: absolute; bottom: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}">
-                <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
+              <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}">
+                <img src="${escapeHtml(f.icon || f.image || '')}" style="width: 100%; height: 100%; object-fit: contain;">
               </div>
             `;
           }
@@ -668,7 +668,7 @@
           ${cards || '<div class="empty-state" style="grid-column: 1/-1;">Хотелки пусты. Нажми «+ Добавить».</div>'}
         </div>
       `;
-    }
+    }	
 
     function toggleDuelsEditMode() {
       state.duelsEditMode = !state.duelsEditMode;
