@@ -612,10 +612,18 @@
         
         // Формируем цену
         let priceHtml = formatCoins(it.basePrice);
+        let finisherIconHtml = '';
+        
+        // Добавляем иконку эффекта, если он есть
         if (it.finisher) {
           const f = getDuelItemById(it.finisher);
           if (f) {
             priceHtml += ` + ${formatCoins(f.basePrice)}`;
+            finisherIconHtml = `
+              <div style="position: absolute; bottom: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}">
+                <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
+              </div>
+            `;
           }
         }
 
@@ -629,7 +637,13 @@
         return `
           <div class="duels-card" onclick="${onclickJs}">
             ${xBtn}
-            <img class="duels-card-img" src="${escapeHtml(it.image || it.icon || '')}" onerror="this.style.opacity=0.3">
+            
+            <!-- Обертка для картинки, чтобы позиционировать иконку финишера -->
+            <div style="position: relative; width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 6px; display: flex; justify-content: center; align-items: center;">
+              <img src="${escapeHtml(it.image || it.icon || '')}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" onerror="this.style.opacity=0.3">
+              ${finisherIconHtml}
+            </div>
+            
             <div class="duels-card-name">${escapeHtml(it.name || id)}</div>
             <div class="duels-card-prices">
               <span>Цена: <span class="value">${priceHtml}</span></span>
