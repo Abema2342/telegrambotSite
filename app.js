@@ -4233,7 +4233,7 @@ function runPendingConfirm() {
     }
 	
     let threeRenderer, threeScene, threeCamera, controls;
-    let jarMesh, balls3D = [];
+    let jarMesh, lidMesh, balls3D = [];
     let threeAnimationLoop;
 
     function initGameCanvas() {
@@ -4243,8 +4243,9 @@ function runPendingConfirm() {
       // 1. Инициализация Three.js
       threeScene = new THREE.Scene();
       
+      // Камера
       threeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
-      threeCamera.position.set(0, 100, 800); // Смотрим чуть сверху
+      threeCamera.position.set(0, 100, 900); 
 
       threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       threeRenderer.setSize(container.clientWidth, container.clientHeight);
@@ -4261,104 +4262,80 @@ function runPendingConfirm() {
       controls.minPolarAngle = Math.PI / 4; 
       controls.maxPolarAngle = Math.PI / 1.7;
       controls.minDistance = 400;
-      controls.maxDistance = 3000;
+      controls.maxDistance = 3500;
 
-      // 3. Освещение (яркое, чтобы стекло не было черным)
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      // 3. Освещение
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
       threeScene.add(ambientLight);
       
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-      dirLight.position.set(200, 500, 300);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      dirLight.position.set(300, 500, 400);
       threeScene.add(dirLight);
 
-      // Свет изнутри банки
-      const insideLight = new THREE.PointLight(0xffb7c5, 1.5, 1000);
-      insideLight.position.set(0, 0, 0);
-      threeScene.add(insideLight);
+      const backLight = new THREE.DirectionalLight(0xffb7c5, 1);
+      backLight.position.set(-300, 200, -400);
+      threeScene.add(backLight);
 
-      // 4. Создание 3D Банки (ПРАВИЛЬНЫЕ КООРДИНАТЫ)
+      // 4. Создание 3D Банки (Гладкий профиль)
       const points = [];
       const halfH = JAR_HEIGHT / 2; // 400
       const bodyRadius = JAR_WIDTH / 2; // 350
       const neckRadius = NECK_WIDTH / 2; // 250
-      const thickness = 15; // Толщина стекла
 
-      // --- ВНЕШНЯЯ ЧАСТЬ ---
-      points.push(new THREE.Vector2(0, -halfH)); // Дно центр
-      points.push(new THREE.Vector2(bodyRadius - 20, -halfH)); // Дно край
+      points.push(new THREE.Vector2(0, -halfH)); // Дно
+      points.push(new THREE.Vector2(bodyRadius - 20, -halfH)); 
       points.push(new THREE.Vector2(bodyRadius, -halfH + 20)); // Скругление дна
-      points.push(new THREE.Vector2(bodyRadius, halfH - SHOULDER_HEIGHT)); // Стенка до плечиков
-
-      // Плечико (плавная кривая)
-      const shoulderOuter = new THREE.QuadraticBezierCurve(
-        new THREE.Vector2(bodyRadius, halfH - SHOULDER_HEIGHT),
-        new THREE.Vector2(bodyRadius, halfH - NECK_HEIGHT), 
-        new THREE.Vector2(neckRadius, halfH - NECK_HEIGHT)
-      );
-      shoulderOuter.getPoints(20).forEach(p => points.push(p));
-
-      points.push(new THREE.Vector2(neckRadius, halfH)); // Шея верх внешний
-
-      // --- ВНУТРЕННЯЯ ЧАСТЬ (ПУСТОТА) ---
-      points.push(new THREE.Vector2(neckRadius - thickness, halfH)); // Шея верх внутренний
-      points.push(new THREE.Vector2(neckRadius - thickness, halfH - NECK_HEIGHT)); // Шея низ внутренний
-
-      // Плечико (внутреннее)
-      const shoulderInner = new THREE.QuadraticBezierCurve(
-        new THREE.Vector2(neckRadius - thickness, halfH - NECK_HEIGHT),
-        new THREE.Vector2(bodyRadius - thickness, halfH - NECK_HEIGHT),
-        new THREE.Vector2(bodyRadius - thickness, halfH - SHOULDER_HEIGHT)
-      );
-      shoulderInner.getPoints(20).forEach(p => points.push(p));
-
-      points.push(new THREE.Vector2(bodyRadius - thickness, -halfH + 20 + thickness)); // Стенка низ внутренняя
-      points.push(new THREE.Vector2(0, -halfH + 20 + thickness)); // Дно центр внутренний
+      points.push(new THREE.Vector2(bodyRadius, halfH - SHOULDER_HEIGHT)); // Стенка
+      
+      // Плечико
+      points.push(new THREE.Vector2(neckRadius, halfH - NECK_HEIGHT)); 
+      points.push(new THREE.Vector2(neckRadius, halfH)); // Шея
       
       const jarGeometry = new THREE.LatheGeometry(points, 64); 
       
-      // Материал стекла (светлый, полупрозрачный)
-      const jarMaterial = new THREE.MeshStandardMaterial({
+      // Материал стекла (без полостей, чтобы не было полос)
+      const jarMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xffd1dc, 
-        roughness: 0.1,
-        metalness: 0.2,
+        metalness: 0.1,
+        roughness: 0.05,
+        transmission: 0.9, // Эффект настоящего стекла
+        thickness: 0.5,
         transparent: true,
-        opacity: 0.4, 
-        side: THREE.DoubleSide 
+        opacity: 1,
+        side: THREE.DoubleSide,
+        depthWrite: false // ВАЖНО: убирает полосы при наложении
       });
 
       jarMesh = new THREE.Mesh(jarGeometry, jarMaterial);
-      jarMesh.position.y = 0; 
       threeScene.add(jarMesh);
 
-      // 5. Крышка (Пробка)
-      const lidGeo = new THREE.CylinderGeometry(neckRadius, neckRadius, 40, 32);
+      // 5. Крышка
+      const lidGeo = new THREE.CylinderGeometry(neckRadius + 10, neckRadius + 10, 40, 32);
       const lidMat = new THREE.MeshStandardMaterial({ 
-        color: 0x8B5A2B,
-        roughness: 0.8
+        color: 0x8B5A2B, 
+        roughness: 0.7
       });
-      const lidMesh = new THREE.Mesh(lidGeo, lidMat);
-      
-      // Ставим крышку ровно на верх шеи (halfH = 400, высота крышки 40, значит центр на 400 + 20 = 420)
+      lidMesh = new THREE.Mesh(lidGeo, lidMat);
       lidMesh.position.y = halfH + 20; 
-      jarMesh.add(lidMesh);
+      threeScene.add(lidMesh);
 
-      // 6. Синхронизация шариков
+      // 6. Пересоздаем шарики в 3D (сбрасываем старые 2D координаты)
       const jar = state.jars[state.activeJarIndex];
       jar.balls.forEach(b => {
-        if (b.x === undefined) {
-          b.x = Math.random() * (NECK_WIDTH - 60) + LEFT_NECK + 30;
-          b.y = -Math.random() * 200;
-          b.vx = (Math.random() - 0.5) * 4;
-          b.vy = Math.random() * 2;
-          b.r = Math.max(24, Math.min(55, 24 + Math.log2(b.value || 1) * 6)); 
-          b.mass = b.r ** 2;
-        }
+        // Инициализируем 3D координаты (Z — глубина)
+        b.x = (Math.random() - 0.5) * (neckRadius * 2);
+        b.z = (Math.random() - 0.5) * (neckRadius * 2); 
+        b.y = halfH; // Падают сверху
+        b.vx = (Math.random() - 0.5) * 10;
+        b.vy = 0;
+        b.vz = (Math.random() - 0.5) * 10;
+        b.r = Math.max(20, Math.min(45, 20 + Math.log2(b.value || 1) * 5)); 
       });
 
-      balls3D.forEach(mesh => jarMesh.remove(mesh));
+      balls3D.forEach(mesh => threeScene.remove(mesh));
       balls3D = [];
 
-      // Обработка изменения размера окна
+      // Обработка resize
       window.addEventListener('resize', () => {
         if (!container) return;
         threeCamera.aspect = container.clientWidth / container.clientHeight;
@@ -4366,10 +4343,8 @@ function runPendingConfirm() {
         threeRenderer.setSize(container.clientWidth, container.clientHeight);
       });
 
-      // 7. Запуск цикла
+      // 7. Запуск
       if (threeAnimationLoop) cancelAnimationFrame(threeAnimationLoop);
-      if (gamePhysicsLoop) cancelAnimationFrame(gamePhysicsLoop);
-
       animate3D();
     }
 
@@ -4378,110 +4353,137 @@ function runPendingConfirm() {
       if (state.currentTab !== 'game') return;
 
       const jar = state.jars[state.activeJarIndex];
-      
-      // --- 2D ФИЗИКА (СТАРАЯ, НО РАБОТАЕТ) ---
+      const halfH = JAR_HEIGHT / 2;
+      const bodyRadius = JAR_WIDTH / 2 - 15; // Радиус банки (с учетом толщины стекла)
+      const neckRadius = NECK_WIDTH / 2 - 15; // Радиус горлышка
+
+      // 1. ФИЗИКА (3D)
       for (let b of jar.balls) {
-        b.vy += GAME_GRAVITY;
-        b.vx *= GAME_FRICTION;
-        b.vy *= GAME_FRICTION;
-        if (b.vx > 20) b.vx = 20; if (b.vx < -20) b.vx = -20;
-        if (b.vy > 20) b.vy = 20; if (b.vy < -20) b.vy = -20;
-        b.x += b.vx;
-        b.y += b.vy;
+        // Гравитация
+        b.vy -= 0.5; 
+        
+        // Движение
+        b.x += b.vx * 0.1;
+        b.y += b.vy * 0.1;
+        b.z += b.vz * 0.1;
+
+        // Проверка коллизии со стенками банки (цилиндр)
+        let currentRadius = (b.y < halfH - NECK_HEIGHT) ? neckRadius : bodyRadius;
+        let distFromCenter = Math.sqrt(b.x * b.x + b.z * b.z);
+
+        if (distFromCenter > currentRadius - b.r) {
+          // Шарик коснулся стенки
+          let nx = b.x / distFromCenter;
+          let nz = b.z / distFromCenter;
+          
+          // Выталкиваем внутрь
+          b.x = nx * (currentRadius - b.r);
+          b.z = nz * (currentRadius - b.r);
+          
+          // Отражаем скорость
+          let dot = b.vx * nx + b.vz * nz;
+          b.vx -= 2 * dot * nx;
+          b.vz -= 2 * dot * nz;
+          
+          // Трение
+          b.vx *= 0.8;
+          b.vz *= 0.8;
+        }
+
+        // Проверка дна
+        if (b.y - b.r < -halfH) {
+          b.y = -halfH + b.r;
+          b.vy *= -0.5; // Отскок от пола
+          b.vx *= 0.9;
+          b.vz *= 0.9;
+        }
       }
 
-      for (let iter = 0; iter < 4; iter++) {
-        for (let i = 0; i < jar.balls.length; i++) {
-          let b = jar.balls[i];
-          if (b.isDead) continue;
+      // 2. СТОЛКНОВЕНИЯ ШАРИКОВ
+      for (let i = 0; i < jar.balls.length; i++) {
+        let b1 = jar.balls[i];
+        if (b1.isDead) continue;
 
-          let [leftWall, rightWall] = getJarBounds(b.y);
-          if (b.x - b.r < leftWall) { b.x = leftWall + b.r; b.vx *= -GAME_BOUNCE; }
-          if (b.x + b.r > rightWall) { b.x = rightWall - b.r; b.vx *= -GAME_BOUNCE; }
-          if (b.y + b.r > JAR_HEIGHT) { 
-            b.y = JAR_HEIGHT - b.r; b.vy *= -GAME_BOUNCE; b.vx *= 0.9; 
-            if (Math.abs(b.vy) < 0.5) b.vy = 0; 
-          }
+        for (let j = i + 1; j < jar.balls.length; j++) {
+          let b2 = jar.balls[j];
+          if (b2.isDead) continue;
 
-          for (let j = i + 1; j < jar.balls.length; j++) {
-            let b2 = jar.balls[j];
-            if (b2.isDead) continue;
+          let dx = b2.x - b1.x;
+          let dy = b2.y - b1.y;
+          let dz = b2.z - b1.z;
+          let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          let minDist = b1.r + b2.r;
 
-            let dx = b2.x - b.x;
-            let dy = b2.y - b.y;
-            let dist = Math.sqrt(dx * dx + dy * dy);
-            let minDist = b.r + b2.r;
+          if (dist < minDist && dist > 0) {
+            // Слияние
+            if (b1.value === b2.value) {
+              b2.value *= 2;
+              b2.r = Math.max(20, Math.min(45, 20 + Math.log2(b2.value) * 5));
+              b1.isDead = true;
+              playPopSound();
+              break;
+            } 
+            
+            // Обычное столкновение (расталкиваем)
+            let nx = dx / dist;
+            let ny = dy / dist;
+            let nz = dz / dist;
+            
+            let overlap = (minDist - dist) / 2;
+            b1.x -= nx * overlap;
+            b1.y -= ny * overlap;
+            b1.z -= nz * overlap;
+            
+            b2.x += nx * overlap;
+            b2.y += ny * overlap;
+            b2.z += nz * overlap;
 
-            if (dist < minDist) {
-              if (b.value === b2.value) {
-                b2.value *= 2;
-                b2.r = Math.max(18, Math.min(40, 18 + Math.log2(b2.value) * 5));
-                b2.mass = b2.r ** 2;
-                b2.vx += b.vx * 0.5;
-                b2.vy += b.vy * 0.5;
-                b.isDead = true; 
-                playPopSound();
-                break; 
-              } 
-              
-              let nx, ny;
-              if (dist === 0) {
-                let angle = Math.random() * Math.PI * 2;
-                nx = Math.cos(angle); ny = Math.sin(angle); dist = 0.1;
-              } else {
-                nx = dx / dist; ny = dy / dist;
-              }
-              let overlap = minDist - dist;
-              b.x -= nx * overlap / 2; b.y -= ny * overlap / 2;
-              b2.x += nx * overlap / 2; b2.y += ny * overlap / 2;
-              
-              let p = 2 * (b.vx * nx + b.vy * ny - b2.vx * nx - b2.vy * ny) / (b.mass + b2.mass);
-              b.vx -= p * b2.mass * nx; b.vy -= p * b2.mass * ny;
-              b2.vx += p * b.mass * nx; b2.vy += p * b.mass * ny;
-            }
+            // Меняем скорости
+            let p = 2 * (b1.vx * nx + b1.vy * ny + b1.vz * nz - b2.vx * nx - b2.vy * ny - b2.vz * nz) / 2;
+            b1.vx -= p * nx;
+            b1.vy -= p * ny;
+            b1.vz -= p * nz;
+            b2.vx += p * nx;
+            b2.vy += p * ny;
+            b2.vz += p * nz;
           }
         }
       }
 
-      // Слияние и обновление
+      // Удаляем слитые шарики
       if (jar.balls.some(b => b.isDead)) {
         jar.balls = jar.balls.filter(b => !b.isDead);
         saveGameState();
-        // Пересоздаем 3D меши после слияния
-        syncBalls3D(jar.balls); 
       }
 
-      // --- ОБНОВЛЕНИЕ 3D ---
+      // 3. СИНХРОНИЗАЦИЯ С THREE.JS
+      // Удаляем лишние меши
+      while (balls3D.length > jar.balls.length) {
+        threeScene.remove(balls3D.pop());
+      }
       
-      // Синхронизируем позиции существующих мешей с физикой
-      jar.balls.forEach((b, index) => {
-        let mesh = balls3D[index];
+      // Добавляем/обновляем существующие
+      jar.balls.forEach((b, i) => {
+        let mesh = balls3D[i];
         if (!mesh) {
-          // Если меша нет (новый шарик) - создаем
-          mesh = createBall3D(b);
+          const geo = new THREE.SphereGeometry(1, 32, 32); // Радиус 1, масштабируем через scale
+          const mat = new THREE.MeshStandardMaterial({
+            roughness: 0.2, metalness: 0.1, 
+          });
+          mesh = new THREE.Mesh(geo, mat);
           balls3D.push(mesh);
-          jarMesh.add(mesh);
+          threeScene.add(mesh);
         }
         
-        // Переносим 2D координаты в 3D (X, Y). Z оставляем 0 для плоскости.
-        // Центрируем банку: X от 0..JAR_WIDTH -> -JAR_WIDTH/2..JAR_WIDTH/2
-        mesh.position.x = b.x - JAR_WIDTH / 2;
-        mesh.position.y = JAR_HEIGHT / 2 - b.y; // Инвертируем Y
-        mesh.position.z = 0;
+        // Обновляем позицию
+        mesh.position.set(b.x, b.y, b.z);
+        mesh.scale.setScalar(b.r);
         
-        // Обновляем цвет в зависимости от значения
+        // Обновляем цвет (переливание)
         const time = Date.now() / 1000;
-        const baseHue = (Math.log2(b.value || 1) * 35);
-        const hue = (baseHue + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
+        const hue = ((Math.log2(b.value) * 35) + Math.sin(time * 2 + b.x * 0.1) * 15) % 360;
         mesh.material.color.setHSL(hue / 360, 0.9, 0.6);
-        mesh.scale.setScalar(b.r / 20); // Масштабируем сферу под радиус
       });
-
-      // Удаляем лишние меши (если шариков стало меньше)
-      if (balls3D.length > jar.balls.length) {
-        const toRemove = balls3D.splice(jar.balls.length);
-        toRemove.forEach(mesh => jarMesh.remove(mesh));
-      }
 
       controls.update();
       threeRenderer.render(threeScene, threeCamera);
