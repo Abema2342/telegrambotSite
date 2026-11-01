@@ -1539,28 +1539,6 @@ function runPendingConfirm() {
       renderThemePanel();
     }
 
-    // =========================================================
-    // БЕЗОПАСНАЯ ЗАГРУЗКА ВИДЕО-ФОНА (чтобы скрипт не падал)
-    // =========================================================
-    const bgVideo = document.getElementById('jellyfish-bg');
-    if (bgVideo) {
-      let isReversing = false;
-      bgVideo.addEventListener('loadedmetadata', () => {
-        bgVideo.play();
-      });
-
-      bgVideo.addEventListener('ended', () => {
-        if (!isReversing) {
-          isReversing = true;
-          bgVideo.playbackRate = -1;
-          bgVideo.play();
-        } else {
-          isReversing = false;
-          bgVideo.playbackRate = 1;
-          bgVideo.play();
-        }
-      });
-    }
 
     // =========================================================
     // ОБРАБОТЧИК КЛИКА ПО КНОПКЕ ПАЛИТРЫ (Его не хватало!)
