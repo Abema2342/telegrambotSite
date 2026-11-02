@@ -171,27 +171,104 @@
       const content = document.getElementById('duels-content');
       const q = (state.duelsSearch || '').toLowerCase().trim();
       let all = state.duelsData || [];
-      
-      // Сортировка по цене (чтобы Unvalued были в конце)
-      all.sort((a, b) => {
-        let pA = a.basePrice === -1 ? Infinity : Number(a.basePrice) || 0;
-        let pB = b.basePrice === -1 ? Infinity : Number(b.basePrice) || 0;
-        return pA - pB;
+
+      // 1. ФИЛЬТРАЦИЯ
+      let list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : [...all];
+
+      // Фильтр по цене (если задан)
+      if (state.duelsMinPrice !== null || state.duelsMaxPrice !== null) {
+        const min = state.duelsMinPrice !== null ? state.duelsMinPrice : 0;
+        const max = state.duelsMaxPrice !== null ? state.duelsMaxPrice : Infinity;
+        list = list.filter(it => {
+          const price = (it.basePrice === -1) ? 0 : Number(it.basePrice) || 0;
+          return price >= min && price <= max;
+        });
+      }
+
+      // 2. СОРТИРОВКА ПО УБЫВАНИЮ (сначала самые дорогие)
+      list.sort((a, b) => {
+        let pA = a.basePrice === -1 ? 0 : Number(a.basePrice) || 0;
+        let pB = b.basePrice === -1 ? 0 : Number(b.basePrice) || 0;
+        return pB - pA; // От большего к меньшему
       });
 
-      const list = q ? all.filter(it => (it.name || '').toLowerCase().includes(q)) : all;
+      // Визуальная плашка, если фильтр активен
+      let activeFilterHtml = '';
+      if (state.duelsMinPrice !== null || state.duelsMaxPrice !== null) {
+        activeFilterHtml = `
+          <span class="badge" style="background: rgba(88,101,242,0.15); color: var(--accent-color); margin-left: 8px; padding: 4px 8px;">
+            ${state.duelsMinPrice || 0} - ${state.duelsMaxPrice || '∞'}
+          </span>
+        `;
+      }
 
       content.innerHTML = `
         <div class="duels-toolbar">
           <div class="search-bar" style="flex: 1;">
             <input type="text" id="duels-search" placeholder="Поиск по названию..." value="${escapeHtml(state.duelsSearch || '')}" oninput="onDuelsSearchInput(this.value)" />
           </div>
+          
+          <button class="btn-refresh" onclick="openPriceFilterModal()" title="Фильтр по цене">📉 Фильтр</button>
+          ${activeFilterHtml}
+          
           <span class="sub-text" id="duels-price-count">Всего: ${list.length}</span>
         </div>
         <div class="duels-grid" id="duels-price-grid">
-          ${list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Нет предметов</div>'}
+          ${list.map(it => duelsCardHtml(it, `openDuelItemModal('${escapeJsStr(getDuelItemId(it))}')`)).join('') || '<div class="empty-state" style="grid-column: 1/-1;">Ничего не найдено</div>'}
         </div>
       `;
+    }
+	
+	    function openPriceFilterModal() {
+      const content = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p class="sub-text">Введи минимальную и максимальную цену. Оставь пустым, если ограничения нет.</p>
+          <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+              <label class="sub-text" style="display: block; margin-bottom: 6px;">От</label>
+              <input type="number" id="price-min" class="form-input" value="${state.duelsMinPrice !== null ? state.duelsMinPrice : ''}" placeholder="0" style="margin-bottom: 0;">
+            </div>
+            <div style="flex: 1;">
+              <label class="sub-text" style="display: block; margin-bottom: 6px;">До</label>
+              <input type="number" id="price-max" class="form-input" value="${state.duelsMaxPrice !== null ? state.duelsMaxPrice : ''}" placeholder="Без лимита" style="margin-bottom: 0;">
+            </div>
+          </div>
+        </div>
+      `;
+      const actions = `
+        <button class="btn-refresh" onclick="clearPriceFilter()">Сбросить</button>
+        <button class="btn-primary" onclick="applyPriceFilter()">Применить</button>
+      `;
+      openModal('Фильтр цен', content, actions);
+    }
+
+    function applyPriceFilter() {
+      const minInput = document.getElementById('price-min').value;
+      const maxInput = document.getElementById('price-max').value;
+
+      state.duelsMinPrice = minInput ? parseInt(minInput, 10) : null;
+      state.duelsMaxPrice = maxInput ? parseInt(maxInput, 10) : null;
+
+      // Сохраняем локально
+      if (state.duelsMinPrice !== null) localStorage.setItem('md_duels_min_price', state.duelsMinPrice);
+      else localStorage.removeItem('md_duels_min_price');
+
+      if (state.duelsMaxPrice !== null) localStorage.setItem('md_duels_max_price', state.duelsMaxPrice);
+      else localStorage.removeItem('md_duels_max_price');
+
+      closeModal();
+      renderDuelsPrices();
+      showToast('Фильтр применен', 'success');
+    }
+
+    function clearPriceFilter() {
+      state.duelsMinPrice = null;
+      state.duelsMaxPrice = null;
+      localStorage.removeItem('md_duels_min_price');
+      localStorage.removeItem('md_duels_max_price');
+      closeModal();
+      renderDuelsPrices();
+      showToast('Фильтр сброшен', 'info');
     }
 
     function onDuelsSearchInput(val) {
@@ -1516,6 +1593,9 @@
       duelsSubtab: 'prices',
       duelsEditMode: false,
       duelsSearch: '',
+      duelsSearch: '',
+      duelsMinPrice: localStorage.getItem('md_duels_min_price') ? parseInt(localStorage.getItem('md_duels_min_price'), 10) : null,
+      duelsMaxPrice: localStorage.getItem('md_duels_max_price') ? parseInt(localStorage.getItem('md_duels_max_price'), 10) : null,
       duelsHistoryCache: {},
 	  duelsTrackedItems: JSON.parse(localStorage.getItem('md_duels_tracked')) || [],
       currentDuelsItemId: null,
