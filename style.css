@@ -3759,3 +3759,38 @@
       scrollbar-width: thin;
       scrollbar-color: var(--border-color) var(--bg-color);
     }
+	
+	    /* ===== КНОПКА-ТОГГЛ В ПРАЙС-ЛИСТЕ ===== */
+    .track-btn {
+      position: absolute;
+      top: 4px;
+      left: 4px; /* Слева, чтобы не мешать бейджу exist справа */
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 4;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      border: 2px solid;
+    }
+
+    .track-btn.not-tracked {
+      background: rgba(237, 66, 69, 0.15);
+      border-color: var(--status-banned);
+      color: var(--status-banned);
+    }
+
+    .track-btn.tracked {
+      background: rgba(67, 181, 129, 0.2);
+      border-color: var(--status-active);
+      color: var(--status-active);
+    }
+
+    .track-btn:hover {
+      transform: scale(1.1);
+    }

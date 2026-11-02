@@ -108,15 +108,39 @@
     function duelsCardHtml(item, onClickJs, extraTopRight) {
       const id = getDuelItemId(item);
       const img = item.image || item.icon || '';
-      
-      // Делаем "Unvalued" серым и курсивным
       const valStyle = item.basePrice === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
       const avgStyle = item.salesAvg === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
+      
+      const existCount = item.exist !== undefined ? item.exist : 0;
+      
+      // Проверяем, отслеживается ли предмет
+      const isTracked = (state.duelsTrackedItems || []).includes(id);
+      
+      // Кнопка-тоггл (рисуем только если это не вызов из меню выбора финишера/сетов)
+      // Если extraTopRight передан, значит это уже другая карточка (например, удаление из хотелки) — тоггл не нужен
+      let trackBtnHtml = '';
+      if (!extraTopRight) {
+        trackBtnHtml = `
+          <div class="track-btn ${isTracked ? 'tracked' : 'not-tracked'}" 
+               onclick="event.stopPropagation(); toggleTrackItem('${escapeJsStr(id)}')"
+               title="${isTracked ? 'Перестать отслеживать' : 'Отслеживать'}">
+            ${isTracked ? '✓' : '✕'}
+          </div>
+        `;
+      }
 
       return `
         <div class="duels-card" onclick="${onClickJs}">
           ${extraTopRight || ''}
-          <img class="duels-card-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.style.opacity=0.3">
+          <div style="position: relative; width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 6px; display: flex; justify-content: center; align-items: center;">
+            <img src="${escapeHtml(img)}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" onerror="this.style.opacity=0.3">
+            
+            ${trackBtnHtml}
+            
+            <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);">
+              x${existCount}
+            </div>
+          </div>
           <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
           <div class="duels-card-prices">
             <span>База: <span class="value" style="${valStyle}">${formatCoins(item.basePrice)}</span></span>
@@ -124,6 +148,24 @@
           </div>
         </div>
       `;
+    }
+	
+	    function toggleTrackItem(id) {
+      if (!state.duelsTrackedItems) state.duelsTrackedItems = [];
+      
+      const idx = state.duelsTrackedItems.indexOf(id);
+      if (idx >= 0) {
+        state.duelsTrackedItems.splice(idx, 1); // Убираем
+      } else {
+        state.duelsTrackedItems.push(id); // Добавляем
+      }
+      
+      localStorage.setItem('md_duels_tracked', JSON.stringify(state.duelsTrackedItems));
+      
+      // Перерисовываем только сетку, чтобы не дергать всю вкладку
+      if (state.duelsSubtab === 'prices') {
+        renderDuelsPrices();
+      }
     }
     function renderDuelsPrices() {
       const content = document.getElementById('duels-content');
@@ -1475,6 +1517,7 @@
       duelsEditMode: false,
       duelsSearch: '',
       duelsHistoryCache: {},
+	  duelsTrackedItems: JSON.parse(localStorage.getItem('md_duels_tracked')) || [],
       currentDuelsItemId: null,
 	  duelsChartRange: 30 // По умолчанию 30 дней
     };
