@@ -77,6 +77,29 @@
       if (n === -1 || n === null || n === undefined || isNaN(n)) return 'Unvalued';
       return Number(n).toLocaleString('ru-RU');
     }
+	
+	    // Возвращает числовое значение цены (Value, если есть, иначе RAP, иначе 0)
+    function getNumericPrice(item) {
+      if (!item) return 0;
+      
+      const val = Number(item.basePrice);
+      if (item.basePrice !== undefined && item.basePrice !== null && item.basePrice !== -1 && !isNaN(val) && val > 0) {
+        return val;
+      }
+      
+      const rap = Number(item.salesAvg);
+      if (item.salesAvg !== undefined && item.salesAvg !== null && item.salesAvg !== -1 && !isNaN(rap) && rap > 0) {
+        return rap;
+      }
+      
+      return 0;
+    }
+
+    // Возвращает красивую строку с ценой или прочерк
+    function getDisplayPrice(item) {
+      const price = getNumericPrice(item);
+      return price > 0 ? price.toLocaleString('ru-RU') : '—';
+    }
 
     async function switchDuelsTab(tab) {
       state.duelsSubtab = tab;
@@ -104,20 +127,13 @@
       }
     }
 
-    /* ---------- ПРАЙС-ЛИСТ ---------- */
     function duelsCardHtml(item, onClickJs, extraTopRight) {
       const id = getDuelItemId(item);
       const img = item.image || item.icon || '';
-      const valStyle = item.basePrice === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
-      const avgStyle = item.salesAvg === -1 ? 'color: var(--text-secondary); font-style: italic; font-weight: normal;' : '';
       
       const existCount = item.exist !== undefined ? item.exist : 0;
-      
-      // Проверяем, отслеживается ли предмет
       const isTracked = (state.duelsTrackedItems || []).includes(id);
       
-      // Кнопка-тоггл (рисуем только если это не вызов из меню выбора финишера/сетов)
-      // Если extraTopRight передан, значит это уже другая карточка (например, удаление из хотелки) — тоггл не нужен
       let trackBtnHtml = '';
       if (!extraTopRight) {
         trackBtnHtml = `
@@ -143,8 +159,7 @@
           </div>
           <div class="duels-card-name" title="${escapeHtml(item.name || id)}">${escapeHtml(item.name || id)}</div>
           <div class="duels-card-prices">
-            <span>База: <span class="value" style="${valStyle}">${formatCoins(item.basePrice)}</span></span>
-            <span>Ср: <span class="value" style="${avgStyle}">${formatCoins(item.salesAvg)}</span></span>
+            <span>Цена: <span class="value">${getDisplayPrice(item)}</span></span>
           </div>
         </div>
       `;
@@ -187,9 +202,7 @@
 
       // 2. СОРТИРОВКА ПО УБЫВАНИЮ (сначала самые дорогие)
       list.sort((a, b) => {
-        let pA = a.basePrice === -1 ? 0 : Number(a.basePrice) || 0;
-        let pB = b.basePrice === -1 ? 0 : Number(b.basePrice) || 0;
-        return pB - pA; // От большего к меньшему
+        return getNumericPrice(b) - getNumericPrice(a); 
       });
 
       // Визуальная плашка, если фильтр активен
@@ -387,11 +400,10 @@
           <div>
             <div style="font-size: 16px; font-weight: 700;">${escapeHtml(name)}</div>
             <div class="sub-text" style="font-size: 12px; margin-top: 4px;">
-              База: <strong>${formatCoins(item.basePrice)}</strong> · Средняя: <strong>${formatCoins(item.salesAvg)}</strong>
+              Цена: <strong>${getDisplayPrice(item)}</strong>
             </div>
           </div>
         </div>
-
         <!-- ВСТАВЛЯЕМ БЛОК ФИНИШЕРА СЮДА -->
         ${finisherHtml}
 
@@ -718,34 +730,27 @@
         return { ...it, finisher: w.finisher, quantity: w.quantity || 1 }; 
       }).filter(Boolean);
 
-      // Сортировка (по цене предмета)
-      items.sort((a, b) => {
-        let priceA = (a.basePrice === -1) ? 0 : Number(a.basePrice) || 0;
-        let priceB = (b.basePrice === -1) ? 0 : Number(b.basePrice) || 0;
-        return priceB - priceA; 
-      });
+      // Сортировка по цене (используем getNumericPrice)
+      items.sort((a, b) => getNumericPrice(b) - getNumericPrice(a));
 
       const cards = items.map(it => {
         const id = getDuelItemId(it);
-        
         const itemSlug = String(it.slug || '').toLowerCase();
         const isFinisher = itemSlug.startsWith('finisher-') || id.toLowerCase().startsWith('finisher-');
 
-        let priceHtml = formatCoins(it.basePrice);
+        let priceHtml = getDisplayPrice(it);
         let finisherIconHtml = '';
         
-        // Показываем эффект только если мы НЕ в режиме редактирования
         if (!state.duelsEditMode) {
           if (it.finisher) {
             const f = getDuelItemById(it.finisher);
             if (f) {
-              let totalStr = 'Unvalued';
-              if (it.basePrice !== -1 && f.basePrice !== -1) {
-                 let singleSum = Number(it.basePrice) + Number(f.basePrice);
-                 totalStr = (singleSum * it.quantity).toLocaleString('ru-RU');
-              }
+              const p1 = getNumericPrice(it);
+              const p2 = getNumericPrice(f);
+              let totalStr = (p1 > 0 && p2 > 0) ? ((p1 + p2) * it.quantity).toLocaleString('ru-RU') : '—';
               let qtyStr = it.quantity > 1 ? ` (x${it.quantity})` : '';
-              priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)}${qtyStr} = ${totalStr}`;
+              
+              priceHtml = `${getDisplayPrice(it)} + ${getDisplayPrice(f)}${qtyStr} = ${totalStr}`;
 
               finisherIconHtml = `
                 <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
@@ -765,6 +770,7 @@
             `;
           }
         }
+
         const xBtn = state.duelsEditMode
           ? `<button class="duels-card-x" onclick="event.stopPropagation(); removeFromWishlist('${escapeJsStr(id)}')">×</button>`
           : '';
@@ -782,14 +788,12 @@
               
               ${finisherIconHtml}
               
-              <!-- Кнопка изменения количества (Слева) -->
               <div onclick="event.stopPropagation(); openQuantityModal('${escapeJsStr(id)}')" 
                    style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: var(--accent-color); z-index: 3; border: 1px solid var(--accent-color); cursor: pointer;"
                    title="Изменить количество">
                 x${it.quantity}
               </div>
 
-              <!-- Количество в игре (Справа) -->
               <div style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #fff; z-index: 3; border: 1px solid var(--border-color);" title="Существует в игре">
                 x${existCount}
               </div>
