@@ -734,37 +734,37 @@
         let priceHtml = formatCoins(it.basePrice);
         let finisherIconHtml = '';
         
-        if (it.finisher) {
-          const f = getDuelItemById(it.finisher);
-          if (f) {
-            let totalStr = 'Unvalued';
-            if (it.basePrice !== -1 && f.basePrice !== -1) {
-               // Умножаем общую сумму на количество
-               let singleSum = Number(it.basePrice) + Number(f.basePrice);
-               totalStr = (singleSum * it.quantity).toLocaleString('ru-RU');
-            }
-            // Если количество больше 1, пишем (x3) в скобках
-            let qtyStr = it.quantity > 1 ? ` (x${it.quantity})` : '';
-            priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)}${qtyStr} = ${totalStr}`;
+        // Показываем эффект только если мы НЕ в режиме редактирования
+        if (!state.duelsEditMode) {
+          if (it.finisher) {
+            const f = getDuelItemById(it.finisher);
+            if (f) {
+              let totalStr = 'Unvalued';
+              if (it.basePrice !== -1 && f.basePrice !== -1) {
+                 let singleSum = Number(it.basePrice) + Number(f.basePrice);
+                 totalStr = (singleSum * it.quantity).toLocaleString('ru-RU');
+              }
+              let qtyStr = it.quantity > 1 ? ` (x${it.quantity})` : '';
+              priceHtml = `${formatCoins(it.basePrice)} + ${formatCoins(f.basePrice)}${qtyStr} = ${totalStr}`;
 
+              finisherIconHtml = `
+                <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
+                  <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+              `;
+            }
+          } else if (!isFinisher) {
             finisherIconHtml = `
-              <div style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border-radius: 50%; border: 2px solid var(--accent-color); padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); z-index: 3;" title="Эффект: ${escapeHtml(f.name)}" onclick="event.stopPropagation(); openDuelItemModal('${escapeJsStr(f.slug)}')">
-                <img src="${escapeHtml(f.image || f.icon || '')}" style="width: 100%; height: 100%; object-fit: contain;">
+              <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
+                   style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
+                   title="Прикрепить эффект"
+                   onmouseover="this.style.borderColor='var(--accent-color)'; this.style.color='var(--accent-color)';"
+                   onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';">
+                +
               </div>
             `;
           }
-        } else if (!isFinisher) {
-          finisherIconHtml = `
-            <div onclick="event.stopPropagation(); openFinisherPicker('${escapeJsStr(id)}')" 
-                 style="position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: rgba(0,0,0,0.5); border-radius: 8px; border: 2px dashed var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3; color: var(--text-secondary); font-size: 20px; font-weight: bold; transition: all 0.2s;"
-                 title="Прикрепить эффект"
-                 onmouseover="this.style.borderColor='var(--accent-color)'; this.style.color='var(--accent-color)';"
-                 onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';">
-              +
-            </div>
-          `;
         }
-
         const xBtn = state.duelsEditMode
           ? `<button class="duels-card-x" onclick="event.stopPropagation(); removeFromWishlist('${escapeJsStr(id)}')">×</button>`
           : '';
@@ -832,9 +832,13 @@
     }
 
     function openDuelsAddMenu() {
+      // Ищем ID предметов, которые УЖЕ есть в хотелках
+      const wishlistIds = state.duelsWishlist.map(w => String(w.item || w));
+      
+      // Оставляем только те, которых там нет
       const available = (state.duelsData || []).filter(it => {
         const id = getDuelItemId(it);
-        return !state.duelsWishlist.some(x => String(x) === id);
+        return !wishlistIds.includes(id);
       });
 
       const html = `
