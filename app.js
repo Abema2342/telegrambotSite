@@ -9,7 +9,7 @@
     }
 	
 	    // --- ЗВУК КЛИКА (ПУЛ) ---
-    const clickSoundSrc = 'sounds/click.mp3';
+    const clickSoundSrc = 'sounds/click.wav';
     const clickPool = [];
     const CLICK_POOL_SIZE = 5;
     let clickIndex = 0;
