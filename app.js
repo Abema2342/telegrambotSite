@@ -7,6 +7,27 @@
       failAudio.currentTime = 0; // Сбрасываем, если звук уже играл
       failAudio.play().catch(e => console.log('Браузер заблокировал звук:', e));
     }
+	
+	    // --- ЗВУК КЛИКА (ПУЛ) ---
+    const clickSoundSrc = 'sounds/click.mp3';
+    const clickPool = [];
+    const CLICK_POOL_SIZE = 5;
+    let clickIndex = 0;
+
+    // Предзагружаем звуки клика
+    for (let i = 0; i < CLICK_POOL_SIZE; i++) {
+      const audio = new Audio(clickSoundSrc);
+      audio.volume = 0.3; // Громкость клика (30%)
+      clickPool.push(audio);
+    }
+
+    function playClickSound() {
+      const sound = clickPool[clickIndex];
+      sound.currentTime = 0; // Сбрасываем, если звук уже играл
+      sound.play().catch(e => { /* Игнорируем блокировку браузера */ });
+      clickIndex = (clickIndex + 1) % CLICK_POOL_SIZE; // Берем следующий из пула
+    }
+    // ------------------------
     // --- ЗВУК СЛИЯНИЯ ШАРИКОВ ---
     const popSoundSrc = 'sounds/pop.mp3'; // Путь к звуку (поменяй, если файл называется иначе)
 
@@ -7973,6 +7994,21 @@ function openModal(title, content, actionsHtml, isWide = false) {
       }
       
       animate();
-    })();
+    // =========================================================
+    // ГЛОБАЛЬНЫЙ ЗВУК КЛИКА
+    // =========================================================
+    document.addEventListener('click', (e) => {
+      // Ищем ближайший кликнутый элемент, который является кнопкой или интерактивной карточкой
+      const target = e.target.closest('button, a, .nav-btn, .gdz-card, .useful-card, .note-card, .num-btn, .upd-card, .duels-card, .calc-btn, .jar-nav-btn, .calc-list-item, .ai-mode-btn');
+      
+      if (target) {
+        // Не играем звук, если это кнопка "Закрыть" (крестик), чтобы не бесило
+        if (target.id === 'modal-close-btn' || target.classList.contains('duels-card-x') || target.classList.contains('finisher-remove')) {
+          return; 
+        }
+        
+        playClickSound();
+      }
+    });
     initThemeColor();
     checkAuth();
