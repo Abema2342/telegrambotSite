@@ -20,6 +20,37 @@
       audio.volume = 0.3; // Громкость клика (30%)
       clickPool.push(audio);
     }
+	
+	    // --- ЗВУКИ УВЕДОМЛЕНИЙ ---
+    const successAudio = new Audio('sounds/success.mp3');
+    successAudio.volume = 0.4;
+    const errorAudio = new Audio('sounds/error.mp3');
+    errorAudio.volume = 0.4;
+
+    function playToastSound(type) {
+      // Если звук выключен или стоит заглушка "озвучено", ничего не делаем
+      if (currentTheme.soundType !== 'custom') return;
+
+      try {
+        if (type === 'success') {
+          successAudio.currentTime = 0;
+          successAudio.play().catch(() => {});
+        } else if (type === 'error') {
+          errorAudio.currentTime = 0;
+          errorAudio.play().catch(() => {});
+        }
+      } catch (e) {}
+    }
+
+    // И не забудь обновить playClickSound, чтобы он тоже проверял настройку!
+    function playClickSound() {
+      if (currentTheme.soundType !== 'custom') return; // <-- Проверка
+      
+      const sound = clickPool[clickIndex];
+      sound.currentTime = 0;
+      sound.play().catch(e => {});
+      clickIndex = (clickIndex + 1) % CLICK_POOL_SIZE;
+    }
 
     function playClickSound() {
       const sound = clickPool[clickIndex];
@@ -1700,10 +1731,15 @@
       return state.isAdmin;
     }
 
-    /* TOAST & CONFIRM */
     function showToast(message, type = 'info') {
+      // ВЫЗЫВАЕМ ЗВУК (только для success и error)
+      if (type === 'success' || type === 'error') {
+        playToastSound(type);
+      }
+
       const container = document.getElementById('toast-container');
       if (!container) return;
+      // ... остальной код функции без изменений
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       toast.textContent = message;
@@ -1747,7 +1783,8 @@ function runPendingConfirm() {
       bg: '#0d0d0d',
       grad1: '#5865F2',
       grad2: '#5865F2',
-      bgType: 'default' // <--- ДОБАВИЛИ ЭТО
+      bgType: 'default',
+      soundType: 'custom' // <--- ДОБАВИТЬ ЭТО (custom, muted, voice)
     };
 	
     function hexToRgb(hex) {
@@ -1816,17 +1853,18 @@ function runPendingConfirm() {
 
       panel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-size: 14px; font-weight: 600;">Настройки темы</span>
+          <span style="font-size: 14px; font-weight: 600;">Настройки</span>
           <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px;">
             <input type="checkbox" id="theme-light-toggle" ${currentTheme.isLight ? 'checked' : ''} onchange="toggleLightTheme(this.checked)">
             ☀️ Светлая
           </label>
         </div>
 
-        <div class="theme-tabs">
+        <div class="theme-tabs" style="flex-wrap: wrap;">
           <button class="theme-tab active" onclick="switchThemeTab('accent')">Акцент</button>
           <button class="theme-tab" onclick="switchThemeTab('bg')">Фон</button>
           <button class="theme-tab" onclick="switchThemeTab('grad')">Градиент</button>
+          <button class="theme-tab" onclick="switchThemeTab('sound')">Звук</button>
         </div>
 
         <div class="theme-section active" id="sec-accent">${colorControlHtml('accent', currentTheme.accent)}</div>
@@ -1844,6 +1882,16 @@ function runPendingConfirm() {
           ${colorControlHtml('grad1', currentTheme.grad1)}
           <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Пятно 2 (Право-низ)</div>
           ${colorControlHtml('grad2', currentTheme.grad2)}
+        </div>
+        
+        <!-- НОВАЯ ВКЛАДКА ЗВУК -->
+        <div class="theme-section" id="sec-sound">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Звуковое оформление:</div>
+          <div class="sound-type-grid">
+            <button class="sound-type-btn ${currentTheme.soundType === 'custom' ? 'active' : ''}" onclick="setSoundType('custom')">Maksimus Prodakshn (Звуки)</button>
+            <button class="sound-type-btn ${currentTheme.soundType === 'muted' ? 'active' : ''}" onclick="setSoundType('muted')">Без звука</button>
+            <button class="sound-type-btn ${currentTheme.soundType === 'voice' ? 'active' : ''}" onclick="setSoundType('voice')">Озвучено (Скоро)</button>
+          </div>
         </div>
 
         <div class="theme-actions">
@@ -1865,6 +1913,38 @@ function runPendingConfirm() {
       } else if (!isLight && currentTheme.bg === '#f4f6f8') {
          currentTheme.bg = '#0d0d0d';
          applyTheme(currentTheme);
+      }
+    }
+	
+	    function switchThemeTab(tabId) {
+      window._activeThemeTab = tabId;
+      document.querySelectorAll('.theme-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.theme-section').forEach(s => s.classList.remove('active'));
+      
+      const btn = Array.from(document.querySelectorAll('.theme-tab')).find(b => {
+        if (tabId === 'bg') return b.innerText === 'Фон';
+        if (tabId === 'grad') return b.innerText === 'Градиент';
+        if (tabId === 'sound') return b.innerText === 'Звук';
+        return b.innerText === 'Акцент';
+      });
+      if (btn) btn.classList.add('active');
+      
+      const sec = document.getElementById('sec-' + tabId);
+      if (sec) sec.classList.add('active');
+    }
+
+    function setSoundType(type) {
+      currentTheme.soundType = type;
+      applyTheme(currentTheme);
+      renderThemePanel(); // Обновляем активную кнопку
+      
+      // Показываем уведомление и звук (если включен), чтобы проверить
+      if (type === 'custom') {
+         showToast('Звуки включены', 'success');
+      } else if (type === 'muted') {
+         showToast('Звуки выключены', 'info');
+      } else {
+         showToast('Режим озвучки в разработке', 'info');
       }
     }
 
