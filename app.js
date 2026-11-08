@@ -7994,6 +7994,8 @@ function openModal(title, content, actionsHtml, isWide = false) {
       }
       
       animate();
+    })(); // <--- ВОТ ЭТОЙ СТРОЧКИ ТЕБЕ НЕ ХВАТАЕТ! Она закрывает функцию initSakura
+
     // =========================================================
     // ГЛОБАЛЬНЫЙ ЗВУК КЛИКА
     // =========================================================
@@ -8010,5 +8012,7 @@ function openModal(title, content, actionsHtml, isWide = false) {
         playClickSound();
       }
     });
+    
+    // Инициализация при старте
     initThemeColor();
     checkAuth();
