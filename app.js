@@ -22,9 +22,9 @@
     }
 	
 	    // --- ЗВУКИ УВЕДОМЛЕНИЙ ---
-    const successAudio = new Audio('sounds/success.mp3');
+    const successAudio = new Audio('sounds/success.wav');
     successAudio.volume = 0.4;
-    const errorAudio = new Audio('sounds/error.mp3');
+    const errorAudio = new Audio('sounds/error.wav');
     errorAudio.volume = 0.4;
 
     function playToastSound(type) {
