@@ -1916,22 +1916,7 @@ function runPendingConfirm() {
       }
     }
 	
-	    function switchThemeTab(tabId) {
-      window._activeThemeTab = tabId;
-      document.querySelectorAll('.theme-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.theme-section').forEach(s => s.classList.remove('active'));
-      
-      const btn = Array.from(document.querySelectorAll('.theme-tab')).find(b => {
-        if (tabId === 'bg') return b.innerText === 'Фон';
-        if (tabId === 'grad') return b.innerText === 'Градиент';
-        if (tabId === 'sound') return b.innerText === 'Звук';
-        return b.innerText === 'Акцент';
-      });
-      if (btn) btn.classList.add('active');
-      
-      const sec = document.getElementById('sec-' + tabId);
-      if (sec) sec.classList.add('active');
-    }
+
 
     function setSoundType(type) {
       currentTheme.soundType = type;
