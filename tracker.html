@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Лог перемещений</title>
+  <link rel="stylesheet" href="tracker.css">
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Трекер перемещений</h1>
+      <button class="btn-primary" onclick="toggleForm()">+ Добавить запись</button>
+    </header>
+
+    <!-- Форма добавления (скрыта по умолчанию) -->
+    <div id="add-form" class="form-container" style="display: none;">
+      <div class="form-row">
+        <div class="input-group">
+          <label>Время (оставь пустым для текущего)</label>
+          <input type="time" id="input-time">
+        </div>
+        <div class="input-group">
+          <label>Действие</label>
+          <select id="input-action">
+            <option value="arrived">Пришёл</option>
+            <option value="left">Ушёл</option>
+          </select>
+        </div>
+        <div class="input-group" style="flex: 2;">
+          <label>Куда / Откуда / Комментарий</label>
+          <input type="text" id="input-place" placeholder="Например: Школа, Борьба, Дом">
+        </div>
+        <div class="input-group" style="align-self: flex-end;">
+          <button class="btn-success" onclick="addEntry()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Список записей -->
+    <div class="list-container">
+      <div class="list-header">
+        <div class="col-time">Время</div>
+        <div class="col-action">Действие</div>
+        <div class="col-place">Место</div>
+        <div class="col-del"></div>
+      </div>
+      <div id="list-body">
+        <div class="loading">Загрузка данных...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="tracker.js"></script>
+</body>
+</html>
