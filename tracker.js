@@ -145,10 +145,25 @@ async function addEntry() {
 }
 
 // Удаление записи
-async function deleteEntry(index) {
-  if (!confirm('Удалить эту запись?')) return;
+let pendingDeleteIndex = null;
+
+function deleteEntry(index) {
+  pendingDeleteIndex = index;
+  const entry = entries[index];
+  document.getElementById('confirm-text').textContent = `Удалить запись «${entry.place}»?`;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+function closeConfirm() {
+  pendingDeleteIndex = null;
+  document.getElementById('confirm-modal').style.display = 'none';
+}
+
+async function executeDelete() {
+  if (pendingDeleteIndex === null) return;
   
-  entries.splice(index, 1);
+  entries.splice(pendingDeleteIndex, 1);
+  closeConfirm();
   renderList();
   await saveData();
 }
