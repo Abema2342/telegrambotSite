@@ -50,30 +50,61 @@ async function loadData() {
 }
 
 // Сохранение данных
+// Сохранение данных (с защитой от 409)
 async function saveData() {
-  try {
-    const content = JSON.stringify(entries, null, 2);
-    const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+  const maxRetries = 3;
+  let attempt = 0;
 
-    const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}`, {
-      method: 'PUT',
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: 'Update tracker log via web',
-        content: contentBase64,
-        sha: fileSha
-      })
-    });
+  while (attempt < maxRetries) {
+    try {
+      const content = JSON.stringify(entries, null, 2);
+      const contentBase64 = btoa(unescape(encodeURIComponent(content)));
 
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+      const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}`, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Update tracker log via web',
+          content: contentBase64,
+          sha: fileSha
+        })
+      });
 
-    const data = await res.json();
-    fileSha = data.content.sha;
-  } catch (e) {
-    alert('Ошибка сохранения: ' + e.message);
+      // Если 409 (конфликт SHA) — пробуем еще раз
+      if (res.status === 409 && attempt < maxRetries - 1) {
+        console.warn('Конфликт SHA, запрашиваем актуальный...');
+        
+        // Запрашиваем актуальный SHA
+        const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}?_=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        
+        if (getRes.ok) {
+          const meta = await getRes.json();
+          fileSha = meta.sha; // Обновляем SHA
+        }
+        
+        attempt++;
+        await new Promise(r => setTimeout(r, 300)); // Пауза перед повтором
+        continue;
+      }
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      const data = await res.json();
+      fileSha = data.content.sha;
+      return; // Успешно сохранили
+
+    } catch (e) {
+      if (attempt >= maxRetries - 1) {
+        alert('Ошибка сохранения: ' + e.message);
+      }
+      attempt++;
+      await new Promise(r => setTimeout(r, 300));
+    }
   }
 }
 
