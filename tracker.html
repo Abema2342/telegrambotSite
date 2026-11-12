@@ -6,32 +6,22 @@
   <title>Лог перемещений</title>
   <link rel="stylesheet" href="tracker.css">
 </head>
-  <!-- Кастомное окно подтверждения -->
-  <div id="confirm-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
-      <div class="modal-text" id="confirm-text">Удалить запись?</div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeConfirm()">Отмена</button>
-        <button class="btn-confirm" onclick="executeDelete()">Удалить</button>
-      </div>
-    </div>
-  </div>
 <body>
 
   <div class="container">
     <div class="main-layout">
       
-      <!-- ЛЕВАЯ КОЛОНКА: СПИСОК И ДОБАВЛЕНИЕ -->
+      <!-- ЛЕВАЯ КОЛОНКА: СПИСОК -->
       <div class="left-col">
         <header>
           <h1>Трекер перемещений</h1>
-          <button class="btn-primary" onclick="toggleForm()">+ Добавить</button>
+          <button class="btn-primary" onclick="toggleForm()">+ Добавить запись</button>
         </header>
 
         <div id="add-form" class="form-container" style="display: none;">
           <div class="form-row">
             <div class="input-group">
-              <label>Время (оставь пустым для текущего)</label>
+              <label>Время (пусто = сейчас)</label>
               <input type="time" id="input-time">
             </div>
             <div class="input-group">
@@ -77,7 +67,7 @@
           </div>
           <div class="calendar-grid" id="calendar-grid"></div>
           <div class="calendar-legend">
-            <span class="legend-item"><span class="dot dot-blue"></span> Программирование</span>
+            <span class="legend-item"><span class="dot dot-blue"></span> Кодинг</span>
             <span class="legend-item"><span class="dot dot-red"></span> Борьба</span>
             <span class="legend-item"><span class="dot dot-mixed"></span> Оба</span>
           </div>
@@ -86,24 +76,17 @@
 
     </div>
   </div>
-      <!-- Календарь -->
-    <div class="calendar-container">
-      <div class="calendar-header">
-        <button class="btn-cal" onclick="changeMonth(-1)">←</button>
-        <h2 id="calendar-title">Ноябрь 2026</h2>
-        <button class="btn-cal" onclick="changeMonth(1)">→</button>
-      </div>
-      <div class="calendar-weekdays">
-        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
-      </div>
-      <div class="calendar-grid" id="calendar-grid">
-        <!-- Сюда JS вставит дни -->
-      </div>
-      <div class="calendar-legend">
-        <span class="legend-item"><span class="dot dot-blue"></span> Программирование</span>
-        <span class="legend-item"><span class="dot dot-red"></span> Борьба</span>
+
+  <!-- Кастомное окно подтверждения -->
+  <div id="confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-text" id="confirm-text">Удалить запись?</div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeConfirm()">Отмена</button>
+        <button class="btn-confirm" onclick="executeDelete()">Удалить</button>
       </div>
     </div>
+  </div>
 
   <script src="tracker.js"></script>
 </body>
