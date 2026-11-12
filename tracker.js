@@ -15,10 +15,8 @@ async function loadData() {
     });
 
     if (res.status === 404) {
-      entries = [];
-      calendarData = {};
-      renderList();
-      renderCalendar();
+      entries = []; calendarData = {};
+      renderList(); renderCalendar();
       return;
     }
 
@@ -26,27 +24,21 @@ async function loadData() {
 
     const meta = await res.json();
     fileSha = meta.sha;
-    
     const raw = atob(meta.content.replace(/\n/g, ''));
     const utf8 = decodeURIComponent(Array.prototype.map.call(raw, c => 
       '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
     ).join(''));
-    
     const parsed = JSON.parse(utf8);
 
-    // Миграция со старого формата (если был просто массив)
     if (Array.isArray(parsed)) {
-      entries = parsed;
-      calendarData = {};
+      entries = parsed; calendarData = {};
     } else {
       entries = parsed.logs || [];
       calendarData = parsed.calendar || {};
     }
     
     entries.sort((a, b) => new Date(b.time) - new Date(a.time));
-    
-    renderList();
-    renderCalendar();
+    renderList(); renderCalendar();
   } catch (e) {
     document.getElementById('list-body').innerHTML = `<div class="empty" style="color: var(--danger);">Ошибка загрузки: ${e.message}</div>`;
   }
@@ -59,47 +51,31 @@ async function saveData() {
 
   while (attempt < maxRetries) {
     try {
-      // Теперь сохраняем объект с двумя полями
       const payload = { logs: entries, calendar: calendarData };
       const content = JSON.stringify(payload, null, 2);
       const contentBase64 = btoa(unescape(encodeURIComponent(content)));
 
       const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}`, {
         method: 'PUT',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: 'Update tracker log via web',
-          content: contentBase64,
-          sha: fileSha
-        })
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Update tracker log', content: contentBase64, sha: fileSha })
       });
 
       if (res.status === 409 && attempt < maxRetries - 1) {
         const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}?_=${Date.now()}`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-        if (getRes.ok) {
-          const meta = await getRes.json();
-          fileSha = meta.sha;
-        }
-        attempt++;
-        await new Promise(r => setTimeout(r, 300));
-        continue;
+        if (getRes.ok) { const meta = await getRes.json(); fileSha = meta.sha; }
+        attempt++; await new Promise(r => setTimeout(r, 300)); continue;
       }
 
       if (!res.ok) throw new Error('HTTP ' + res.status);
-
       const data = await res.json();
       fileSha = data.content.sha;
       return;
-
     } catch (e) {
       if (attempt >= maxRetries - 1) alert('Ошибка сохранения: ' + e.message);
-      attempt++;
-      await new Promise(r => setTimeout(r, 300));
+      attempt++; await new Promise(r => setTimeout(r, 300));
     }
   }
 }
@@ -113,74 +89,49 @@ function changeMonth(offset) {
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  
   const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+  
   document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year}`;
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  
-  // В России неделя начинается с понедельника (0 - это воскресенье)
   const startDay = firstDay === 0 ? 6 : firstDay - 1;
 
   let html = '';
-  
-  for (let i = 0; i < startDay; i++) {
-    html += `<div class="day empty"></div>`;
-  }
+  for (let i = 0; i < startDay; i++) html += `<div class="day empty"></div>`;
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    
-    // Получаем текущие метки дня (поддерживаем и старый формат со строкой)
     let marks = calendarData[dateStr];
-    if (!Array.isArray(marks) && marks) {
-      marks = [marks]; // Миграция со строки в массив
-    } else if (!marks) {
-      marks = [];
-    }
+    if (!Array.isArray(marks)) marks = marks ? [marks] : [];
 
     const isProg = marks.includes('programming');
     const isWrest = marks.includes('wrestling');
-    
     let markClass = '';
+    
     if (isProg && isWrest) markClass = 'mixed';
     else if (isProg) markClass = 'programming';
     else if (isWrest) markClass = 'wrestling';
 
     html += `<div class="day ${markClass}" onclick="cycleDay('${dateStr}')">${day}</div>`;
   }
-
   document.getElementById('calendar-grid').innerHTML = html;
 }
 
 async function cycleDay(dateStr) {
   let marks = calendarData[dateStr];
-  
-  // Приводим к массиву, если пришла старая строка
-  if (!Array.isArray(marks)) {
-    marks = marks ? [marks] : [];
-  }
+  if (!Array.isArray(marks)) marks = marks ? [marks] : [];
 
   const hasProg = marks.includes('programming');
   const hasWrest = marks.includes('wrestling');
 
-  // Логика цикла: пусто -> программирование -> борьба -> оба -> пусто
-  if (!hasProg && !hasWrest) {
-    marks = ['programming'];
-  } else if (hasProg && !hasWrest) {
-    marks = ['wrestling'];
-  } else if (!hasProg && hasWrest) {
-    marks = ['programming', 'wrestling'];
-  } else {
-    marks = []; // Очищаем
-  }
+  if (!hasProg && !hasWrest) marks = ['programming'];
+  else if (hasProg && !hasWrest) marks = ['wrestling'];
+  else if (!hasProg && hasWrest) marks = ['programming', 'wrestling'];
+  else marks = [];
 
-  if (marks.length === 0) {
-    delete calendarData[dateStr];
-  } else {
-    calendarData[dateStr] = marks;
-  }
+  if (marks.length === 0) delete calendarData[dateStr];
+  else calendarData[dateStr] = marks;
   
   renderCalendar();
   await saveData();
@@ -189,8 +140,7 @@ async function cycleDay(dateStr) {
 // ===== СПИСОК =====
 function formatTime(isoString) {
   if (!isoString) return '';
-  const d = new Date(isoString);
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return new Date(isoString).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
 function renderList() {
@@ -202,17 +152,12 @@ function renderList() {
 
   body.innerHTML = entries.map((entry, index) => {
     const isArrived = entry.action === 'arrived';
-    const badgeClass = isArrived ? 'badge-arrived' : 'badge-left';
-    const badgeText = isArrived ? 'Пришёл' : 'Ушёл';
-    
     return `
       <div class="row">
         <div class="col-time">${formatTime(entry.time)}</div>
-        <div class="col-action"><span class="badge ${badgeClass}">${badgeText}</span></div>
+        <div class="col-action"><span class="badge ${isArrived ? 'badge-arrived' : 'badge-left'}">${isArrived ? 'Пришёл' : 'Ушёл'}</span></div>
         <div class="col-place">${escapeHtml(entry.place)}</div>
-        <div class="col-del">
-          <button class="btn-icon" onclick="deleteEntry(${index})" title="Удалить">✕</button>
-        </div>
+        <div class="col-del"><button class="btn-icon" onclick="deleteEntry(${index})">✕</button></div>
       </div>
     `;
   }).join('');
@@ -227,10 +172,7 @@ async function addEntry() {
   const action = document.getElementById('input-action').value;
   const place = document.getElementById('input-place').value.trim();
 
-  if (!place) {
-    alert('Напиши место или комментарий.');
-    return;
-  }
+  if (!place) return alert('Напиши место или комментарий.');
 
   let finalTime;
   if (timeInput) {
@@ -243,21 +185,18 @@ async function addEntry() {
   }
 
   entries.unshift({ time: finalTime, action, place });
-  
   document.getElementById('input-time').value = '';
   document.getElementById('input-place').value = '';
   
-  renderList();
-  toggleForm();
-  await saveData();
+  renderList(); toggleForm(); await saveData();
 }
 
+// ===== УДАЛЕНИЕ =====
 let pendingDeleteIndex = null;
 
 function deleteEntry(index) {
   pendingDeleteIndex = index;
-  const entry = entries[index];
-  document.getElementById('confirm-text').textContent = `Удалить запись «${entry.place}»?`;
+  document.getElementById('confirm-text').textContent = `Удалить запись «${entries[index].place}»?`;
   document.getElementById('confirm-modal').style.display = 'flex';
 }
 
@@ -269,9 +208,7 @@ function closeConfirm() {
 async function executeDelete() {
   if (pendingDeleteIndex === null) return;
   entries.splice(pendingDeleteIndex, 1);
-  closeConfirm();
-  renderList();
-  await saveData();
+  closeConfirm(); renderList(); await saveData();
 }
 
 function toggleForm() {
