@@ -23,7 +23,7 @@ body {
 }
 
 .container {
-  max-width: 1400px; /* Было 1000px */
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -144,7 +144,7 @@ input:focus, select:focus { border-color: var(--primary); }
 .col-place { flex: 1; }
 .col-del { width: 40px; text-align: right; }
 
-/* Бейджи действий */
+/* Бейджи */
 .badge {
   display: inline-block;
   padding: 4px 8px;
@@ -163,7 +163,8 @@ input:focus, select:focus { border-color: var(--primary); }
   .col-action { width: 100px; }
   .form-row { flex-direction: column; align-items: stretch; }
 }
-/* ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ===== */
+
+/* ===== МОДАЛЬНОЕ ОКНО ===== */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
@@ -175,10 +176,7 @@ input:focus, select:focus { border-color: var(--primary); }
   animation: fadeIn 0.15s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .modal-box {
   background: var(--panel);
@@ -190,143 +188,14 @@ input:focus, select:focus { border-color: var(--primary); }
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.modal-text {
-  font-size: 16px;
-  margin-bottom: 20px;
-  color: var(--text);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn-cancel {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
+.modal-text { font-size: 16px; margin-bottom: 20px; color: var(--text); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
 .btn-cancel:hover { background: rgba(255,255,255,0.05); }
-
-.btn-confirm {
-  background: var(--danger);
-  color: #fff;
-}
+.btn-confirm { background: var(--danger); color: #fff; }
 .btn-confirm:hover { background: var(--danger-hover); }
 
-/* ===== КАЛЕНДАРЬ ===== */
-.calendar-container {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 24px;
-  margin-bottom: 24px;
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.calendar-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.btn-cal {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.btn-cal:hover { background: var(--border); }
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.day {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.15s;
-  user-select: none;
-}
-
-.day:hover:not(.empty) {
-  border-color: var(--text-muted);
-}
-
-.day.empty {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.05);
-  cursor: default;
-}
-
-/* Цвета отметок */
-.day.programming {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: var(--primary);
-  color: #fff;
-  font-weight: bold;
-}
-
-.day.wrestling {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: var(--danger);
-  color: #fff;
-  font-weight: bold;
-}
-
-.calendar-legend {
-  display: flex;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-  justify-content: center;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.dot-blue { background: var(--primary); }
-.dot-red { background: var(--danger); }
-
-/* ===== СЕТКА В ДВЕ КОЛОНКИ ===== */
+/* ===== ДВЕ КОЛОНКИ ===== */
 .main-layout {
   display: flex;
   gap: 24px;
@@ -335,47 +204,35 @@ input:focus, select:focus { border-color: var(--primary); }
 
 .left-col {
   flex: 1;
-  min-width: 0; /* Чтобы список не распирал колонку */
+  min-width: 0;
 }
 
 .right-col {
-  width: 380px;
+  width: 420px;
   flex-shrink: 0;
   position: sticky;
-  top: 24px; /* Календарь будет прилипать при скролле списка */
+  top: 24px;
 }
 
 @media (max-width: 900px) {
   .main-layout {
     flex-direction: column;
   }
-/* Найди этот блок (где-то в середине файла) */
-.right-col {
-  width: 420px; /* Было 380px, увеличили */
-  flex-shrink: 0;
-  position: sticky;
-  top: 24px; 
+  .right-col {
+    width: 100%;
+    position: static;
+  }
 }
 
-/* А это блок календаря */
+/* ===== КАЛЕНДАРЬ ===== */
 .calendar-container {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 16px; /* Уменьшили с 20px, чтобы дать больше места дням */
+  padding: 16px;
   width: 100%;
-  box-sizing: border-box; /* Защита от вылезания */
+  box-sizing: border-box;
 }
-
-/* И сетка */
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px; /* Было 6px, немного сжали, чтобы влезло */
-  width: 100%;
-}
-
-/* ===== КАЛЕНДАРЬ (УЛУЧШЕННЫЙ) ===== */
 
 .calendar-header {
   display: flex;
@@ -384,10 +241,7 @@ input:focus, select:focus { border-color: var(--primary); }
   margin-bottom: 20px;
 }
 
-.calendar-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-}
+.calendar-header h2 { font-size: 18px; font-weight: 600; color: var(--text); }
 
 .btn-cal {
   background: var(--bg);
@@ -414,6 +268,13 @@ input:focus, select:focus { border-color: var(--primary); }
   font-weight: 600;
 }
 
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
 .day {
   aspect-ratio: 1;
   display: flex;
@@ -436,12 +297,11 @@ input:focus, select:focus { border-color: var(--primary); }
 }
 
 .day.empty {
-  background: transparent;
-  border-color: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.05);
   cursor: default;
 }
 
-/* Цвета */
 .day.programming {
   background: rgba(59, 130, 246, 0.2);
   border-color: var(--primary);
@@ -456,10 +316,9 @@ input:focus, select:focus { border-color: var(--primary); }
   font-weight: bold;
 }
 
-/* Смешанный день (синий + красный) */
 .day.mixed {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 50%, rgba(239, 68, 68, 0.3) 50%);
-  border-color: #a855f7; /* фиолетовый контур */
+  border-color: #a855f7;
   color: #fff;
   font-weight: bold;
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
@@ -475,17 +334,8 @@ input:focus, select:focus { border-color: var(--primary); }
   justify-content: center;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
 .dot-blue { background: var(--primary); }
 .dot-red { background: var(--danger); }
 .dot-mixed { background: linear-gradient(135deg, var(--primary) 50%, var(--danger) 50%); }
