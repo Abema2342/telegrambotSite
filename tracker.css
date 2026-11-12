@@ -349,19 +349,33 @@ input:focus, select:focus { border-color: var(--primary); }
   .main-layout {
     flex-direction: column;
   }
-  .right-col {
-    width: 100%;
-    position: static;
-  }
+/* Найди этот блок (где-то в середине файла) */
+.right-col {
+  width: 420px; /* Было 380px, увеличили */
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px; 
 }
 
-/* ===== КАЛЕНДАРЬ (УЛУЧШЕННЫЙ) ===== */
+/* А это блок календаря */
 .calendar-container {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px; /* Уменьшили с 20px, чтобы дать больше места дням */
+  width: 100%;
+  box-sizing: border-box; /* Защита от вылезания */
 }
+
+/* И сетка */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px; /* Было 6px, немного сжали, чтобы влезло */
+  width: 100%;
+}
+
+/* ===== КАЛЕНДАРЬ (УЛУЧШЕННЫЙ) ===== */
 
 .calendar-header {
   display: flex;
@@ -398,12 +412,6 @@ input:focus, select:focus { border-color: var(--primary); }
   color: var(--text-muted);
   margin-bottom: 8px;
   font-weight: 600;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
 }
 
 .day {
