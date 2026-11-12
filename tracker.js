@@ -3,16 +3,11 @@ const GITHUB_REPO = "Abema2342/telegrambotdata";
 const FILE_NAME = "other.json";
 
 let entries = [];
+let calendarData = {};
 let fileSha = null;
+let currentDate = new Date();
 
-// Форматирование времени
-function formatTime(isoString) {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
-
-// Загрузка данных
+// ===== ЗАГРУЗКА =====
 async function loadData() {
   try {
     const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}?_=${Date.now()}`, {
@@ -21,8 +16,9 @@ async function loadData() {
 
     if (res.status === 404) {
       entries = [];
-      fileSha = null;
+      calendarData = {};
       renderList();
+      renderCalendar();
       return;
     }
 
@@ -31,33 +27,41 @@ async function loadData() {
     const meta = await res.json();
     fileSha = meta.sha;
     
-    // Декодируем Base64
     const raw = atob(meta.content.replace(/\n/g, ''));
     const utf8 = decodeURIComponent(Array.prototype.map.call(raw, c => 
       '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
     ).join(''));
     
-    entries = JSON.parse(utf8);
-    if (!Array.isArray(entries)) entries = [];
+    const parsed = JSON.parse(utf8);
+
+    // Миграция со старого формата (если был просто массив)
+    if (Array.isArray(parsed)) {
+      entries = parsed;
+      calendarData = {};
+    } else {
+      entries = parsed.logs || [];
+      calendarData = parsed.calendar || {};
+    }
     
-    // Сортируем по времени (новые сверху)
     entries.sort((a, b) => new Date(b.time) - new Date(a.time));
     
     renderList();
+    renderCalendar();
   } catch (e) {
     document.getElementById('list-body').innerHTML = `<div class="empty" style="color: var(--danger);">Ошибка загрузки: ${e.message}</div>`;
   }
 }
 
-// Сохранение данных
-// Сохранение данных (с защитой от 409)
+// ===== СОХРАНЕНИЕ =====
 async function saveData() {
   const maxRetries = 3;
   let attempt = 0;
 
   while (attempt < maxRetries) {
     try {
-      const content = JSON.stringify(entries, null, 2);
+      // Теперь сохраняем объект с двумя полями
+      const payload = { logs: entries, calendar: calendarData };
+      const content = JSON.stringify(payload, null, 2);
       const contentBase64 = btoa(unescape(encodeURIComponent(content)));
 
       const res = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}`, {
@@ -73,22 +77,16 @@ async function saveData() {
         })
       });
 
-      // Если 409 (конфликт SHA) — пробуем еще раз
       if (res.status === 409 && attempt < maxRetries - 1) {
-        console.warn('Конфликт SHA, запрашиваем актуальный...');
-        
-        // Запрашиваем актуальный SHA
         const getRes = await fetch(`${GITHUB_WORKER}/github/repos/${GITHUB_REPO}/contents/${FILE_NAME}?_=${Date.now()}`, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-        
         if (getRes.ok) {
           const meta = await getRes.json();
-          fileSha = meta.sha; // Обновляем SHA
+          fileSha = meta.sha;
         }
-        
         attempt++;
-        await new Promise(r => setTimeout(r, 300)); // Пауза перед повтором
+        await new Promise(r => setTimeout(r, 300));
         continue;
       }
 
@@ -96,22 +94,79 @@ async function saveData() {
 
       const data = await res.json();
       fileSha = data.content.sha;
-      return; // Успешно сохранили
+      return;
 
     } catch (e) {
-      if (attempt >= maxRetries - 1) {
-        alert('Ошибка сохранения: ' + e.message);
-      }
+      if (attempt >= maxRetries - 1) alert('Ошибка сохранения: ' + e.message);
       attempt++;
       await new Promise(r => setTimeout(r, 300));
     }
   }
 }
 
-// Отрисовка списка
+// ===== КАЛЕНДАРЬ =====
+function changeMonth(offset) {
+  currentDate.setMonth(currentDate.getMonth() + offset);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  
+  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+  document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  // В России неделя начинается с понедельника (0 - это воскресенье)
+  const startDay = firstDay === 0 ? 6 : firstDay - 1;
+
+  let html = '';
+  
+  for (let i = 0; i < startDay; i++) {
+    html += `<div class="day empty"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const mark = calendarData[dateStr];
+    
+    let markClass = '';
+    if (mark === 'programming') markClass = 'programming';
+    if (mark === 'wrestling') markClass = 'wrestling';
+
+    html += `<div class="day ${markClass}" onclick="cycleDay('${dateStr}')">${day}</div>`;
+  }
+
+  document.getElementById('calendar-grid').innerHTML = html;
+}
+
+async function cycleDay(dateStr) {
+  const current = calendarData[dateStr];
+  
+  if (!current) {
+    calendarData[dateStr] = 'programming'; // Серый -> Синий
+  } else if (current === 'programming') {
+    calendarData[dateStr] = 'wrestling';   // Синий -> Красный
+  } else {
+    delete calendarData[dateStr];          // Красный -> Серый
+  }
+  
+  renderCalendar();
+  await saveData();
+}
+
+// ===== СПИСОК =====
+function formatTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
 function renderList() {
   const body = document.getElementById('list-body');
-  
   if (entries.length === 0) {
     body.innerHTML = '<div class="empty">Нет записей. Нажми «+ Добавить».</div>';
     return;
@@ -139,7 +194,6 @@ function escapeHtml(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Добавление записи
 async function addEntry() {
   const timeInput = document.getElementById('input-time').value;
   const action = document.getElementById('input-action').value;
@@ -150,7 +204,6 @@ async function addEntry() {
     return;
   }
 
-  // Если время не выбрано — берем текущее
   let finalTime;
   if (timeInput) {
     const [hours, minutes] = timeInput.split(':');
@@ -161,21 +214,16 @@ async function addEntry() {
     finalTime = new Date().toISOString();
   }
 
-  const newEntry = { time: finalTime, action, place };
+  entries.unshift({ time: finalTime, action, place });
   
-  // Добавляем в начало списка
-  entries.unshift(newEntry);
-  
-  // Очищаем форму
   document.getElementById('input-time').value = '';
   document.getElementById('input-place').value = '';
   
   renderList();
-  toggleForm(); // Скрываем форму
-  await saveData(); // Сохраняем на GitHub
+  toggleForm();
+  await saveData();
 }
 
-// Удаление записи
 let pendingDeleteIndex = null;
 
 function deleteEntry(index) {
@@ -192,18 +240,16 @@ function closeConfirm() {
 
 async function executeDelete() {
   if (pendingDeleteIndex === null) return;
-  
   entries.splice(pendingDeleteIndex, 1);
   closeConfirm();
   renderList();
   await saveData();
 }
 
-// Показ/скрытие формы
 function toggleForm() {
   const form = document.getElementById('add-form');
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-// Инициализация
+// ===== СТАРТ =====
 loadData();

@@ -61,6 +61,24 @@
       </div>
     </div>
   </div>
+      <!-- Календарь -->
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <button class="btn-cal" onclick="changeMonth(-1)">←</button>
+        <h2 id="calendar-title">Ноябрь 2026</h2>
+        <button class="btn-cal" onclick="changeMonth(1)">→</button>
+      </div>
+      <div class="calendar-weekdays">
+        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+      </div>
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- Сюда JS вставит дни -->
+      </div>
+      <div class="calendar-legend">
+        <span class="legend-item"><span class="dot dot-blue"></span> Программирование</span>
+        <span class="legend-item"><span class="dot dot-red"></span> Борьба</span>
+      </div>
+    </div>
 
   <script src="tracker.js"></script>
 </body>
