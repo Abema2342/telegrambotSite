@@ -131,11 +131,22 @@ function renderCalendar() {
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const mark = calendarData[dateStr];
+    
+    // Получаем текущие метки дня (поддерживаем и старый формат со строкой)
+    let marks = calendarData[dateStr];
+    if (!Array.isArray(marks) && marks) {
+      marks = [marks]; // Миграция со строки в массив
+    } else if (!marks) {
+      marks = [];
+    }
+
+    const isProg = marks.includes('programming');
+    const isWrest = marks.includes('wrestling');
     
     let markClass = '';
-    if (mark === 'programming') markClass = 'programming';
-    if (mark === 'wrestling') markClass = 'wrestling';
+    if (isProg && isWrest) markClass = 'mixed';
+    else if (isProg) markClass = 'programming';
+    else if (isWrest) markClass = 'wrestling';
 
     html += `<div class="day ${markClass}" onclick="cycleDay('${dateStr}')">${day}</div>`;
   }
@@ -144,14 +155,31 @@ function renderCalendar() {
 }
 
 async function cycleDay(dateStr) {
-  const current = calendarData[dateStr];
+  let marks = calendarData[dateStr];
   
-  if (!current) {
-    calendarData[dateStr] = 'programming'; // Серый -> Синий
-  } else if (current === 'programming') {
-    calendarData[dateStr] = 'wrestling';   // Синий -> Красный
+  // Приводим к массиву, если пришла старая строка
+  if (!Array.isArray(marks)) {
+    marks = marks ? [marks] : [];
+  }
+
+  const hasProg = marks.includes('programming');
+  const hasWrest = marks.includes('wrestling');
+
+  // Логика цикла: пусто -> программирование -> борьба -> оба -> пусто
+  if (!hasProg && !hasWrest) {
+    marks = ['programming'];
+  } else if (hasProg && !hasWrest) {
+    marks = ['wrestling'];
+  } else if (!hasProg && hasWrest) {
+    marks = ['programming', 'wrestling'];
   } else {
-    delete calendarData[dateStr];          // Красный -> Серый
+    marks = []; // Очищаем
+  }
+
+  if (marks.length === 0) {
+    delete calendarData[dateStr];
+  } else {
+    calendarData[dateStr] = marks;
   }
   
   renderCalendar();

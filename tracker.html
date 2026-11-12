@@ -19,46 +19,71 @@
 <body>
 
   <div class="container">
-    <header>
-      <h1>Трекер перемещений</h1>
-      <button class="btn-primary" onclick="toggleForm()">+ Добавить запись</button>
-    </header>
+    <div class="main-layout">
+      
+      <!-- ЛЕВАЯ КОЛОНКА: СПИСОК И ДОБАВЛЕНИЕ -->
+      <div class="left-col">
+        <header>
+          <h1>Трекер перемещений</h1>
+          <button class="btn-primary" onclick="toggleForm()">+ Добавить</button>
+        </header>
 
-    <!-- Форма добавления (скрыта по умолчанию) -->
-    <div id="add-form" class="form-container" style="display: none;">
-      <div class="form-row">
-        <div class="input-group">
-          <label>Время (оставь пустым для текущего)</label>
-          <input type="time" id="input-time">
+        <div id="add-form" class="form-container" style="display: none;">
+          <div class="form-row">
+            <div class="input-group">
+              <label>Время (оставь пустым для текущего)</label>
+              <input type="time" id="input-time">
+            </div>
+            <div class="input-group">
+              <label>Действие</label>
+              <select id="input-action">
+                <option value="arrived">Пришёл</option>
+                <option value="left">Ушёл</option>
+              </select>
+            </div>
+            <div class="input-group" style="flex: 2;">
+              <label>Куда / Откуда / Комментарий</label>
+              <input type="text" id="input-place" placeholder="Например: Школа, Борьба, Дом">
+            </div>
+            <div class="input-group" style="align-self: flex-end;">
+              <button class="btn-success" onclick="addEntry()">Сохранить</button>
+            </div>
+          </div>
         </div>
-        <div class="input-group">
-          <label>Действие</label>
-          <select id="input-action">
-            <option value="arrived">Пришёл</option>
-            <option value="left">Ушёл</option>
-          </select>
-        </div>
-        <div class="input-group" style="flex: 2;">
-          <label>Куда / Откуда / Комментарий</label>
-          <input type="text" id="input-place" placeholder="Например: Школа, Борьба, Дом">
-        </div>
-        <div class="input-group" style="align-self: flex-end;">
-          <button class="btn-success" onclick="addEntry()">Сохранить</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Список записей -->
-    <div class="list-container">
-      <div class="list-header">
-        <div class="col-time">Время</div>
-        <div class="col-action">Действие</div>
-        <div class="col-place">Место</div>
-        <div class="col-del"></div>
+        <div class="list-container">
+          <div class="list-header">
+            <div class="col-time">Время</div>
+            <div class="col-action">Действие</div>
+            <div class="col-place">Место</div>
+            <div class="col-del"></div>
+          </div>
+          <div id="list-body">
+            <div class="loading">Загрузка данных...</div>
+          </div>
+        </div>
       </div>
-      <div id="list-body">
-        <div class="loading">Загрузка данных...</div>
+
+      <!-- ПРАВАЯ КОЛОНКА: КАЛЕНДАРЬ -->
+      <div class="right-col">
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <button class="btn-cal" onclick="changeMonth(-1)">←</button>
+            <h2 id="calendar-title">Ноябрь 2026</h2>
+            <button class="btn-cal" onclick="changeMonth(1)">→</button>
+          </div>
+          <div class="calendar-weekdays">
+            <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="dot dot-blue"></span> Программирование</span>
+            <span class="legend-item"><span class="dot dot-red"></span> Борьба</span>
+            <span class="legend-item"><span class="dot dot-mixed"></span> Оба</span>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
       <!-- Календарь -->
